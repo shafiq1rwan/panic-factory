@@ -33,8 +33,11 @@ export class ObjectView {
     private worldHeight: number,
   ) {
     const body = scene.add.image(0, 0, toyKey(obj.type, obj.material)).setScale(S);
-    this.faceY = obj.type === 'yellow' ? 7 : 0;
-    this.face = scene.add.image(0, this.faceY, faceKey('surprised')).setScale(S * 1.75);
+    // A triangle narrows above its short, flat base. Keep its entire face inside
+    // that smaller area; the shared oversized face left the mouth below the toy.
+    this.faceY = obj.type === 'yellow' ? -2 : 0;
+    const faceScale = obj.type === 'yellow' ? 1.4 : 1.75;
+    this.face = scene.add.image(0, this.faceY, faceKey('surprised')).setScale(S * faceScale);
     this.container = scene.add.container(obj.x, obj.y, [body, this.face]).setDepth(DEPTH.toys);
     this.shadow = scene.add.image(obj.x + 4, obj.y + 6, toyShadowKey(obj.type, obj.material)).setScale(S).setAlpha(0.26).setDepth(DEPTH.toyShadow);
     this.nextBlink = 800 + Math.random() * 2500;

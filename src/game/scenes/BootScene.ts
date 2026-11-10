@@ -20,6 +20,7 @@ export class BootScene extends Phaser.Scene {
     const timeout = new Promise<void>((resolve) => setTimeout(resolve, 2500));
     void Promise.race([platform.init(), timeout]).then(() => {
       platform.loadingFinished();
+      this.scene.launch('Transition'); // stays running on top for the whole session
       this.scene.start('Menu');
     });
   }

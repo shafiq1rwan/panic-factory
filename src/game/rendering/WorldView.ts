@@ -151,7 +151,7 @@ export class WorldView {
       const x = Phaser.Math.Clamp(obj.x, 30, this.world.width - 30);
       v?.finish(this.scene, 'lost', x, this.world.height);
       p.puff(x, this.world.height - 8, 4);
-      this.floatText(x, this.world.height - 36, 'bye!', '#7A56F0', 17);
+      if (this.sound) this.floatText(x, this.world.height - 36, 'bye!', '#7A56F0', 17);
       if (this.sound) audio.drop();
     });
 

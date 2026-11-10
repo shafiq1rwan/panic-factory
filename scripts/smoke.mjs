@@ -91,7 +91,7 @@ const ev = (page, fn, arg) => page.evaluate(fn, arg);
 const startScene = (page, key, data) =>
   ev(page, ([k, d]) => {
     const g = window.__TFP.game;
-    for (const s of g.scene.getScenes(true)) if (s.scene.key !== k) g.scene.stop(s.scene.key);
+    for (const s of g.scene.getScenes(true)) if (s.scene.key !== k && s.scene.key !== 'Transition') g.scene.stop(s.scene.key);
     g.scene.start(k, d);
   }, [key, data]);
 
@@ -116,17 +116,21 @@ try {
   check('menu factory is alive (physics running)', (await ev(page, () => window.__TFP.game.scene.getScene('Menu').world.tick)) > 30);
   check('panic mode starts locked', await ev(page, () => window.__TFP.save.data.unlocked === 1));
 
-  await click(page, 310, 352); // PLAY
+  await click(page, 520, 608); // small Levels button
   await active(page, 'LevelSelect');
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(900);
   await page.screenshot({ path: `${OUT}/smoke-levels.png` });
   await click(page, 640, 422); // a locked level: must do nothing
   await page.waitForTimeout(400);
   check('locked levels cannot be opened', await ev(page, () => window.__TFP.game.scene.isActive('LevelSelect')));
-  await click(page, 168, 262); // level 1
+  await page.keyboard.press('Escape'); // back to the menu
+  await active(page, 'Menu');
+  await page.waitForTimeout(900);
+  await click(page, 640, 430); // PLAY goes straight into the next unfinished level
   await active(page, 'Game');
   await gameState(page, 'prep');
-  check('level 1 opens in the preparation phase', true);
+  check('PLAY drops straight into level 1 (preparation phase)', (await ev(page, () => window.__TFP.game.scene.getScene('Game').levelIndex)) === 0);
+  await page.waitForTimeout(700);
   check('HUD scene is running', await ev(page, () => window.__TFP.game.scene.isActive('UI')));
   check('tutorial points at the belt', (await ev(page, () => window.__TFP.game.scene.getScene('Game').tutorialHint()?.kind)) === 'tap');
 
@@ -141,8 +145,7 @@ try {
   await click(page, 1036, 40); // fast-forward
   check('fast-forward toggles', (await ev(page, () => window.__TFP.game.scene.getScene('Game').speed)) === 3);
   await gameState(page, 'won');
-  await active(page, 'Result');
-  await page.waitForTimeout(1600);
+  await page.waitForTimeout(1500);
   await page.screenshot({ path: `${OUT}/smoke-level1-complete.png` });
   const r1 = await ev(page, () => {
     const g = window.__TFP.game.scene.getScene('Game');
@@ -150,27 +153,26 @@ try {
   });
   check('level 1 completes: 3 delivered, 3 stars, level 2 unlocked', r1.delivered === 3 && r1.mistakes === 0 && r1.stars === 3 && r1.unlocked === 2, JSON.stringify(r1));
 
-  await click(page, 762, 508); // Next Level
+  // no button press: the game moves on by itself
   await page.waitForFunction(() => window.__TFP.game.scene.getScene('Game').levelIndex === 1 && window.__TFP.game.scene.getScene('Game').state === 'prep', null, { timeout: 15000 });
-  check('Next Level loads level 2', true);
+  check('the next level loads automatically after a win', true);
+  await page.waitForTimeout(900);
 
   // fail on purpose, then retry
   const bodies2 = await ev(page, () => window.__TFP.game.scene.getScene('Game').world.bodyCount);
   await page.keyboard.press('Space');
   await gameState(page, 'failed');
-  await active(page, 'Result');
   await page.waitForTimeout(700);
   await page.screenshot({ path: `${OUT}/smoke-level2-failed.png` });
   const reason = await ev(page, () => window.__TFP.game.scene.getScene('Game').rules.failReason);
   check('wrong setup fails with a clear reason', reason.length > 5, reason);
-  await click(page, 684, 494); // Try Again
-  await gameState(page, 'prep');
+  await gameState(page, 'prep'); // hands the layout back by itself
   await page.waitForTimeout(250); // let the overlay scene finish closing
   const after = await ev(page, () => {
     const g = window.__TFP.game.scene.getScene('Game');
     return { bodies: g.world.bodyCount, toys: g.world.objects.length, views: g.view.toyCount, tick: g.world.tick, result: window.__TFP.game.scene.isActive('Result') };
   });
-  check('retry fully resets the world', after.bodies === bodies2 && after.toys === 0 && after.views === 0 && after.tick === 0 && !after.result, JSON.stringify(after));
+  check('after a failure the level resets itself for another try', after.bodies === bodies2 && after.toys === 0 && after.views === 0 && after.tick === 0 && !after.result, JSON.stringify(after));
 
   // pause / resume
   await page.keyboard.press('Space');
@@ -273,7 +275,7 @@ try {
   }
   await startScene(page, 'Menu');
   await active(page, 'Menu');
-  const scenes = await ev(page, () => window.__TFP.game.scene.getScenes(true).map((s) => s.scene.key));
+  const scenes = await ev(page, () => window.__TFP.game.scene.getScenes(true).map((s) => s.scene.key).filter((k) => k !== 'Transition'));
   check('level transitions leave only the menu running', scenes.length === 1 && scenes[0] === 'Menu', scenes.join(','));
   await ctx.close();
 
@@ -285,10 +287,7 @@ try {
   await active(tp, 'Menu');
   await tp.waitForTimeout(800);
   await tp.screenshot({ path: `${OUT}/smoke-mobile-menu.png` });
-  await tap(tp, 310, 352);
-  await active(tp, 'LevelSelect');
-  await tp.waitForTimeout(400);
-  await tap(tp, 168, 262);
+  await tap(tp, 640, 430);
   await active(tp, 'Game');
   await gameState(tp, 'prep');
   await tp.waitForTimeout(1400);

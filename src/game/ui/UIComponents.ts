@@ -278,28 +278,26 @@ export class Toggle extends Phaser.GameObjects.Container {
   }
 }
 
-/** Soft fade between scenes (skipped when reduced motion is on). */
+/** Switch screens behind a curtain wipe (instant when reduced motion is on). */
 export function gotoScene(scene: Phaser.Scene, key: string, data?: object): void {
   const go = () => {
     // Stop everything else that is running (HUD, overlays, the level underneath), then switch.
     for (const other of scene.scene.manager.getScenes(false)) {
       const k = other.scene.key;
-      if (k === scene.scene.key) continue;
+      if (k === scene.scene.key || k === 'Transition') continue;
       if (scene.scene.isActive(k) || scene.scene.isPaused(k)) scene.scene.stop(k);
     }
     scene.scene.start(key, data);
   };
-  if (save.settings.reducedMotion) {
+  const wipe = scene.scene.get('Transition') as unknown as { cover?: (fn: () => void) => void } | null;
+  if (save.settings.reducedMotion || !wipe?.cover || !scene.scene.isActive('Transition')) {
     go();
     return;
   }
-  const cam = scene.cameras.main;
-  cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, go);
-  cam.fadeOut(150, 52, 35, 166);
+  wipe.cover(go);
 }
 
-export function fadeIn(scene: Phaser.Scene): void {
-  if (!save.settings.reducedMotion) scene.cameras.main.fadeIn(180, 52, 35, 166);
-}
+/** Kept for call-site symmetry: screens are revealed by the Transition scene's wipe. */
+export function fadeIn(_scene: Phaser.Scene): void {}
 
 export { lighten };

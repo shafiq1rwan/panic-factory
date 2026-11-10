@@ -3,8 +3,10 @@ import { COLORS, GAME_H, GAME_W, HUD_H, OBJ_TYPES, TEX_SCALE, TEXT, TYPE_COLORS,
 import { setupCamera, viewBottom, viewTop } from '../rendering/Background';
 import { toyKey } from '../rendering/Textures';
 import { heart, roundRect } from '../rendering/VectorFactory';
+import { audio } from '../systems/AudioManager';
+import { LevelManager } from '../systems/LevelManager';
 import { save } from '../systems/SaveManager';
-import { Button, txt } from '../ui/UIComponents';
+import { Button, drawStar, txt } from '../ui/UIComponents';
 import type { GameScene, GameState } from './GameScene';
 import type { PanicScene } from './PanicScene';
 
@@ -48,6 +50,7 @@ export class UIScene extends Phaser.Scene {
   private clock = 0;
   private timerT: Phaser.GameObjects.Text | null = null;
   private phaseT: Phaser.GameObjects.Text | null = null;
+  private resultCard: Phaser.GameObjects.Container | null = null;
   // panic
   private scoreT: Phaser.GameObjects.Text | null = null;
   private multT: Phaser.GameObjects.Text | null = null;
@@ -77,6 +80,7 @@ export class UIScene extends Phaser.Scene {
     this.runBtn = this.ffBtn = null;
     this.timerT = this.scoreT = this.multT = this.bannerT = this.effectT = this.tip = null;
     this.phaseT = null;
+    this.resultCard = null;
     this.banner = null;
     this.bannerBg = null;
   }
@@ -215,6 +219,7 @@ export class UIScene extends Phaser.Scene {
       else b.setColor(0xf1d58e).setContent('RETRY', 'restart');
       this.ffBtn!.setVisible(g.state === 'running');
       this.phaseT!.setVisible(g.state !== 'running').setText(g.state === 'prep' ? 'SETUP' : 'DONE');
+      this.showResultCard(g.state);
     }
     if (g.speed !== this.lastSpeed) {
       this.lastSpeed = g.speed;
@@ -275,6 +280,46 @@ export class UIScene extends Phaser.Scene {
       this.hand.setScale(base).setAlpha(1);
     }
     this.hand.setPosition(hx, hy);
+  }
+
+  /**
+   * Arcade-style flow: no result dialog. A win shows a quick star card before the game moves
+   * on by itself; a failure shows why for a moment before the layout is handed back.
+   */
+  private showResultCard(state: GameState): void {
+    this.resultCard?.destroy();
+    this.resultCard = null;
+    if (state !== 'won' && state !== 'failed') return;
+    const g = this.game_;
+    const card = this.add.container(GAME_W / 2, 250).setDepth(70);
+    const bg = this.add.graphics();
+    card.add(bg);
+    const plate = (w: number, h: number): void => {
+      bg.fillStyle(COLORS.shadow, 0.18);
+      bg.fillRoundedRect(-w / 2 + 4, -h / 2 + 8, w, h, 40);
+      roundRect(bg, -w / 2, -h / 2, w, h, 40, WORKSHOP.panel, 0);
+    };
+    if (state === 'won') {
+      const last = g.levelIndex + 1 >= LevelManager.count;
+      plate(560, 208);
+      card.add(txt(this, 0, -56, last ? 'All levels complete!' : 'Level Complete!', 40, WORKSHOP.text));
+      for (let i = 0; i < 3; i++) {
+        const sx = (i - 1) * 96;
+        card.add(drawStar(this, sx, 34, 38, false));
+        if (i >= g.lastStars) continue;
+        const s = drawStar(this, sx, 34, 38, true).setScale(0);
+        card.add(s);
+        this.tweens.add({ targets: s, scale: 1, duration: 320, delay: 420 + i * 260, ease: 'Back.easeOut', onStart: () => audio.starPop(i) });
+      }
+    } else {
+      const reason = txt(this, 0, 24, g.rules.failReason || 'That did not work', 24, WORKSHOP.text);
+      plate(Math.max(380, reason.width + 90), 152);
+      card.add([txt(this, 0, -30, 'Oops! Try again', 36, TEXT.pink), reason]);
+    }
+    this.resultCard = card;
+    if (save.settings.reducedMotion) return;
+    card.setScale(0.6).setAlpha(0);
+    this.tweens.add({ targets: card, scale: 1, alpha: 1, duration: 260, delay: state === 'won' ? 250 : 150, ease: 'Back.easeOut' });
   }
 
   /** Pick a spot along the bottom edge where the hint pill does not cover a machine. */

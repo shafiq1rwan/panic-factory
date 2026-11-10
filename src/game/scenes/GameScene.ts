@@ -56,6 +56,9 @@ export class GameScene extends Phaser.Scene {
   view!: WorldView;
   state: GameState = 'prep';
   speed = 1;
+  /** result of the most recent win, shown by the HUD banner */
+  lastStars = 0;
+  lastNewBest = false;
   /** bumps on every prep reset so delayed callbacks from an old run are ignored */
   private runToken = 0;
   private acc = 0;
@@ -207,15 +210,23 @@ export class GameScene extends Phaser.Scene {
           this.time.delayedCall(200, () => cam.zoomTo(view.res, 420, 'Sine.easeInOut', true));
         }
       });
-      this.time.delayedCall(1100, () => {
+      this.lastStars = stars;
+      this.lastNewBest = newBest;
+      // No result dialog: celebrate briefly, then move straight on to the next level.
+      this.time.delayedCall(2300, () => {
         if (token !== this.runToken) return;
-        this.scene.launch('Result', { mode: 'win', levelIndex: this.levelIndex, stars, newBest, ...summary });
+        void platform.commercialBreak().then(() => {
+          if (token !== this.runToken) return;
+          if (LevelManager.hasNext(this.levelIndex)) this.nextLevel();
+          else gotoScene(this, 'Menu');
+        });
       });
     } else {
       this.time.delayedCall(250, () => token === this.runToken && audio.fail());
-      this.time.delayedCall(900, () => {
+      // No dialog either: show why it failed for a moment, then hand the layout straight back.
+      this.time.delayedCall(1900, () => {
         if (token !== this.runToken) return;
-        this.scene.launch('Result', { mode: 'fail', levelIndex: this.levelIndex, reason: this.rules.failReason });
+        this.retry();
       });
     }
   }
