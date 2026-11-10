@@ -81,7 +81,7 @@ Two design decisions shape everything else:
 
 ## Adding or changing a level
 
-Levels are data in `src/game/levels/levels.ts`, built from three small layouts (one belt over two bins, two belts over three bins, a three-belt junction over three bins) plus a toy sequence and a drop interval.
+Levels are data in `src/game/levels/levels.ts`, built from six small layouts (springs, ramps, cross-over springs, pinball bumpers, twin belts, a three-belt junction) plus a toy sequence and a drop interval. The springs, ramps and bumpers are fixed scenery: they add bouncing and sliding without adding anything to learn.
 
 1. Add a `sortLevel({...})` entry: pick a layout, give it a sequence (`mixed(seed, count, colours)`) and an interval.
 2. Each layout carries a `routes` table saying which way every belt must run for each colour. The tutorial hand and the test bot both use it.

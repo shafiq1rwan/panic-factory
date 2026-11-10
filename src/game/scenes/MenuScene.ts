@@ -21,8 +21,8 @@ const DEMO: LevelDef = {
   solution: {},
   walls: [],
   spawners: [
-    { id: 'a', x: 110, y: 136, sequence: ['blue', 'pink'], interval: 2100, delay: 300, loop: true },
-    { id: 'b', x: 610, y: 136, sequence: ['yellow', 'green'], interval: 2300, delay: 1200, loop: true },
+    { id: 'a', x: 110, y: 210, sequence: ['blue', 'pink'], interval: 2100, delay: 300, loop: true },
+    { id: 'b', x: 610, y: 210, sequence: ['yellow', 'green'], interval: 2300, delay: 1200, loop: true },
   ],
   machines: [
     { id: 'padA', kind: 'bumper', shape: 'pad', x: 110, y: 1040, angle: 30, power: 8 },

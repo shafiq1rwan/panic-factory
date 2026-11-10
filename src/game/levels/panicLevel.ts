@@ -20,7 +20,7 @@ export const PANIC_LEVEL: LevelDef = {
   par: 0,
   solution: {},
   // decorative only: gives the drop point its pipe. PanicDirector does the actual spawning.
-  spawners: [{ id: 'chute', x: 360, y: 136, sequence: [], interval: 1000 }],
+  spawners: [{ id: 'chute', x: 360, y: 210, sequence: [], interval: 1000 }],
   walls: [],
   machines: [
     { id: 'top', kind: 'conveyor', x: 360, y: 560, length: 200, speed: 2.2, dir: 1, interactive: true },
@@ -33,4 +33,4 @@ export const PANIC_LEVEL: LevelDef = {
   ],
 };
 
-export const PANIC_SPAWN = { x: 360, y: 136 };
+export const PANIC_SPAWN = { x: 360, y: 210 };

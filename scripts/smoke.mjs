@@ -176,7 +176,7 @@ try {
   check('the level starts by itself, with no RUN button', (await ev(page, () => window.__TFP.game.scene.getScene('UI').runBtn)) === null);
   check('HUD scene is running', await ev(page, () => window.__TFP.game.scene.isActive('UI')));
   check('tutorial points at the belt', (await ev(page, () => window.__TFP.game.scene.getScene('Game').tutorialHint()?.kind)) === 'tap');
-  await click(page, 360, 770); // tap the belt: the one thing the player has to learn
+  await click(page, 360, 570); // tap the belt: the one thing the player has to learn
   check('tapping the belt flips it', (await ev(page, () => window.__TFP.game.scene.getScene('Game').world.machine('belt').dir)) === -1);
   check('tutorial hand goes away once the belt is right', (await ev(page, () => window.__TFP.game.scene.getScene('Game').tutorialHint())) === null);
   await page.waitForTimeout(1800);
@@ -251,7 +251,7 @@ try {
   await page.reload();
   await active(page, 'Menu');
   const saved = await ev(page, () => window.__TFP.save.data);
-  check('progress persists after reload', saved.stars['first-flip'] === 3 && saved.stars['take-turns'] >= 1 && saved.unlocked >= 2 && saved.settings.reducedShake === true, JSON.stringify(saved.stars));
+  check('progress persists after reload', saved.stars['first-flip'] === 3 && saved.stars['slide-down'] >= 1 && saved.unlocked >= 2 && saved.settings.reducedShake === true, JSON.stringify(saved.stars));
 
   // corrupted save must not break boot
   await page.evaluate(() => localStorage.setItem('tiny-factory-panic-save', '{{{ definitely not json'));
@@ -305,7 +305,7 @@ try {
   await active(tp, 'Game');
   await gameState(tp, 'running');
   await tp.waitForTimeout(500);
-  await tap(tp, 360, 770);
+  await tap(tp, 360, 570);
   check('touch: tapping the belt flips it', (await ev(tp, () => window.__TFP.game.scene.getScene('Game').world.machine('belt').dir)) === -1);
   await tp.screenshot({ path: `${OUT}/smoke-mobile-level1.png` });
   await gameState(tp, 'won');
