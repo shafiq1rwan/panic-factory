@@ -1,7 +1,7 @@
 {
   "name": "tiny-factory-panic",
-  "version": "1.0.0",
-  "description": "Tiny Factory Panic - a cute 2D physics factory puzzle game",
+  "version": "1.5.0",
+  "description": "Tiny Factory Panic - a one-tap physics toy-sorting game",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

@@ -1,57 +1,48 @@
-# Progress checklist
+# Progress
 
-Status of the development plan. Update this file when work is picked up again.
+Where the project stands and what is still open. Update this when work is picked up again.
 
-## Phase 1: Foundation — done
-- [x] Vite + TypeScript + Phaser 3 project, production build
-- [x] Responsive canvas: portrait 720x1280 screen (top bar, play field, bottom control strip), view extended on one axis so the canvas fills any window shape; render resolution up to 2x for high-DPI
-- [x] Procedural vector helpers and texture baking (`rendering/`)
-- [x] Scene structure: Boot, Menu, LevelSelect, Game, Panic, UI, Result, Pause, Settings
+## Current state
 
-## Phase 2: Physics prototype — done
-- [x] Toys: circle, rounded square, rounded triangle, hexagon; four material presets
-- [x] Fixed 60 Hz timestep, speed cap, out-of-play removal, object cap
-- [x] Conveyor, spring bumper (round and pad), delivery bin
+The game is a one-tap sorting game in portrait: toys drop into a small factory and the player taps belts to flip them so each toy lands in the bin of its own colour. It is deployed to GitHub Pages from `main`.
 
-## Phase 3: Core loop — done
-- [x] Data-driven level loading
-- [x] Preparation phase: select, drag in zones, rotate, flip, piston timer; overlap and zone checks
-- [x] Run / Stop / instant Retry (layout preserved)
-- [x] Objectives, mistakes, win and all failure conditions (wrong bins, lost toys, stuck, time limit, overtime)
+| Area | Status |
+| --- | --- |
+| Core engine (fixed-step Matter.js physics, belts, springs, bumpers, funnels, bins, chutes) | Done |
+| 20 sorting levels in 5 chapters, six layouts | Done, verified by a bot |
+| Panic Factory (endless mode with announced malfunctions) | Done |
+| Title screen, level select, pause, settings, Panic game-over screen | Done |
+| Auto-start, auto-advance after a win, auto-restart after a failure, curtain wipe | Done |
+| Portrait layout that fills any window; turn-upright prompt for phones held sideways | Done |
+| Procedural art and synthesised audio (no asset files) | Done |
+| LocalStorage save (stars, unlocked levels, settings, Panic best) with validation | Done |
+| Platform layer (standalone + Poki adapter) | Written; Poki build not yet run in Poki's tools |
+| Headless tests, level verification, browser smoke test | Done |
+| GitHub Pages workflow | Written; check the Actions tab for the latest run |
+| Portal thumbnail (`output/poki/`) | Present |
 
-## Phase 4: More machines — done
-- [x] Piston (moving static ram with velocity transfer, adjustable timer)
-- [x] Funnel
-- [x] Configurable spawners with authored sequences and queue preview
+## Verified
 
-## Phase 5: Levels — done
-- [x] 15 handcrafted levels, each with a verified solution (`npm run solve`)
-- [x] Default layouts verified NOT to win; solutions verified against jittered spawns
+- `npm test`: 143 tests pass.
+- `npm run solve`: all 20 levels are cleared with no slips by a bot that follows each level's routes, and are still won when the bot only reacts every 200 ms and 300 ms. Doing nothing fails every level, and no toy can leave play.
+- `npm run smoke`: 39 checks pass against the production build in headless Edge, including a level won by keyboard, one by mouse and one by touch taps at phone size.
+- A flawless run of all 20 levels is about 8 minutes of play (485 s measured with the bot), plus intro cards and transitions.
 
-## Phase 6: Polish — done
-- [x] Cute pastel art direction: faces with expressions, squash and stretch, soft shadows
-- [x] Particles, floating text, camera shake (rare), win zoom punch, confetti
-- [x] Procedural sound effects and a small generative music loop
-- [x] HUD, menus, level-complete and failure screens, settings
-- [x] Tutorials with a pointing hand (levels 1-5, 7, 8)
-- [x] Mouse, keyboard and touch controls; turn-upright prompt for phones held sideways
+## Not verified
 
-## Phase 7: Panic Factory — done
-- [x] Endless spawning with rising difficulty
-- [x] Live belt flipping
-- [x] Telegraphed malfunctions: reverse, rush, turbo, low gravity, jam
-- [x] Score, streak multiplier, chain bonus, high score
+- No person has played the current levels start to finish. Difficulty, pacing and how long a real first playthrough takes are unknown.
+- Real phones and tablets, Safari and Firefox. Touch has only been exercised through Chromium's emulation.
+- The audio has not been listened to.
+- Frame rate on low-end phones.
+- The Poki build (`VITE_PLATFORM=poki`) in Poki's inspector.
 
-## Phase 8: Release prep — done, with open items below
-- [x] Versioned LocalStorage save with validation
-- [x] Platform adapter layer (standalone + Poki)
-- [x] Automated tests (`npm test`) and browser smoke test (`npm run smoke`)
-- [x] README with deployment instructions
+## Open items
 
-## Open items / ideas
-- [ ] Test on real phones and tablets, Safari and Firefox
-- [ ] Run the `VITE_PLATFORM=poki` build in Poki's inspector
-- [ ] Have someone listen to the audio mix and tune volumes
-- [ ] Levels 13-15 could use a time-limit or interactive-machine variant for more "panic"
-- [ ] The Phaser bundle is about 1.3 MB (350 kB gzipped); a custom Phaser build would shrink it
-- [ ] More levels: the solver makes new ones cheap to verify
+- [ ] Play-test on a real phone, cold, with two or three people; note where they stop.
+- [ ] Decide whether play time is long enough for the portal. The owner's earlier Poki submission needed about 9 minutes of average play. Options: more levels, unlocking Panic mode earlier, a play-time counter in Settings for testing.
+- [ ] Late-game variety: the junction layout is used for six of the last twelve levels.
+- [ ] Faint vertical line near the left edge of each level-select card (cause not found).
+- [ ] On very tall phones there is a band of plain wall between the top bar and the play field.
+- [ ] Remove or reuse the engine parts no level uses any more: pistons, special toy materials, drag / rotate / timer editing, the RUN-button flow, the win and fail dialogs in `ResultScene.ts`.
+- [ ] Run the Poki build in Poki's inspector before submitting.
+- [ ] The Phaser bundle is about 1.3 MB (350 kB gzipped); a custom Phaser build would shrink it.

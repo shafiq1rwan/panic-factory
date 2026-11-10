@@ -48,7 +48,7 @@ Stars: 3 for no slips, 2 for one, 1 for two.
 
 **Panic Factory**: toys never stop. Tap a belt to flip it (or `W`/`A`/`D`, or the arrow keys). Blue goes left, pink to the middle, yellow right. Three wrong deliveries end the run. Malfunctions (belt reverse, toy rush, turbo belts, low gravity, belt jam) are announced about two seconds before they start.
 
-The engine still contains springs, pistons, funnels, drag / rotate / timer editing and a RUN-button puzzle flow from the earlier design. No current level uses them.
+Springs, ramps and bumpers appear in the levels as fixed scenery: they bounce and slide the toys but are never controlled. The engine also still contains pistons, heavy / bouncy / icy toys, drag / rotate / timer editing and a RUN-button puzzle flow from the earlier design. No current level uses those.
 
 ## Project layout
 
@@ -57,7 +57,8 @@ src/
   main.ts                 Phaser bootstrap, page-level input guards, render resolution
   game/
     config.ts             Constants and palette (no Phaser imports)
-    sim/                  FactoryWorld (Matter engine + fixed-step loop), headless simulateLevel()
+    sim/                  FactoryWorld (Matter engine + fixed-step loop), headless simulateLevel(),
+                          routeBot (the stand-in player used by the tests)
     physics/              Matter access layer, collision categories, material presets
     entities/             FactoryObject (toy), ObjectSpawner
     machines/             BaseMachine, ConveyorBelt, SpringBumper, Piston, Funnel, DeliveryBin
@@ -65,19 +66,25 @@ src/
                           AudioManager, ParticleManager
     levels/               LevelTypes, the 20 levels, the Panic arena
     rendering/            Vector drawing, texture baking, machine/toy views, WorldView (all the juice)
-    scenes/               Boot, Menu, LevelSelect, Game, Panic, UI (HUD), Result, Pause, Settings
+    scenes/               Boot, Menu, LevelSelect, Game, Panic, UI (HUD), Result, Pause, Settings,
+                          Transition (the curtain wipe between screens)
     ui/                   Buttons, sliders, toggles, panels
     platform/             PlatformAdapter interface, StandaloneAdapter, PokiAdapter
   tests/                  Vitest suites
 scripts/
-  solve.ts, robust.ts, labkit.ts   Level verification and design tools
-  smoke.mjs, shot.mjs              Browser test and screenshot helper
+  solve.ts, labkit.ts              Level verification with the route bot; physics trace helper
+  smoke.mjs                        End-to-end browser test of the production build
+  shot.mjs, phone.mjs              Screenshot helpers (desktop viewport, emulated phones)
+  boot-check.mjs                   Confirms the current dist/ boots and starts level 1 on an emulated phone
+.github/workflows/deploy.yml       Tests, builds and publishes to GitHub Pages on every push to main
+output/poki/                       Portal thumbnail and the prompt it was generated from
+docs/POKI_SUBMISSION.md            Listing copy and pre-submission checklist
 ```
 
 Two design decisions shape everything else:
 
 - **Simulation and rendering are separate.** `sim/`, `machines/`, `entities/` and the rule systems never import Phaser. They use Phaser's bundled Matter.js through a small injection point (`physics/MatterLib.ts`), so the exact game physics runs headlessly in Node. That is what makes the level tests and the solver possible.
-- **Fixed timestep.** The world advances in 1/60 s ticks, and all gameplay timing (spawners, pistons, rules) is counted in ticks. Runs are reproducible, and fast-forward is simply more ticks per frame.
+- **Fixed timestep.** The world advances in 1/60 s ticks, and all gameplay timing (spawners, pistons, rules) is counted in ticks. Runs are reproducible for the same inputs at the same ticks.
 
 ## Adding or changing a level
 
@@ -94,6 +101,10 @@ Keep the bins spanning the whole floor: the tests also check that a toy can neve
 
 `npm run build` produces a fully static site in `dist/` (`index.html` plus hashed JS and CSS). The build uses relative paths, so it can be hosted from any folder: upload `dist/` to any static host, or zip its contents for a web game portal.
 
+### GitHub Pages
+
+`.github/workflows/deploy.yml` runs the headless tests, builds, and publishes `dist/` on every push to `main`. One-time setup: in the repository settings, set **Pages → Source** to **GitHub Actions**. The game is then served at `https://<user>.github.io/<repo>/`.
+
 ### Poki
 
 The game talks to the hosting platform only through `platform/PlatformAdapter.ts`. The default `StandaloneAdapter` does nothing. To build with the Poki SDK:
@@ -107,8 +118,8 @@ VITE_PLATFORM=poki npm run build
 
 `PokiAdapter` loads `https://game-cdn.poki.com/scripts/v2/poki-sdk.js` at runtime and maps to the calls in Poki's HTML5 guide (`init`, `gameLoadingFinished`, `gameplayStart`, `gameplayStop`, `commercialBreak`, `rewardedBreak`).
 
-- `gameplayStart` / `gameplayStop` fire when a level or Panic run becomes active or stops (pause, result screen, leaving).
-- `commercialBreak` is requested only from the result screen when the player moves on (next level, level select, play again), never during physics. Audio is muted and keyboard input ignored for the duration.
+- `gameplayStart` / `gameplayStop` fire when a level or Panic run becomes active or stops (pause, win, failure, leaving).
+- `commercialBreak` is requested only between runs: after a level is won, just before the wipe to the next level, and from the Panic game-over screen when the player moves on. It is never requested while toys are moving. Audio is muted and keyboard input ignored for the duration.
 - Rewarded breaks are implemented in the adapter but not used by the game.
 
 **This integration has not been run inside Poki's inspector or QA flow, and the game has not been reviewed by Poki.** Before submitting, test the `poki` build at https://inspector.poki.dev and check Poki's current requirements.
@@ -123,9 +134,10 @@ Run on Windows 11 with Node 26 and headless Microsoft Edge:
 Not tested, so treat as unverified:
 
 - Real phones and tablets, Safari and Firefox. Touch was exercised only through Chromium's touch emulation.
-- Whether level solutions hold on non-Chromium engines. The physics is deterministic within one engine and the solutions have margin (they pass with jittered spawns), but tiny floating-point differences between browsers have not been measured.
+- How the levels feel to a person. They have been cleared by a bot and by scripted taps, never by a human playing cold.
+- Behaviour on non-Chromium engines. The physics should not depend on the browser, but that has not been measured.
 - Frame rate on low-end mobile hardware.
 - Audio was not listened to by a person; the headless runs only confirm it produces no errors.
 - The Poki build (see above).
 
-See `PROGRESS.md` for the development checklist.
+See `PROGRESS.md` for current status and open items, `CHANGELOG.md` for how the design got here, and `docs/POKI_SUBMISSION.md` for the portal listing and checklist.
