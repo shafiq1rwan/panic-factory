@@ -21,12 +21,12 @@ const DEMO: LevelDef = {
   solution: {},
   walls: [],
   spawners: [
-    { id: 'a', x: 110, y: 130, sequence: ['blue', 'pink'], interval: 2100, delay: 300, loop: true },
-    { id: 'b', x: 1170, y: 130, sequence: ['yellow', 'green'], interval: 2300, delay: 1200, loop: true },
+    { id: 'a', x: 110, y: 136, sequence: ['blue', 'pink'], interval: 2100, delay: 300, loop: true },
+    { id: 'b', x: 610, y: 136, sequence: ['yellow', 'green'], interval: 2300, delay: 1200, loop: true },
   ],
   machines: [
-    { id: 'padA', kind: 'bumper', shape: 'pad', x: 110, y: 560, angle: 30, power: 8 },
-    { id: 'padB', kind: 'bumper', shape: 'pad', x: 1170, y: 560, angle: -30, power: 8 },
+    { id: 'padA', kind: 'bumper', shape: 'pad', x: 110, y: 1040, angle: 30, power: 8 },
+    { id: 'padB', kind: 'bumper', shape: 'pad', x: 610, y: 1040, angle: -30, power: 8 },
   ],
 };
 
@@ -45,7 +45,7 @@ export class MenuScene extends Phaser.Scene {
 
   create(): void {
     setupCamera(this);
-    drawFactoryBackground(this);
+    drawFactoryBackground(this, false);
 
     // toys bouncing around at the sides
     this.acc = 0;
@@ -54,44 +54,44 @@ export class MenuScene extends Phaser.Scene {
     this.world.start();
 
     const cx = GAME_W / 2;
-    const t1 = txt(this, cx, 150, 'Tiny Factory', 64, TEXT.white, { stroke: TEXT.dark, strokeThickness: 12 }).setDepth(91);
-    const t2 = txt(this, cx, 252, 'PANIC!', 128, '#FF4F9A', { stroke: TEXT.dark, strokeThickness: 16 }).setDepth(91).setAngle(-3);
+    const t1 = txt(this, cx, 300, 'Tiny Factory', 76, TEXT.white, { stroke: TEXT.dark, strokeThickness: 12 }).setDepth(91);
+    const t2 = txt(this, cx, 420, 'PANIC!', 156, '#FF4F9A', { stroke: TEXT.dark, strokeThickness: 16 }).setDepth(91).setAngle(-3);
     if (!save.settings.reducedMotion) {
       this.tweens.add({ targets: t2, angle: 3, scale: 1.05, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-      this.tweens.add({ targets: t1, y: 145, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      this.tweens.add({ targets: t1, y: 294, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
 
     // PLAY: straight into the next unfinished level
     const next = LevelManager.nextUnfinished;
     const allDone = LevelManager.completedCount === LevelManager.count;
-    const play = new Button(this, cx, 430, {
-      w: 340, h: 104, label: 'PLAY', icon: 'play', color: COLORS.yellow, fontSize: 52, radius: 40,
+    const play = new Button(this, cx, 680, {
+      w: 420, h: 130, label: 'PLAY', icon: 'play', color: COLORS.yellow, fontSize: 64, radius: 48,
       onClick: () => gotoScene(this, allDone ? 'LevelSelect' : 'Game', { level: next }),
     }).setDepth(91);
     if (!save.settings.reducedMotion) {
       this.tweens.add({ targets: play, scale: 1.05, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
-    txt(this, cx, 506, allDone ? 'All levels complete!' : `Level ${next + 1}`, 24, WORKSHOP.text).setDepth(91);
+    txt(this, cx, 776, allDone ? 'All levels complete!' : `Level ${next + 1}`, 30, WORKSHOP.text).setDepth(91);
 
     // small round buttons
-    const y = 608;
-    new Button(this, cx - 120, y, { w: 84, h: 76, icon: 'grid', color: COLORS.white, radius: 30, onClick: () => gotoScene(this, 'LevelSelect') }).setDepth(91);
+    const y = 900;
+    new Button(this, cx - 160, y, { w: 116, h: 104, icon: 'grid', color: COLORS.white, radius: 38, onClick: () => gotoScene(this, 'LevelSelect') }).setDepth(91);
     const panicOpen = LevelManager.panicUnlocked;
     new Button(this, cx, y, {
-      w: 84, h: 76, icon: panicOpen ? 'bolt' : 'lock', color: COLORS.pink, radius: 30,
+      w: 116, h: 104, icon: panicOpen ? 'bolt' : 'lock', color: COLORS.pink, radius: 38,
       onClick: () => gotoScene(this, 'Panic'),
     })
       .setDepth(91)
       .setEnabled(panicOpen);
-    new Button(this, cx + 120, y, { w: 84, h: 76, icon: 'gear', color: COLORS.white, radius: 30, onClick: () => this.scene.launch('Settings') }).setDepth(91);
-    txt(this, cx - 120, y + 62, 'Levels', 17, WORKSHOP.muted).setDepth(91);
-    txt(this, cx, y + 62, panicOpen ? `Panic  ·  best ${save.data.panicBest}` : `Panic  ·  ${Math.min(LevelManager.completedCount, PANIC_UNLOCK_LEVELS)}/${PANIC_UNLOCK_LEVELS}`, 17, WORKSHOP.muted).setDepth(91);
-    txt(this, cx + 120, y + 62, 'Settings', 17, WORKSHOP.muted).setDepth(91);
+    new Button(this, cx + 160, y, { w: 116, h: 104, icon: 'gear', color: COLORS.white, radius: 38, onClick: () => this.scene.launch('Settings') }).setDepth(91);
+    txt(this, cx - 160, y + 82, 'Levels', 22, WORKSHOP.muted).setDepth(91);
+    txt(this, cx, y + 82, panicOpen ? `Panic  ·  best ${save.data.panicBest}` : `Panic  ·  ${Math.min(LevelManager.completedCount, PANIC_UNLOCK_LEVELS)}/${PANIC_UNLOCK_LEVELS}`, 22, WORKSHOP.muted).setDepth(91);
+    txt(this, cx + 160, y + 82, 'Settings', 22, WORKSHOP.muted).setDepth(91);
 
     // progress, top right
-    const prog = this.add.container(GAME_W - 110, 150).setDepth(91);
+    const prog = this.add.container(cx, 1060).setDepth(91);
     prog.add([drawStar(this, -46, 0, 18, true), txt(this, 22, 1, `${save.totalStars}/${LevelManager.count * 3}`, 26, WORKSHOP.text)]);
-    txt(this, 40, GAME_H - 44, 'v1.3', 14, WORKSHOP.muted).setDepth(91);
+    txt(this, 40, GAME_H - 44, 'v1.4', 16, WORKSHOP.muted).setDepth(91);
 
     // keyboard: Space / Enter starts too
     this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {

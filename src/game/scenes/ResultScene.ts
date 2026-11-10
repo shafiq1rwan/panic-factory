@@ -47,9 +47,10 @@ export class ResultScene extends Phaser.Scene {
     else if (this.d.mode === 'fail') this.buildFail(box);
     else this.buildPanic(box);
 
+    box.setScale(1.18); // portrait: enlarged to stay comfortable on a phone
     if (save.settings.reducedMotion) return;
-    box.setScale(0.7).setAlpha(0);
-    this.tweens.add({ targets: box, scale: 1, alpha: 1, duration: 260, ease: 'Back.easeOut' });
+    box.setScale(0.8).setAlpha(0);
+    this.tweens.add({ targets: box, scale: 1.18, alpha: 1, duration: 260, ease: 'Back.easeOut' });
   }
 
   private get game_(): GameScene {

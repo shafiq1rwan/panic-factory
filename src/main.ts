@@ -21,10 +21,10 @@ import { save } from './game/systems/SaveManager';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 provideMatter((Phaser.Physics.Matter as any).Matter);
 
-// Render resolution: draw the 1280x720 logical scene at up to 2x so vectors stay crisp on
+// Render resolution: draw the 720x1280 logical scene at up to 2x so vectors stay crisp on
 // high-DPI screens, without paying for more pixels than the display can show.
 //
-// Visible area: the 1280x720 play field always fits, and the view is extended on one axis so the
+// Visible area: the 720x1280 portrait play field always fits, and the view is extended on one axis so the
 // canvas fills the whole window (no letterbox bars) whatever its shape.
 function computeView(): void {
   const ww = Math.max(window.innerWidth, 1);
@@ -32,8 +32,8 @@ function computeView(): void {
   const aspect = ww / wh;
   let w = GAME_W;
   let h = GAME_H;
-  if (aspect > GAME_W / GAME_H) w = Math.min(GAME_H * aspect, GAME_W * 1.6);
-  else h = Math.min(GAME_W / aspect, GAME_H * 2.2);
+  if (aspect > GAME_W / GAME_H) w = Math.min(GAME_H * aspect, GAME_W * 4.5);
+  else h = Math.min(GAME_W / aspect, GAME_H * 1.5);
   view.w = Math.round(w);
   view.h = Math.round(h);
   const fit = Math.min(ww / view.w, wh / view.h);
@@ -93,8 +93,9 @@ const unlock = () => audio.unlock();
 window.addEventListener('pointerdown', unlock);
 window.addEventListener('keydown', unlock);
 
-// Silence + freeze when the tab is hidden or the phone is held upright.
-const portraitQuery = window.matchMedia('(orientation: portrait) and (max-width: 820px)');
+// Silence + freeze when the tab is hidden or a phone is held sideways.
+// The game is portrait: a phone held sideways gets a "turn upright" prompt instead of a tiny field.
+const portraitQuery = window.matchMedia('(orientation: landscape) and (max-height: 520px)');
 let frozen = false;
 function refreshFreeze(): void {
   const shouldFreeze = document.hidden || portraitQuery.matches;

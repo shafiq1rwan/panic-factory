@@ -43,8 +43,9 @@ export class SettingsScene extends Phaser.Scene {
     box.add(txt(this, -230, 132, 'Fewer particles, no bouncy transitions', 14, TEXT.soft).setOrigin(0, 0.5));
 
     box.add(new Button(this, 0, 200, { w: 220, h: 58, label: 'Done', color: COLORS.mint, onClick: () => this.scene.stop() }));
-    box.setScale(0.8);
-    this.tweens.add({ targets: box, scale: 1, duration: 220, ease: 'Back.easeOut' });
+    // portrait: dialogs are enlarged to stay comfortable on a phone
+    box.setScale(0.9);
+    this.tweens.add({ targets: box, scale: 1.18, duration: 220, ease: 'Back.easeOut' });
 
     this.input.keyboard?.on('keydown-ESC', () => this.scene.stop());
   }

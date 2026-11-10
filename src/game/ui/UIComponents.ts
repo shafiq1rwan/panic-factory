@@ -171,7 +171,7 @@ export function panel(scene: Phaser.Scene, x: number, y: number, w: number, h: n
 
 /** Full-screen dimmer that also swallows clicks behind a dialog. */
 export function dimmer(scene: Phaser.Scene, alpha = 0.4): Phaser.GameObjects.Rectangle {
-  const r = scene.add.rectangle(640, 360, 3000, 2000, COLORS.outline, alpha).setInteractive();
+  const r = scene.add.rectangle(360, 640, 6000, 6000, COLORS.outline, alpha).setInteractive();
   r.setAlpha(0);
   scene.tweens.add({ targets: r, alpha: 1, duration: 180 });
   return r;
@@ -211,7 +211,8 @@ export class Slider extends Phaser.GameObjects.Container {
     const move = (p: Phaser.Input.Pointer) => {
       const wp = p.positionToCamera(scene.cameras.main) as Phaser.Math.Vector2;
       const m = this.getWorldTransformMatrix();
-      this.set(Phaser.Math.Clamp((wp.x - m.tx + w / 2) / w, 0, 1), true);
+      // m.a is the accumulated x scale (dialogs are enlarged in the portrait layout)
+      this.set(Phaser.Math.Clamp(((wp.x - m.tx) / (m.a || 1) + w / 2) / w, 0, 1), true);
     };
     this.on('pointerdown', (p: Phaser.Input.Pointer) => {
       audio.unlock();

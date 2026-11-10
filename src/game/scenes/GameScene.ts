@@ -202,7 +202,7 @@ export class GameScene extends Phaser.Scene {
       this.time.delayedCall(350, () => {
         if (token !== this.runToken) return;
         audio.win();
-        this.view.particles.celebrate(GAME_W / 2, 420, 70);
+        this.view.particles.celebrate(GAME_W / 2, 640, 70);
         if (!save.settings.reducedMotion) {
           // a tiny zoom punch to mark the moment
           const cam = this.cameras.main;

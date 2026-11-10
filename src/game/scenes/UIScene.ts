@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, GAME_H, GAME_W, HUD_H, OBJ_TYPES, TEX_SCALE, TEXT, TYPE_COLORS, WORKSHOP, type ObjType } from '../config';
+import { COLORS, FOOTER_H, GAME_H, GAME_W, HUD_H, OBJ_TYPES, PLAY_H, TEX_SCALE, TEXT, TYPE_COLORS, WORKSHOP, type ObjType } from '../config';
 import { setupCamera, viewBottom, viewTop } from '../rendering/Background';
 import { toyKey } from '../rendering/Textures';
 import { heart, roundRect } from '../rendering/VectorFactory';
@@ -18,26 +18,38 @@ interface Chip {
   shown: number;
 }
 
-/** Centre of the RUN button and the vertical centre of the HUD bar (bar-local coordinates). */
-export const RUN_X = 1172;
-export const BAR_Y = HUD_H / 2;
-const FF_X = 1036;
+const CX = GAME_W / 2;
+const BAR_Y = HUD_H / 2;
+/** Centre of the big RUN button, in the control strip under the play field. */
+export const RUN_X = CX;
+export const RUN_Y = PLAY_H + FOOTER_H / 2 - 4;
+const RUN_GREEN = 0x3ee08a;
+const STOP_RED = 0xff7a6b;
+const RETRY_YELLOW = 0xffcf33;
 
 /**
- * Heads-up display, rendered in its own scene above the factory so camera
- * shake never moves it. It polls the active gameplay scene each frame and only
- * redraws what changed. The bar is pinned to the top edge of whatever is
- * visible, so it sits correctly in windows of any shape.
+ * Heads-up display for the portrait layout, rendered in its own scene above
+ * the factory so camera shake never moves it.
+ *
+ *   top bar      pause, restart, level name, delivery counters
+ *   play field
+ *   control strip: lives, the big RUN button (thumb reach), fast-forward
+ *
+ * It polls the active gameplay scene each frame and only redraws what changed.
  */
 export class UIScene extends Phaser.Scene {
   private mode: 'puzzle' | 'panic' = 'puzzle';
-  /** everything in the top bar; moved to the visible top edge every frame */
+  /** everything in the top bar; pinned to the visible top edge every frame */
   private bar!: Phaser.GameObjects.Container;
+  /** the control strip under the play field */
+  private footer!: Phaser.GameObjects.Container;
+  private controls!: Phaser.GameObjects.Container;
   // puzzle
   private chips: Chip[] = [];
   private heartsG!: Phaser.GameObjects.Graphics;
   private heartsKey = '';
   private runBtn: Button | null = null;
+  private runPulse: Phaser.Tweens.Tween | null = null;
   private ffBtn: Button | null = null;
   private lastState: GameState | '' = '';
   private lastSpeed = 0;
@@ -49,7 +61,6 @@ export class UIScene extends Phaser.Scene {
   private hand!: Phaser.GameObjects.Image;
   private clock = 0;
   private timerT: Phaser.GameObjects.Text | null = null;
-  private phaseT: Phaser.GameObjects.Text | null = null;
   private resultCard: Phaser.GameObjects.Container | null = null;
   // panic
   private scoreT: Phaser.GameObjects.Text | null = null;
@@ -78,8 +89,8 @@ export class UIScene extends Phaser.Scene {
     this.lastMult = 0;
     this.bannerShown = '';
     this.runBtn = this.ffBtn = null;
+    this.runPulse = null;
     this.timerT = this.scoreT = this.multT = this.bannerT = this.effectT = this.tip = null;
-    this.phaseT = null;
     this.resultCard = null;
     this.banner = null;
     this.bannerBg = null;
@@ -94,29 +105,39 @@ export class UIScene extends Phaser.Scene {
 
   create(): void {
     setupCamera(this);
+
+    // top bar
     this.bar = this.add.container(0, viewTop());
     const bg = this.add.graphics();
     bg.fillStyle(WORKSHOP.panel, 1);
-    bg.fillRect(-1400, -1400, GAME_W + 2800, HUD_H + 1400);
+    bg.fillRect(-3000, -1400, GAME_W + 6000, HUD_H + 1400);
     bg.fillStyle(0x294d43, 0.1);
-    bg.fillRect(-1400, HUD_H, GAME_W + 2800, 5);
+    bg.fillRect(-3000, HUD_H, GAME_W + 6000, 5);
     bg.fillStyle(WORKSHOP.border, 1);
-    bg.fillRect(-1400, HUD_H - 1, GAME_W + 2800, 1);
-    bg.lineStyle(1, WORKSHOP.border, 1);
-    for (const x of this.mode === 'puzzle' ? [164, 458, 856, 998] : [88, 242, 514, 864, 1082]) {
-      bg.lineBetween(x, 22, x, HUD_H - 22);
-    }
+    bg.fillRect(-3000, HUD_H - 1, GAME_W + 6000, 1);
     this.bar.add(bg);
-
     this.bar.add(
-      new Button(this, 50, BAR_Y - 2, {
-        w: 52, h: 46, icon: 'pause', color: WORKSHOP.inset, radius: 12, style: 'panel', textColor: WORKSHOP.text,
+      new Button(this, 52, BAR_Y - 2, {
+        w: 72, h: 64, icon: 'pause', color: WORKSHOP.inset, radius: 16, style: 'panel', textColor: WORKSHOP.text,
         onClick: () => (this.mode === 'puzzle' ? this.game_.pause() : this.panic.pause()),
       }),
     );
+
+    // control strip
+    this.footer = this.add.container(0, PLAY_H);
+    const fg = this.add.graphics();
+    fg.fillStyle(WORKSHOP.panel, 1);
+    fg.fillRect(-3000, 0, GAME_W + 6000, FOOTER_H + 1400);
+    fg.fillStyle(WORKSHOP.border, 1);
+    fg.fillRect(-3000, 0, GAME_W + 6000, 2);
+    this.footer.add(fg);
+    // controls sit in an inner group that is centred in whatever space the strip has (tall phones have more)
+    this.controls = this.add.container(0, 0);
+    this.footer.add(this.controls);
     this.heartsG = this.add.graphics();
-    this.bar.add(this.heartsG);
-    this.hand = this.add.image(0, 0, 'hand').setScale(1.3 / TEX_SCALE).setDepth(50).setVisible(false).setAngle(-18);
+    this.controls.add(this.heartsG);
+
+    this.hand = this.add.image(0, 0, 'hand').setScale(1.5 / TEX_SCALE).setDepth(50).setVisible(false).setAngle(-18);
 
     if (this.mode === 'puzzle') this.createPuzzleHud();
     else this.createPanicHud();
@@ -127,56 +148,67 @@ export class UIScene extends Phaser.Scene {
   private createPuzzleHud(): void {
     const g = this.game_;
     const bar = this.bar;
-    bar.add(new Button(this, 120, BAR_Y - 2, { w: 52, h: 46, icon: 'restart', color: WORKSHOP.inset, radius: 12, style: 'panel', textColor: WORKSHOP.text, onClick: () => g.retry() }));
-    bar.add(txt(this, 184, 23, `PUZZLE / ${String(g.levelIndex + 1).padStart(2, '0')}`, 12, WORKSHOP.muted).setOrigin(0, 0.5).setLetterSpacing(1.5));
-    const title = txt(this, 184, 49, g.level.name, 23, WORKSHOP.text).setOrigin(0, 0.5);
-    if (title.width > 256) title.setFontSize(23 * 256 / title.width);
-    bar.add(title);
-    bar.add(txt(this, 650, 18, 'DELIVER', 11, WORKSHOP.muted).setLetterSpacing(2));
-    bar.add(txt(this, 926, 18, 'LIVES', 11, WORKSHOP.muted).setLetterSpacing(2));
-
-    // objective chips
+    bar.add(new Button(this, 136, BAR_Y - 2, { w: 72, h: 64, icon: 'restart', color: WORKSHOP.inset, radius: 16, style: 'panel', textColor: WORKSHOP.text, onClick: () => g.retry() }));
+    bar.add(txt(this, 188, 30, `LEVEL ${g.levelIndex + 1}`, 15, WORKSHOP.muted).setOrigin(0, 0.5).setLetterSpacing(1.5));
+    const title = txt(this, 188, 60, g.level.name, 28, WORKSHOP.text).setOrigin(0, 0.5);
     const types = OBJ_TYPES.filter((t) => (g.level.objective[t] ?? 0) > 0);
-    const cw = 90;
-    const startX = 650 - ((types.length - 1) * cw) / 2;
+    const cw = types.length > 3 ? 92 : 112;
+    const chipsLeft = GAME_W - 14 - types.length * cw;
+    const room = chipsLeft - 188 - 12;
+    if (title.width > room) title.setFontSize((28 * room) / title.width);
+    bar.add(title);
+
+    // delivery counters, right-aligned
     types.forEach((type, i) => {
-      const box = this.add.container(startX + i * cw, 49);
+      const box = this.add.container(chipsLeft + cw / 2 + i * cw, BAR_Y);
       const cbg = this.add.graphics();
-      const icon = this.add.image(-23, 0, toyKey(type, 'standard')).setScale(0.4 / TEX_SCALE);
-      const label = txt(this, 13, 0, '', 21, WORKSHOP.text);
+      const icon = this.add.image(-cw / 2 + 28, 0, toyKey(type, 'standard')).setScale(0.52 / TEX_SCALE);
+      const label = txt(this, 18, 0, '', 26, WORKSHOP.text);
       box.add([cbg, icon, label]);
       bar.add(box);
       this.chips.push({ type, bg: cbg, label, box, shown: -1 });
     });
 
+    // control strip: lives | RUN | fast-forward
+    const fy = RUN_Y - PLAY_H;
+    this.controls.add(txt(this, 96, fy - 34, 'LIVES', 14, WORKSHOP.muted).setLetterSpacing(2));
     if (g.level.timeLimit) {
-      this.timerT = txt(this, 926, 70, '', 12, WORKSHOP.muted);
-      bar.add(this.timerT);
+      this.timerT = txt(this, 96, fy + 42, '', 16, WORKSHOP.muted);
+      this.controls.add(this.timerT);
     }
-
-    this.phaseT = txt(this, FF_X, BAR_Y - 1, 'SETUP', 11, WORKSHOP.muted).setLetterSpacing(1);
-    bar.add(this.phaseT);
-    this.ffBtn = new Button(this, FF_X, BAR_Y - 2, { w: 52, h: 46, icon: 'ff', color: WORKSHOP.inset, radius: 12, style: 'panel', textColor: WORKSHOP.text, onClick: () => g.toggleSpeed() });
-    this.runBtn = new Button(this, RUN_X, BAR_Y - 2, { w: 184, h: 48, label: 'RUN', icon: 'play', color: 0x9cddb0, fontSize: 24, radius: 13, style: 'panel', textColor: WORKSHOP.text, onClick: () => g.toggleRun() });
-    bar.add([this.ffBtn, this.runBtn]);
+    this.runBtn = new Button(this, RUN_X, fy, {
+      w: 320, h: 96, label: 'RUN', icon: 'play', color: RUN_GREEN, fontSize: 46, radius: 34, textColor: TEXT.dark, onClick: () => g.toggleRun(),
+    });
+    this.ffBtn = new Button(this, 624, fy, { w: 96, h: 84, icon: 'ff', color: COLORS.white, radius: 26, textColor: TEXT.dark, onClick: () => g.toggleSpeed() });
+    this.controls.add([this.runBtn, this.ffBtn]);
 
     // hint pill
     this.hintBg = this.add.graphics();
-    this.hintText = txt(this, 14, 0, '', 20, WORKSHOP.text);
-    this.hint = this.add.container(GAME_W / 2, GAME_H - 40, [this.hintBg, this.hintText]).setDepth(40);
+    this.hintText = txt(this, 14, 0, '', 24, WORKSHOP.text);
+    this.hint = this.add.container(CX, PLAY_H - 52, [this.hintBg, this.hintText]).setDepth(40);
 
     // level intro card
     if (!save.settings.reducedMotion) {
-      const card = this.add.container(GAME_W / 2, 230).setDepth(60);
+      const card = this.add.container(CX, 360).setDepth(60);
       const cbg = this.add.graphics();
-      const title = txt(this, 0, 10, g.level.name, 48);
-      const sub = txt(this, 0, -36, `LEVEL ${g.levelIndex + 1}`, 21, TEXT.pink);
-      const w = Math.max(340, title.width + 100);
-      roundRect(cbg, -w / 2, -68, w, 136, 24, WORKSHOP.panel, 4);
-      card.add([cbg, sub, title]);
+      const t = txt(this, 0, 12, g.level.name, 54);
+      const sub = txt(this, 0, -42, `LEVEL ${g.levelIndex + 1}`, 24, TEXT.pink);
+      const w = Math.min(680, Math.max(360, t.width + 100));
+      roundRect(cbg, -w / 2, -78, w, 156, 28, WORKSHOP.panel, 4);
+      card.add([cbg, sub, t]);
       card.setScale(0.5).setAlpha(0);
       this.tweens.add({ targets: card, scale: 1, alpha: 1, duration: 260, ease: 'Back.easeOut' });
-      this.tweens.add({ targets: card, alpha: 0, y: 200, duration: 260, delay: 1150, onComplete: () => card.destroy() });
+      this.tweens.add({ targets: card, alpha: 0, y: 330, duration: 260, delay: 1150, onComplete: () => card.destroy() });
+    }
+  }
+
+  /** The RUN button breathes while it is the thing to press, so it reads as a button. */
+  private setRunPulse(on: boolean): void {
+    this.runPulse?.stop();
+    this.runPulse = null;
+    this.runBtn?.setScale(1);
+    if (on && this.runBtn && !save.settings.reducedMotion) {
+      this.runPulse = this.tweens.add({ targets: this.runBtn, scale: 1.06, duration: 620, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
   }
 
@@ -189,13 +221,14 @@ export class UIScene extends Phaser.Scene {
       const have = Math.min(need, g.rules.delivered[c.type]);
       if (have === c.shown) continue;
       const done = have >= need;
+      const hw = (this.chips.length > 3 ? 92 : 112) / 2 - 5;
       c.label.setText(`${have}/${need}`);
       c.bg.clear();
-      roundRect(c.bg, -42, -19, 84, 38, 10, done ? 0xccebd0 : WORKSHOP.inset, 0);
+      roundRect(c.bg, -hw, -27, hw * 2, 54, 14, done ? 0xccebd0 : WORKSHOP.inset, 0);
       c.bg.fillStyle(done ? WORKSHOP.accent : TYPE_COLORS[c.type].fill, 1);
-      c.bg.fillRoundedRect(-42, -11, 3, 22, 1);
+      c.bg.fillRoundedRect(-hw, -15, 4, 30, 2);
       if (c.shown >= 0 && have > c.shown && !save.settings.reducedMotion) {
-        c.box.setScale(1.1);
+        c.box.setScale(1.15);
         this.tweens.add({ targets: c.box, scale: 1, duration: 320, ease: 'Back.easeOut' });
       }
       c.shown = have;
@@ -204,7 +237,7 @@ export class UIScene extends Phaser.Scene {
     // lives = allowed mistakes + 1
     const total = g.level.mistakesAllowed + 1;
     const left = Math.max(0, total - g.rules.mistakes);
-    this.drawHearts(total, left, 926 - (total - 1) * 13);
+    this.drawHearts(total, left, 96 - (total - 1) * 21, RUN_Y - PLAY_H + 6);
 
     if (this.timerT) {
       const t = g.state === 'prep' ? g.level.timeLimit! : (g.rules.timeLeft ?? 0);
@@ -214,16 +247,16 @@ export class UIScene extends Phaser.Scene {
     if (g.state !== this.lastState) {
       this.lastState = g.state;
       const b = this.runBtn!;
-      if (g.state === 'prep') b.setColor(0x9cddb0).setContent('RUN', 'play');
-      else if (g.state === 'running') b.setColor(0xf1b6a6).setContent('STOP', 'stop');
-      else b.setColor(0xf1d58e).setContent('RETRY', 'restart');
+      if (g.state === 'prep') b.setColor(RUN_GREEN).setContent('RUN', 'play');
+      else if (g.state === 'running') b.setColor(STOP_RED).setContent('STOP', 'stop');
+      else b.setColor(RETRY_YELLOW).setContent('RETRY', 'restart');
+      this.setRunPulse(g.state === 'prep');
       this.ffBtn!.setVisible(g.state === 'running');
-      this.phaseT!.setVisible(g.state !== 'running').setText(g.state === 'prep' ? 'SETUP' : 'DONE');
       this.showResultCard(g.state);
     }
     if (g.speed !== this.lastSpeed) {
       this.lastSpeed = g.speed;
-      this.ffBtn!.setColor(g.speed > 1 ? 0xf1d58e : WORKSHOP.inset);
+      this.ffBtn!.setColor(g.speed > 1 ? RETRY_YELLOW : COLORS.white);
     }
 
     // hint + tutorial hand
@@ -234,24 +267,22 @@ export class UIScene extends Phaser.Scene {
       this.hint.setVisible(!!text);
       if (text) {
         this.hintText.setText(text);
-        const w = this.hintText.width + 80;
+        const w = this.hintText.width + 84;
         this.hintBg.clear();
         this.hintBg.fillStyle(0x294d43, 0.12);
-        this.hintBg.fillRoundedRect(-w / 2, -21, w, 48, 14);
-        roundRect(this.hintBg, -w / 2, -24, w, 48, 14, WORKSHOP.panel, 0);
+        this.hintBg.fillRoundedRect(-w / 2, -24, w, 56, 16);
+        roundRect(this.hintBg, -w / 2, -28, w, 56, 16, WORKSHOP.panel, 0);
         this.hintBg.lineStyle(1, WORKSHOP.border, 1);
-        this.hintBg.strokeRoundedRect(-w / 2, -24, w, 48, 14);
+        this.hintBg.strokeRoundedRect(-w / 2, -28, w, 56, 16);
         this.hintBg.fillStyle(WORKSHOP.accent, 1);
-        this.hintBg.fillCircle(-w / 2 + 24, 0, 4);
-        this.hint.x = this.freeHintX(w);
+        this.hintBg.fillCircle(-w / 2 + 26, 0, 5);
+        this.placeHint(w);
         if (!save.settings.reducedMotion) {
           this.hint.setScale(0.8);
           this.tweens.add({ targets: this.hint, scale: 1, duration: 220, ease: 'Back.easeOut' });
         }
       }
     }
-    // in tall windows there is free room under the play field: park the hint there
-    this.hint.y = this.hintTop ? HUD_H + 82 : Math.min(viewBottom() - 40, GAME_H + 44);
 
     this.clock += dt;
     if (!tut) {
@@ -262,10 +293,10 @@ export class UIScene extends Phaser.Scene {
     let hx = tut.x;
     let hy = tut.y;
     if (tut.kind === 'run') {
-      hx = RUN_X;
-      hy = this.bar.y + BAR_Y + 34;
+      hx = RUN_X + 60;
+      hy = RUN_Y + 10 + this.controls.y;
     }
-    const base = 1.3 / TEX_SCALE;
+    const base = 1.5 / TEX_SCALE;
     if (tut.kind === 'drag') {
       const cycle = (this.clock % 2000) / 2000;
       const k = Phaser.Math.Easing.Cubic.InOut(Phaser.Math.Clamp((cycle - 0.2) / 0.55, 0, 1));
@@ -275,8 +306,8 @@ export class UIScene extends Phaser.Scene {
       this.hand.setAlpha(cycle > 0.9 ? (1 - cycle) * 10 : 1);
     } else {
       const bob = Math.abs(Math.sin(this.clock / 230));
-      hy += 8 + bob * 16;
-      hx += bob * 6;
+      hy += 8 + bob * 18;
+      hx += bob * 7;
       this.hand.setScale(base).setAlpha(1);
     }
     this.hand.setPosition(hx, hy);
@@ -291,30 +322,31 @@ export class UIScene extends Phaser.Scene {
     this.resultCard = null;
     if (state !== 'won' && state !== 'failed') return;
     const g = this.game_;
-    const card = this.add.container(GAME_W / 2, 250).setDepth(70);
+    const card = this.add.container(CX, 430).setDepth(70);
     const bg = this.add.graphics();
     card.add(bg);
     const plate = (w: number, h: number): void => {
       bg.fillStyle(COLORS.shadow, 0.18);
-      bg.fillRoundedRect(-w / 2 + 4, -h / 2 + 8, w, h, 40);
-      roundRect(bg, -w / 2, -h / 2, w, h, 40, WORKSHOP.panel, 0);
+      bg.fillRoundedRect(-w / 2 + 4, -h / 2 + 8, w, h, 44);
+      roundRect(bg, -w / 2, -h / 2, w, h, 44, WORKSHOP.panel, 0);
     };
     if (state === 'won') {
       const last = g.levelIndex + 1 >= LevelManager.count;
-      plate(560, 208);
-      card.add(txt(this, 0, -56, last ? 'All levels complete!' : 'Level Complete!', 40, WORKSHOP.text));
+      plate(600, 250);
+      card.add(txt(this, 0, -66, last ? 'All levels complete!' : 'Level Complete!', 48, WORKSHOP.text));
       for (let i = 0; i < 3; i++) {
-        const sx = (i - 1) * 96;
-        card.add(drawStar(this, sx, 34, 38, false));
+        const sx = (i - 1) * 120;
+        card.add(drawStar(this, sx, 44, 48, false));
         if (i >= g.lastStars) continue;
-        const s = drawStar(this, sx, 34, 38, true).setScale(0);
+        const s = drawStar(this, sx, 44, 48, true).setScale(0);
         card.add(s);
         this.tweens.add({ targets: s, scale: 1, duration: 320, delay: 420 + i * 260, ease: 'Back.easeOut', onStart: () => audio.starPop(i) });
       }
     } else {
-      const reason = txt(this, 0, 24, g.rules.failReason || 'That did not work', 24, WORKSHOP.text);
-      plate(Math.max(380, reason.width + 90), 152);
-      card.add([txt(this, 0, -30, 'Oops! Try again', 36, TEXT.pink), reason]);
+      const reason = txt(this, 0, 30, g.rules.failReason || 'That did not work', 28, WORKSHOP.text);
+      if (reason.width > 600) reason.setFontSize((28 * 600) / reason.width);
+      plate(Math.min(680, Math.max(420, reason.width + 80)), 180);
+      card.add([txt(this, 0, -36, 'Oops! Try again', 44, TEXT.pink), reason]);
     }
     this.resultCard = card;
     if (save.settings.reducedMotion) return;
@@ -322,48 +354,55 @@ export class UIScene extends Phaser.Scene {
     this.tweens.add({ targets: card, scale: 1, alpha: 1, duration: 260, delay: state === 'won' ? 250 : 150, ease: 'Back.easeOut' });
   }
 
-  /** Pick a spot along the bottom edge where the hint pill does not cover a machine. */
-  private freeHintX(w: number): number {
-    this.hintTop = false;
-    if (viewBottom() > GAME_H + 70) return GAME_W / 2; // the pill sits below the play field
-    const y0 = GAME_H - 40 - 28;
-    const machines = this.game_.world.machines;
-    for (const x of [640, 400, 880, 220, 1060]) {
+  /** Put the hint just above the control strip where it does not cover a machine, else under the top bar. */
+  private placeHint(w: number): void {
+    const world = this.game_.world;
+    const half = w / 2;
+    const y0 = PLAY_H - 52 - 34;
+    const lo = half + 8;
+    const hi = GAME_W - half - 8;
+    for (const x of [CX, lo, hi]) {
+      const cx = Phaser.Math.Clamp(x, lo, Math.max(lo, hi));
       let clear = true;
-      for (const m of machines) {
+      for (const m of world.machines) {
         const e = m.extents();
         const rx = Math.abs(Math.cos(m.rad)) * e.hw + Math.abs(Math.sin(m.rad)) * e.hh;
         const ry = Math.abs(Math.sin(m.rad)) * e.hw + Math.abs(Math.cos(m.rad)) * e.hh;
-        if (m.y + ry > y0 && Math.abs(m.x - x) < rx + w / 2 + 6) clear = false;
+        if (m.y + ry > y0 && Math.abs(m.x - cx) < rx + half + 6) clear = false;
       }
-      if (clear) return x;
+      if (clear) {
+        this.hintTop = false;
+        this.hint.setPosition(cx, PLAY_H - 52);
+        return;
+      }
     }
-    // nothing free along the bottom: use the top, away from the spawner pipes
+    // nothing free along the bottom: go under the top bar, as far from the spawner pipes as possible
     this.hintTop = true;
-    const pipes = this.game_.world.spawners.map((s) => s.def.x);
-    let best = 640;
+    const pipes = world.spawners.map((s) => s.def.x);
+    let best = CX;
     let bestD = -1;
-    for (const x of [640, 420, 860, 250, 1030]) {
-      const d = Math.min(...pipes.map((p) => Math.abs(p - x)), 9999);
+    for (const x of [lo, CX, hi]) {
+      const cx = Phaser.Math.Clamp(x, lo, Math.max(lo, hi));
+      const d = Math.min(...pipes.map((p) => Math.abs(p - cx)), 9999);
       if (d > bestD) {
         bestD = d;
-        best = x;
+        best = cx;
       }
     }
-    return best;
+    this.hint.setPosition(best, HUD_H + 190);
   }
 
-  private drawHearts(total: number, left: number, x0: number): void {
+  private drawHearts(total: number, left: number, x0: number, y: number): void {
     const key = `${total}|${left}|${x0}`;
     if (key === this.heartsKey) return;
     const wobble = this.heartsKey !== '' && !save.settings.reducedMotion;
     this.heartsKey = key;
     const g = this.heartsG;
     g.clear();
-    for (let i = 0; i < total; i++) heart(g, x0 + i * 26, 49, 22, i < left ? 0xd96d78 : 0xd3dbd2, 0);
+    for (let i = 0; i < total; i++) heart(g, x0 + i * 42, y, 36, i < left ? 0xe2566b : 0xd3dbd2, 0);
     if (wobble) {
       g.setPosition(0, 0);
-      this.tweens.add({ targets: g, y: 4, duration: 70, yoyo: true, repeat: 2 });
+      this.tweens.add({ targets: g, y: 5, duration: 70, yoyo: true, repeat: 2 });
     }
   }
 
@@ -371,21 +410,23 @@ export class UIScene extends Phaser.Scene {
 
   private createPanicHud(): void {
     const bar = this.bar;
-    bar.add(txt(this, 112, 23, 'PERSONAL BEST', 11, WORKSHOP.muted).setOrigin(0, 0.5).setLetterSpacing(1));
-    bar.add(txt(this, 112, 50, `${save.data.panicBest}`, 26, WORKSHOP.text).setOrigin(0, 0.5));
-    bar.add(txt(this, 378, 20, 'PANIC MODE', 11, WORKSHOP.muted).setLetterSpacing(2));
-    bar.add(txt(this, GAME_W / 2, 18, 'SCORE', 11, WORKSHOP.muted).setLetterSpacing(2));
-    bar.add(txt(this, 974, 18, 'COMBO', 11, WORKSHOP.muted).setLetterSpacing(2));
-    bar.add(txt(this, 1164, 18, 'LIVES', 11, WORKSHOP.muted).setLetterSpacing(2));
-    this.scoreT = txt(this, GAME_W / 2, 49, '0', 34, WORKSHOP.text);
-    this.multT = txt(this, 974, 49, 'x1', 25, WORKSHOP.muted);
-    this.effectT = txt(this, 378, 49, '', 17, WORKSHOP.text);
-    bar.add([this.scoreT, this.multT, this.effectT]);
+    bar.add(txt(this, 110, 30, 'BEST', 14, WORKSHOP.muted).setOrigin(0, 0.5).setLetterSpacing(1.5));
+    bar.add(txt(this, 110, 60, `${save.data.panicBest}`, 28, WORKSHOP.text).setOrigin(0, 0.5));
+    bar.add(txt(this, CX, 24, 'SCORE', 14, WORKSHOP.muted).setLetterSpacing(2));
+    bar.add(txt(this, 620, 24, 'COMBO', 14, WORKSHOP.muted).setLetterSpacing(2));
+    this.scoreT = txt(this, CX, 60, '0', 44, WORKSHOP.text);
+    this.multT = txt(this, 620, 60, 'x1', 32, WORKSHOP.muted);
+    bar.add([this.scoreT, this.multT]);
+
+    const fy = RUN_Y - PLAY_H;
+    this.controls.add(txt(this, 110, fy - 34, 'LIVES', 14, WORKSHOP.muted).setLetterSpacing(2));
+    this.effectT = txt(this, 460, fy, '', 24, WORKSHOP.text);
+    this.controls.add(this.effectT);
 
     this.bannerBg = this.add.graphics();
-    this.bannerT = txt(this, 0, 0, '', 30, TEXT.white);
-    this.banner = this.add.container(GAME_W / 2, HUD_H + 52, [this.bannerBg, this.bannerT]).setDepth(40).setVisible(false);
-    this.tip = txt(this, GAME_W / 2, 318, 'Tap a belt to flip it', 22, WORKSHOP.text, { backgroundColor: '#FFFCF5', padding: { x: 18, y: 10 } });
+    this.bannerT = txt(this, 0, 0, '', 34, TEXT.white);
+    this.banner = this.add.container(CX, HUD_H + 150, [this.bannerBg, this.bannerT]).setDepth(40).setVisible(false);
+    this.tip = txt(this, CX, 400, 'Tap a belt to flip it', 28, WORKSHOP.text, { backgroundColor: '#FFFCF5', padding: { x: 22, y: 12 } });
   }
 
   private updatePanic(): void {
@@ -408,8 +449,8 @@ export class UIScene extends Phaser.Scene {
         this.tweens.add({ targets: this.multT, scale: 1, duration: 320, ease: 'Back.easeOut' });
       }
     }
-    this.drawHearts(p.maxLives, p.lives, 1164 - (p.maxLives - 1) * 13);
-    this.effectT!.setText(p.activeEffect || 'Keep the orders moving');
+    this.drawHearts(p.maxLives, p.lives, 110 - (p.maxLives - 1) * 21, RUN_Y - PLAY_H + 6);
+    this.effectT!.setText(p.activeEffect || 'Keep the toys moving');
     // the tip only shows for the first few seconds
     this.tip!.setVisible(p.director.seconds < 8);
 
@@ -421,7 +462,7 @@ export class UIScene extends Phaser.Scene {
         this.bannerT!.setText(w);
         const bw = this.bannerT!.width + 70;
         this.bannerBg!.clear();
-        roundRect(this.bannerBg!, -bw / 2, -30, bw, 60, 30, COLORS.red, 4);
+        roundRect(this.bannerBg!, -bw / 2, -34, bw, 68, 34, COLORS.red, 4);
       }
     }
     if (w) this.banner!.setScale(1 + 0.05 * Math.sin(this.time.now / 90));
@@ -429,6 +470,7 @@ export class UIScene extends Phaser.Scene {
 
   override update(_t: number, delta: number): void {
     this.bar.y = viewTop();
+    this.controls.y = Math.max(0, (viewBottom() - GAME_H) / 2);
     if (this.mode === 'puzzle') this.updatePuzzle(delta);
     else this.updatePanic();
   }

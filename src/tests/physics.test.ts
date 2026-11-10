@@ -1,6 +1,6 @@
 import './nodeMatter';
 import { describe, expect, it } from 'vitest';
-import { GAME_H, GAME_W, MAX_OBJECT_SPEED } from '../game/config';
+import { MAX_OBJECT_SPEED } from '../game/config';
 import type { LevelDef, MachineDef, SpawnerDef, WallDef } from '../game/levels/LevelTypes';
 import { Piston } from '../game/machines/Piston';
 import { FactoryWorld } from '../game/sim/FactoryWorld';
@@ -8,7 +8,7 @@ import { PuzzleRules } from '../game/systems/PuzzleRules';
 
 function level(machines: MachineDef[], spawners: SpawnerDef[] = [], walls: WallDef[] = [], extra: Partial<LevelDef> = {}): LevelDef {
   return {
-    id: 'test', name: 'test', width: GAME_W, height: GAME_H, objective: {}, mistakesAllowed: 0, par: 99, solution: {},
+    id: 'test', name: 'test', width: 1280, height: 720, objective: {}, mistakesAllowed: 0, par: 99, solution: {},
     machines, spawners, walls, ...extra,
   };
 }

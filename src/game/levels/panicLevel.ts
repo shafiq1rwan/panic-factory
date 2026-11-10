@@ -1,44 +1,36 @@
-import { GAME_H, GAME_W } from '../config';
+import { GAME_W, PLAY_H } from '../config';
 import type { LevelDef } from './LevelTypes';
 
+const BIN_Y = PLAY_H - 78;
+
 /**
- * The fixed arena for Panic Factory (endless mode).
+ * The fixed arena for Panic Factory (endless mode), portrait layout.
  * A toy lands on the top belt, which feeds the two lower belts; every belt can
- * be flipped by tapping. Blue goes far left, yellow far right, pink in the middle.
- * The little roofs between the funnels make sure nothing can fall out of play,
- * so the only way to lose a life is sending a toy to the wrong bin.
+ * be flipped by tapping. Blue goes left, yellow right, pink in the middle.
+ * The bins and the centre funnel span the full width, so nothing can fall out
+ * of play: the only way to lose a life is sending a toy to the wrong bin.
  */
 export const PANIC_LEVEL: LevelDef = {
   id: 'panic',
   name: 'Panic Factory',
   width: GAME_W,
-  height: GAME_H,
+  height: PLAY_H,
   objective: {},
   mistakesAllowed: 0,
   par: 0,
   solution: {},
   // decorative only: gives the drop point its pipe. PanicDirector does the actual spawning.
-  spawners: [{ id: 'chute', x: 640, y: 130, sequence: [], interval: 1000 }],
-  walls: [
-    // roofs between the funnels and guards at the screen edges: nothing can fall out of play
-    { x: 388, y: 536, w: 76, h: 16, angle: -22 },
-    { x: 447, y: 536, w: 76, h: 16, angle: 22 },
-    { x: 833, y: 536, w: 76, h: 16, angle: -22 },
-    { x: 892, y: 536, w: 76, h: 16, angle: 22 },
-    { x: 66, y: 512, w: 160, h: 16, angle: 26 },
-    { x: 1214, y: 512, w: 160, h: 16, angle: -26 },
-  ],
+  spawners: [{ id: 'chute', x: 360, y: 136, sequence: [], interval: 1000 }],
+  walls: [],
   machines: [
-    { id: 'top', kind: 'conveyor', x: 640, y: 230, length: 240, speed: 2.2, dir: 1, interactive: true },
-    { id: 'left', kind: 'conveyor', x: 400, y: 400, length: 200, speed: 2.2, dir: -1, interactive: true },
-    { id: 'right', kind: 'conveyor', x: 880, y: 400, length: 200, speed: 2.2, dir: 1, interactive: true },
-    { id: 'fL', kind: 'funnel', x: 240, y: 532, topWidth: 250, bottomWidth: 130, height: 70 },
-    { id: 'fC', kind: 'funnel', x: 640, y: 532, topWidth: 330, bottomWidth: 130, height: 70 },
-    { id: 'fR', kind: 'funnel', x: 1040, y: 532, topWidth: 250, bottomWidth: 130, height: 70 },
-    { id: 'binBlue', kind: 'bin', x: 240, y: 646, accepts: 'blue' },
-    { id: 'binPink', kind: 'bin', x: 640, y: 646, accepts: 'pink' },
-    { id: 'binYellow', kind: 'bin', x: 1040, y: 646, accepts: 'yellow' },
+    { id: 'top', kind: 'conveyor', x: 360, y: 560, length: 200, speed: 2.2, dir: 1, interactive: true },
+    { id: 'left', kind: 'conveyor', x: 165, y: 740, length: 190, speed: 2.2, dir: -1, interactive: true },
+    { id: 'right', kind: 'conveyor', x: 555, y: 740, length: 190, speed: 2.2, dir: 1, interactive: true },
+    { id: 'fC', kind: 'funnel', x: 360, y: 950, topWidth: 330, bottomWidth: 140, height: 84 },
+    { id: 'binBlue', kind: 'bin', x: 100, y: BIN_Y, accepts: 'blue', width: 190 },
+    { id: 'binPink', kind: 'bin', x: 360, y: BIN_Y, accepts: 'pink', width: 190 },
+    { id: 'binYellow', kind: 'bin', x: 620, y: BIN_Y, accepts: 'yellow', width: 190 },
   ],
 };
 
-export const PANIC_SPAWN = { x: 640, y: 130 };
+export const PANIC_SPAWN = { x: 360, y: 136 };

@@ -4,7 +4,7 @@ Status of the development plan. Update this file when work is picked up again.
 
 ## Phase 1: Foundation — done
 - [x] Vite + TypeScript + Phaser 3 project, production build
-- [x] Responsive canvas: 1280x720 play field, view extended on one axis so the canvas fills any window shape; render resolution up to 2x for high-DPI
+- [x] Responsive canvas: portrait 720x1280 screen (top bar, play field, bottom control strip), view extended on one axis so the canvas fills any window shape; render resolution up to 2x for high-DPI
 - [x] Procedural vector helpers and texture baking (`rendering/`)
 - [x] Scene structure: Boot, Menu, LevelSelect, Game, Panic, UI, Result, Pause, Settings
 
@@ -34,7 +34,7 @@ Status of the development plan. Update this file when work is picked up again.
 - [x] Procedural sound effects and a small generative music loop
 - [x] HUD, menus, level-complete and failure screens, settings
 - [x] Tutorials with a pointing hand (levels 1-5, 7, 8)
-- [x] Mouse, keyboard and touch controls; portrait prompt
+- [x] Mouse, keyboard and touch controls; turn-upright prompt for phones held sideways
 
 ## Phase 7: Panic Factory — done
 - [x] Endless spawning with rising difficulty

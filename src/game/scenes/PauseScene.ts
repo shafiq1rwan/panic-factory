@@ -43,8 +43,9 @@ export class PauseScene extends Phaser.Scene {
         onClick: () => gotoScene(this, puzzle ? 'LevelSelect' : 'Menu'),
       }),
     ]);
-    box.setScale(0.8);
-    this.tweens.add({ targets: box, scale: 1, duration: 220, ease: 'Back.easeOut' });
+    // portrait: dialogs are enlarged to stay comfortable on a phone
+    box.setScale(0.9);
+    this.tweens.add({ targets: box, scale: 1.18, duration: 220, ease: 'Back.easeOut' });
 
     this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {
       if (platform.inBreak || this.scene.isActive('Settings')) return;

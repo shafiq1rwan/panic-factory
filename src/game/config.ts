@@ -2,9 +2,15 @@
  * Global constants. This file must stay free of Phaser imports because the
  * headless simulation (tests, level solver) imports it from Node.
  */
-export const GAME_W = 1280;
-export const GAME_H = 720;
-export const HUD_H = 84;
+/** Portrait layout: the logical screen is 720 x 1280. */
+export const GAME_W = 720;
+export const GAME_H = 1280;
+/** Height of the top bar. */
+export const HUD_H = 96;
+/** Height of the bottom control strip (the big RUN button lives here, in thumb reach). */
+export const FOOTER_H = 136;
+/** Bottom edge of the play field: toys falling past this are lost. */
+export const PLAY_H = GAME_H - FOOTER_H;
 
 /** Fixed physics timestep. All gameplay timing is expressed in sim ticks. */
 export const STEP_MS = 1000 / 60;

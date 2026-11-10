@@ -26,6 +26,10 @@ Requires Node 20 or newer.
 | `npm run solve` | Verify every level: the default layout must fail, the intended solution must win with 3 stars, and it must still win with jittered spawns. `npm run solve 7` also brute-forces level 7's whole configuration space. |
 | `npm run smoke` | End-to-end test of the production build in headless Edge or Chrome (mouse, keyboard and touch). Run `npm run build` first. Screenshots go to `test-artifacts/`. |
 
+## Layout
+
+The game is portrait. The logical screen is 720 x 1280: a top bar, the play field, and a control strip at the bottom with the big RUN button in thumb reach. On a phone it fills the screen held upright; on a desktop it shows as a centred column with the workshop wall on both sides. A phone held sideways gets a prompt to turn it upright.
+
 ## How to play
 
 **Puzzle Factory**
@@ -118,7 +122,7 @@ VITE_PLATFORM=poki npm run build
 Run on Windows 11 with Node 26 and headless Microsoft Edge:
 
 - `npm test`: 131 tests pass. They cover gravity and collisions, conveyors (both directions, rotated, stopped), bumper impulses and cooldown, pistons not passing through objects, funnels, bins counting once and ignoring outside touches, win/lose rules, spawner sequencing, full reset, cleanup across 20 world create/destroy cycles, placement rules, save/load including corrupted data, scoring, and for each of the 15 levels: structure, legal default placement, default layout fails, solution wins with 3 stars, solution survives jittered spawns, determinism. Panic mode is checked with a greedy bot over three simulated minutes.
-- `npm run smoke`: 42 checks pass against the production build, including a full menu, level select, play, win, next level, fail, retry loop, pause and settings, drag and rotate, save persistence across reload, corrupted save, Panic mode, touch-only play at phone size, six window shapes (the canvas fills each one) and the portrait prompt, with no console errors.
+- `npm run smoke`: 42 checks pass against the production build, including a full menu, level select, play, win, next level, fail, retry loop, pause and settings, drag and rotate, save persistence across reload, corrupted save, Panic mode, touch-only play at phone size, six window shapes (the canvas fills each one) and the turn-upright prompt for phones held sideways, with no console errors.
 
 Not tested, so treat as unverified:
 
