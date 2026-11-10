@@ -8,7 +8,7 @@ export const GAME_H = 1280;
 /** Height of the top bar. */
 export const HUD_H = 96;
 /** Height of the bottom control strip (the big RUN button lives here, in thumb reach). */
-export const FOOTER_H = 136;
+export const FOOTER_H = 104;
 /** Bottom edge of the play field: toys falling past this are lost. */
 export const PLAY_H = GAME_H - FOOTER_H;
 

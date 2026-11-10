@@ -103,6 +103,42 @@ const startScene = (page, key, data) =>
   }, [key, data]);
 
 // Run Vite's CLI with this Node directly (no shell wrapper), so the server can be stopped reliably.
+/**
+ * Play the current sorting level to the end with real input: every 80 ms, work out which belts
+ * point the wrong way for the toy on (or about to land on) them and flip those by `flipBelt`.
+ */
+async function playLevel(page, flipBelt) {
+  for (let i = 0; i < 1500; i++) {
+    const info = await page.evaluate(() => {
+      const g = window.__TFP.game.scene.getScene('Game');
+      if (g.state !== 'running') return { state: g.state, flips: [] };
+      const flips = [];
+      const belts = g.world.machines.filter((m) => m.kind === 'conveyor' && m.def.flippable).sort((a, b) => a.y - b.y || a.x - b.x);
+      belts.forEach((m, index) => {
+        const want = (g.level.routes ?? {})[m.id];
+        if (!want) return;
+        let best = Infinity;
+        let dir = 0;
+        for (const o of g.world.objects) {
+          if (Math.abs(o.x - m.x) > m.def.length / 2 + 14) continue;
+          const w = want[o.type];
+          const above = m.y - 14 - o.y;
+          if (!w || above < 10 || above > 420) continue;
+          const toExit = w === 1 ? m.x + m.def.length / 2 - o.x : o.x - (m.x - m.def.length / 2);
+          const urgency = above < 80 ? toExit : 1000 + above;
+          if (urgency < best) { best = urgency; dir = w; }
+        }
+        if (dir && dir !== m.dir) flips.push({ index, x: m.x, y: m.y + 8 });
+      });
+      return { state: g.state, flips };
+    });
+    if (info.state === 'won' || info.state === 'failed') return info.state;
+    for (const f of info.flips) await flipBelt(f);
+    await page.waitForTimeout(80);
+  }
+  return 'timeout';
+}
+
 const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], { stdio: 'ignore' });
 let browser;
 try {
@@ -127,7 +163,7 @@ try {
   await active(page, 'LevelSelect');
   await page.waitForTimeout(900);
   await page.screenshot({ path: `${OUT}/smoke-levels.png` });
-  await click(page, 360, 476); // a locked level: must do nothing
+  await click(page, 274, 476); // a locked level: must do nothing
   await page.waitForTimeout(400);
   check('locked levels cannot be opened', await ev(page, () => window.__TFP.game.scene.isActive('LevelSelect')));
   await page.keyboard.press('Escape'); // back to the menu
@@ -135,57 +171,43 @@ try {
   await page.waitForTimeout(900);
   await click(page, 360, 680); // PLAY goes straight into the next unfinished level
   await active(page, 'Game');
-  await gameState(page, 'prep');
-  check('PLAY drops straight into level 1 (preparation phase)', (await ev(page, () => window.__TFP.game.scene.getScene('Game').levelIndex)) === 0);
-  await page.waitForTimeout(700);
+  check('PLAY drops straight into level 1', (await ev(page, () => window.__TFP.game.scene.getScene('Game').levelIndex)) === 0);
+  await gameState(page, 'running'); // no RUN button: the factory starts by itself
+  check('the level starts by itself, with no RUN button', (await ev(page, () => window.__TFP.game.scene.getScene('UI').runBtn)) === null);
   check('HUD scene is running', await ev(page, () => window.__TFP.game.scene.isActive('UI')));
   check('tutorial points at the belt', (await ev(page, () => window.__TFP.game.scene.getScene('Game').tutorialHint()?.kind)) === 'tap');
-
-  await click(page, 300, 430); // tap the conveyor -> flips
-  check('tapping the belt flips it', (await ev(page, () => window.__TFP.game.scene.getScene('Game').world.machine('belt').dir)) === 1);
-  check('tutorial now points at RUN', (await ev(page, () => window.__TFP.game.scene.getScene('Game').tutorialHint()?.kind)) === 'run');
-  let b = await hudBtn(page, 'runBtn');
-  await click(page, b.x, b.y); // the big RUN button under the play field
-  await gameState(page, 'running');
-  check('RUN starts the simulation', true);
+  await click(page, 360, 770); // tap the belt: the one thing the player has to learn
+  check('tapping the belt flips it', (await ev(page, () => window.__TFP.game.scene.getScene('Game').world.machine('belt').dir)) === -1);
+  check('tutorial hand goes away once the belt is right', (await ev(page, () => window.__TFP.game.scene.getScene('Game').tutorialHint())) === null);
   await page.waitForTimeout(1800);
   await page.screenshot({ path: `${OUT}/smoke-level1-running.png` });
-  b = await hudBtn(page, 'ffBtn');
-  await click(page, b.x, b.y); // fast-forward
-  check('fast-forward toggles', (await ev(page, () => window.__TFP.game.scene.getScene('Game').speed)) === 3);
   await gameState(page, 'won');
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${OUT}/smoke-level1-complete.png` });
   const r1 = await ev(page, () => {
     const g = window.__TFP.game.scene.getScene('Game');
-    return { delivered: g.rules.delivered.blue, mistakes: g.rules.mistakes, stars: window.__TFP.save.data.stars['first-shift'], unlocked: window.__TFP.save.data.unlocked };
+    return { delivered: g.rules.delivered.blue, mistakes: g.rules.mistakes, stars: window.__TFP.save.data.stars['first-flip'], unlocked: window.__TFP.save.data.unlocked };
   });
   check('level 1 completes: 3 delivered, 3 stars, level 2 unlocked', r1.delivered === 3 && r1.mistakes === 0 && r1.stars === 3 && r1.unlocked === 2, JSON.stringify(r1));
 
   // no button press: the game moves on by itself
-  await page.waitForFunction(() => window.__TFP.game.scene.getScene('Game').levelIndex === 1 && window.__TFP.game.scene.getScene('Game').state === 'prep', null, { timeout: 15000 });
-  check('the next level loads automatically after a win', true);
-  await page.waitForTimeout(900);
+  await page.waitForFunction(() => window.__TFP.game.scene.getScene('Game').levelIndex === 1 && window.__TFP.game.scene.getScene('Game').state === 'running', null, { timeout: 20000 });
+  check('the next level loads and starts automatically after a win', true);
 
-  // fail on purpose, then retry
-  const bodies2 = await ev(page, () => window.__TFP.game.scene.getScene('Game').world.bodyCount);
-  await page.keyboard.press('Space');
+  // leave the belts alone: the level fails, says why, and restarts by itself
   await gameState(page, 'failed');
   await page.waitForTimeout(700);
   await page.screenshot({ path: `${OUT}/smoke-level2-failed.png` });
   const reason = await ev(page, () => window.__TFP.game.scene.getScene('Game').rules.failReason);
-  check('wrong setup fails with a clear reason', reason.length > 5, reason);
-  await gameState(page, 'prep'); // hands the layout back by itself
-  await page.waitForTimeout(250); // let the overlay scene finish closing
+  check('ignoring the belts fails with a clear reason', reason.length > 5, reason);
+  await gameState(page, 'running');
   const after = await ev(page, () => {
     const g = window.__TFP.game.scene.getScene('Game');
-    return { bodies: g.world.bodyCount, toys: g.world.objects.length, views: g.view.toyCount, tick: g.world.tick, result: window.__TFP.game.scene.isActive('Result') };
+    return { mistakes: g.rules.mistakes, toys: g.world.objects.length, tick: g.world.tick, beltL: g.world.machine('beltL').dir, result: window.__TFP.game.scene.isActive('Result') };
   });
-  check('after a failure the level resets itself for another try', after.bodies === bodies2 && after.toys === 0 && after.views === 0 && after.tick === 0 && !after.result, JSON.stringify(after));
+  check('after a failure the level resets and starts again by itself', after.mistakes === 0 && after.toys <= 1 && after.tick < 240 && after.beltL === 1 && !after.result, JSON.stringify(after));
 
   // pause / resume
-  await page.keyboard.press('Space');
-  await gameState(page, 'running');
   await page.waitForTimeout(300);
   await page.keyboard.press('Escape');
   await active(page, 'Pause');
@@ -210,43 +232,26 @@ try {
   const t3 = await ev(page, () => window.__TFP.game.scene.getScene('Game').world.tick);
   check('resume continues the run', t3 > t2 && !(await ev(page, () => window.__TFP.game.scene.isActive('Pause'))));
 
-  // dragging a machine (level 4) and rotating one (level 5)
-  await startScene(page, 'Game', { level: 3 });
-  await gameState(page, 'prep');
-  await page.waitForTimeout(1500);
-  await drag(page, 420, 760, 180, 760);
-  const padX = await ev(page, () => window.__TFP.game.scene.getScene('Game').world.machine('spring').x);
-  check('dragging moves a machine inside its zone', padX === 180, `x=${padX}`);
-  await drag(page, 180, 760, 20, 400);
-  const pad2 = await ev(page, () => { const m = window.__TFP.game.scene.getScene('Game').world.machine('spring'); return [m.x, m.y]; });
-  check('machines cannot leave their zone', pad2[0] === 150 && pad2[1] === 760, pad2.join(','));
-  await drag(page, 150, 760, 180, 760);
-  await page.keyboard.press('Space');
-  await page.keyboard.press('f');
-  await gameState(page, 'won');
-  check('level 4 solved by dragging the spring', true);
+  // live flipping with the keyboard (level 3: one belt, colours alternate)
+  await startScene(page, 'Game', { level: 2 });
+  await gameState(page, 'running');
+  const k3 = await playLevel(page, () => page.keyboard.press('Space'));
+  check('level 3 can be won by flipping the belt live (keyboard)', k3 === 'won', k3);
 
-  await startScene(page, 'Game', { level: 4 });
-  await gameState(page, 'prep');
-  await page.waitForTimeout(1500);
-  await click(page, 160, 800); // select the spring
-  for (let i = 0; i < 4; i++) {
-    const pos = await ev(page, () => window.__TFP.game.scene.getScene('Game').opPos.rotR);
-    await click(page, pos.x, pos.y);
-    await page.waitForTimeout(120);
-  }
-  check('rotate buttons turn a machine', (await ev(page, () => window.__TFP.game.scene.getScene('Game').world.machine('spring').angle)) === 30);
-  await page.screenshot({ path: `${OUT}/smoke-level5-aim.png` });
-  await page.keyboard.press('Space');
-  await page.keyboard.press('f');
-  await gameState(page, 'won');
-  check('level 5 solved by rotating the spring', true);
+  // live flipping with the mouse on three belts (level 9: the junction layout)
+  await startScene(page, 'Game', { level: 8 });
+  await gameState(page, 'running');
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: `${OUT}/smoke-level9.png` });
+  const m9 = await playLevel(page, (f) => click(page, f.x, f.y));
+  const slips9 = await ev(page, () => window.__TFP.game.scene.getScene('Game').rules.mistakes);
+  check('level 9 can be won by clicking three belts live', m9 === 'won', `${m9}, ${slips9} slips`);
 
   // save persistence across a reload
   await page.reload();
   await active(page, 'Menu');
   const saved = await ev(page, () => window.__TFP.save.data);
-  check('progress persists after reload', saved.stars['first-shift'] === 3 && saved.stars['boing'] >= 1 && saved.unlocked >= 2 && saved.settings.reducedShake === true, JSON.stringify(saved.stars));
+  check('progress persists after reload', saved.stars['first-flip'] === 3 && saved.stars['take-turns'] >= 1 && saved.unlocked >= 2 && saved.settings.reducedShake === true, JSON.stringify(saved.stars));
 
   // corrupted save must not break boot
   await page.evaluate(() => localStorage.setItem('tiny-factory-panic-save', '{{{ definitely not json'));
@@ -298,15 +303,19 @@ try {
   await tp.screenshot({ path: `${OUT}/smoke-mobile-menu.png` });
   await tap(tp, 360, 680);
   await active(tp, 'Game');
-  await gameState(tp, 'prep');
-  await tp.waitForTimeout(1400);
-  await tap(tp, 300, 430);
-  check('touch: tapping the belt flips it', (await ev(tp, () => window.__TFP.game.scene.getScene('Game').world.machine('belt').dir)) === 1);
+  await gameState(tp, 'running');
+  await tp.waitForTimeout(500);
+  await tap(tp, 360, 770);
+  check('touch: tapping the belt flips it', (await ev(tp, () => window.__TFP.game.scene.getScene('Game').world.machine('belt').dir)) === -1);
   await tp.screenshot({ path: `${OUT}/smoke-mobile-level1.png` });
-  const tb = await hudBtn(tp, 'runBtn');
-  await tap(tp, tb.x, tb.y);
   await gameState(tp, 'won');
-  check('touch: level 1 can be completed with taps only', true);
+  check('touch: level 1 can be completed with one tap', true);
+  // a busier level, played entirely with touch taps
+  await startScene(tp, 'Game', { level: 9 });
+  await gameState(tp, 'running');
+  const t10 = await playLevel(tp, (f) => tap(tp, f.x, f.y));
+  check('touch: level 10 (three belts) can be won with taps only', t10 === 'won', t10);
+  await tp.screenshot({ path: `${OUT}/smoke-mobile-level10.png` });
   check('touch: render resolution adapts to the device', (await ev(tp, () => window.__TFP.game.config.width)) >= 720);
   await tctx.close();
 

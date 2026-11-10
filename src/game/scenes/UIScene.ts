@@ -58,6 +58,7 @@ export class UIScene extends Phaser.Scene {
   private hintBg!: Phaser.GameObjects.Graphics;
   private hintShown = '';
   private hintTop = false;
+  private livesX = 96;
   private hand!: Phaser.GameObjects.Image;
   private clock = 0;
   private timerT: Phaser.GameObjects.Text | null = null;
@@ -171,16 +172,20 @@ export class UIScene extends Phaser.Scene {
 
     // control strip: lives | RUN | fast-forward
     const fy = RUN_Y - PLAY_H;
-    this.controls.add(txt(this, 96, fy - 34, 'LIVES', 14, WORKSHOP.muted).setLetterSpacing(2));
+    // sorting levels have no RUN button, so lives take the middle of the strip
+    this.livesX = g.level.sortAll ? CX : 96;
+    this.controls.add(txt(this, this.livesX, fy - 32, 'LIVES', 14, WORKSHOP.muted).setLetterSpacing(2));
     if (g.level.timeLimit) {
       this.timerT = txt(this, 96, fy + 42, '', 16, WORKSHOP.muted);
       this.controls.add(this.timerT);
     }
-    this.runBtn = new Button(this, RUN_X, fy, {
-      w: 320, h: 96, label: 'RUN', icon: 'play', color: RUN_GREEN, fontSize: 46, radius: 34, textColor: TEXT.dark, onClick: () => g.toggleRun(),
-    });
-    this.ffBtn = new Button(this, 624, fy, { w: 96, h: 84, icon: 'ff', color: COLORS.white, radius: 26, textColor: TEXT.dark, onClick: () => g.toggleSpeed() });
-    this.controls.add([this.runBtn, this.ffBtn]);
+    if (!g.level.sortAll) {
+      this.runBtn = new Button(this, RUN_X, fy, {
+        w: 320, h: 84, label: 'RUN', icon: 'play', color: RUN_GREEN, fontSize: 42, radius: 30, textColor: TEXT.dark, onClick: () => g.toggleRun(),
+      });
+      this.ffBtn = new Button(this, 624, fy, { w: 96, h: 78, icon: 'ff', color: COLORS.white, radius: 26, textColor: TEXT.dark, onClick: () => g.toggleSpeed() });
+      this.controls.add([this.runBtn, this.ffBtn]);
+    }
 
     // hint pill
     this.hintBg = this.add.graphics();
@@ -237,7 +242,7 @@ export class UIScene extends Phaser.Scene {
     // lives = allowed mistakes + 1
     const total = g.level.mistakesAllowed + 1;
     const left = Math.max(0, total - g.rules.mistakes);
-    this.drawHearts(total, left, 96 - (total - 1) * 21, RUN_Y - PLAY_H + 6);
+    this.drawHearts(total, left, this.livesX - (total - 1) * 21, RUN_Y - PLAY_H + 10);
 
     if (this.timerT) {
       const t = g.state === 'prep' ? g.level.timeLimit! : (g.rules.timeLeft ?? 0);
@@ -246,22 +251,26 @@ export class UIScene extends Phaser.Scene {
 
     if (g.state !== this.lastState) {
       this.lastState = g.state;
-      const b = this.runBtn!;
-      if (g.state === 'prep') b.setColor(RUN_GREEN).setContent('RUN', 'play');
-      else if (g.state === 'running') b.setColor(STOP_RED).setContent('STOP', 'stop');
-      else b.setColor(RETRY_YELLOW).setContent('RETRY', 'restart');
-      this.setRunPulse(g.state === 'prep');
-      this.ffBtn!.setVisible(g.state === 'running');
+      const b = this.runBtn;
+      if (b) {
+        if (g.state === 'prep') b.setColor(RUN_GREEN).setContent('RUN', 'play');
+        else if (g.state === 'running') b.setColor(STOP_RED).setContent('STOP', 'stop');
+        else b.setColor(RETRY_YELLOW).setContent('RETRY', 'restart');
+        this.setRunPulse(g.state === 'prep');
+      }
+      this.ffBtn?.setVisible(g.state === 'running');
       this.showResultCard(g.state);
     }
     if (g.speed !== this.lastSpeed) {
       this.lastSpeed = g.speed;
-      this.ffBtn!.setColor(g.speed > 1 ? RETRY_YELLOW : COLORS.white);
+      this.ffBtn?.setColor(g.speed > 1 ? RETRY_YELLOW : COLORS.white);
     }
 
     // hint + tutorial hand
     const tut = g.tutorialHint();
-    const text = g.state === 'prep' ? (tut?.text ?? g.level.hint ?? '') : '';
+    // sorting levels keep their one-line hint up for the first few seconds of play
+    const showHint = g.state === 'prep' || (!!g.level.sortAll && g.state === 'running' && (!!tut || g.world.tick < 360));
+    const text = showHint ? (tut?.text ?? g.level.hint ?? '') : '';
     if (text !== this.hintShown) {
       this.hintShown = text;
       this.hint.setVisible(!!text);

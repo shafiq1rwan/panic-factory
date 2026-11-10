@@ -3,7 +3,7 @@ import { LEVELS } from '../levels/levels';
 import { save } from './SaveManager';
 
 /** Puzzle levels that must be completed before Panic Factory unlocks. */
-export const PANIC_UNLOCK_LEVELS = 6;
+export const PANIC_UNLOCK_LEVELS = 5;
 
 /** Level lookup and progression rules (which levels / modes are unlocked). */
 export const LevelManager = {

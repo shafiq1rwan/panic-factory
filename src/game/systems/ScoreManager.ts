@@ -15,6 +15,8 @@ export interface RunSummary {
  */
 export function computeStars(level: LevelDef, run: RunSummary): 1 | 2 | 3 {
   const slips = run.mistakes + run.lost;
+  // sorting levels are rated purely on accuracy
+  if (level.sortAll) return slips === 0 ? 3 : slips === 1 ? 2 : 1;
   if (slips === 0 && run.seconds <= level.par) return 3;
   if (slips <= 1) return 2;
   return 1;

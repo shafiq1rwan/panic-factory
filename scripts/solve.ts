@@ -1,36 +1,36 @@
 /**
- * Level verification + design aid.
- *   npx tsx scripts/solve.ts            -> check every level (default fails, solution wins, robustness)
- *   npx tsx scripts/solve.ts 4          -> one level (1-based), plus brute-force search of the config space
- *   npx tsx scripts/solve.ts 4 trace    -> also print a physics event trace of the intended solution
+ * Level verification.   npx tsx scripts/solve.ts [level number]
+ *
+ * For every sorting level it checks that:
+ *   - doing nothing does NOT win,
+ *   - a bot that follows the level's routes instantly wins with no slips,
+ *   - the same bot with a human-like reaction delay still wins within the allowed slips.
  */
-import { fmt, search, simulateLevel, trace } from './labkit';
+import './labkit';
 import { LEVELS } from '../src/game/levels/levels';
+import { makeRouteBot } from '../src/game/sim/routeBot';
+import { simulateLevel } from '../src/game/sim/simulate';
 
-const arg = process.argv[2];
-const only = arg ? parseInt(arg, 10) : 0;
-const mode = process.argv[3] ?? '';
+const only = process.argv[2] ? parseInt(process.argv[2], 10) : 0;
 let bad = 0;
-
 LEVELS.forEach((level, i) => {
   if (only && only !== i + 1) return;
-  const def = simulateLevel(level, {});
-  const sol = simulateLevel(level, level.solution);
-  let robust = 0;
-  const N = 8;
-  for (let s = 1; s <= N; s++) if (simulateLevel(level, level.solution, { seed: s, jitter: 0.6 }).status === 'won') robust++;
-  const ok = sol.status === 'won' && sol.validPlacement && def.status !== 'won' && robust === N && sol.stars === 3;
-  if (!ok) bad++;
-  console.log(`${ok ? 'OK  ' : 'FAIL'} L${i + 1} ${level.name}`);
-  console.log(`     default : ${fmt(def)}`);
-  console.log(`     solution: ${fmt(sol)}  robust ${robust}/${N}  par=${level.par}`);
-  if (only) {
-    const rep = search(level, mode === 'fine' ? 20 : 40);
-    console.log(`     search: ${rep.wins.length} winning of ${rep.total} configurations`);
-    for (const w of rep.wins.slice(0, 12)) console.log('       ', JSON.stringify(w.cfg), fmt(w.r));
-    if (mode === 'trace') trace(level, level.solution);
-    if (mode === 'trace0') trace(level, {});
+  const idle = simulateLevel(level, {});
+  const perfect = simulateLevel(level, {}, {}, 60 * 240, makeRouteBot(level, 1));
+  const slow: string[] = [];
+  let slowOk = true;
+  for (const reaction of [12, 18, 24]) {
+    const r = simulateLevel(level, {}, { seed: reaction, jitter: 0.6 }, 60 * 240, makeRouteBot(level, reaction));
+    slow.push(`${Math.round((reaction * 1000) / 60)}ms:${r.status === 'won' ? r.mistakes + ' slips' : 'FAILED'}`);
+    if (r.status !== 'won' && reaction <= 18) slowOk = false;
   }
+  const ok = idle.status !== 'won' && perfect.status === 'won' && perfect.mistakes === 0 && perfect.lost === 0 && slowOk;
+  if (!ok) bad++;
+  const toys = level.spawners.reduce((n, s) => n + s.sequence.length, 0);
+  console.log(
+    `${ok ? 'OK  ' : 'FAIL'} L${String(i + 1).padStart(2)} ${level.name.padEnd(14)} toys=${String(toys).padStart(2)} ` +
+      `idle:${idle.status} perfect:${perfect.status}/${perfect.mistakes}+${perfect.lost} in ${perfect.seconds.toFixed(0)}s  delayed ${slow.join('  ')}`,
+  );
 });
 if (bad) {
   console.log(`\n${bad} level(s) need attention`);

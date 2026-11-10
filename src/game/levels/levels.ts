@@ -1,344 +1,294 @@
-import { GAME_W, PLAY_H } from '../config';
-import type {
-  BinDef,
-  BumperDef,
-  ConveyorDef,
-  FunnelDef,
-  LevelDef,
-  PistonDef,
-  SpawnSpec,
-  SpawnerDef,
-  WallDef,
-} from './LevelTypes';
-
-// --- tiny authoring helpers ---------------------------------------------------
-
-type Extra<T> = Partial<Omit<T, 'id' | 'kind' | 'x' | 'y'>>;
-
-const conveyor = (id: string, x: number, y: number, length: number, o: Extra<ConveyorDef> = {}): ConveyorDef => ({
-  id, kind: 'conveyor', x, y, length, speed: 2.5, ...o,
-});
-const round = (id: string, x: number, y: number, o: Extra<BumperDef> = {}): BumperDef => ({
-  id, kind: 'bumper', shape: 'round', x, y, ...o,
-});
-const pad = (id: string, x: number, y: number, angle: number, o: Extra<BumperDef> = {}): BumperDef => ({
-  id, kind: 'bumper', shape: 'pad', x, y, angle, angleMin: -60, angleMax: 60, ...o,
-});
-const piston = (id: string, x: number, y: number, angle: number, o: Extra<PistonDef> = {}): PistonDef => ({
-  id, kind: 'piston', x, y, angle, ...o,
-});
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const funnel = (id: string, x: number, y: number, o: Extra<FunnelDef> = {}): FunnelDef => ({
-  id, kind: 'funnel', x, y, ...o,
-});
-const bin = (id: string, x: number, y: number, accepts: BinDef['accepts'], o: Extra<BinDef> = {}): BinDef => ({
-  id, kind: 'bin', x, y, accepts, ...o,
-});
-const wall = (x: number, y: number, w: number, h: number, angle = 0): WallDef => ({ x, y, w, h, angle });
-const spawner = (id: string, x: number, sequence: SpawnSpec[], interval: number, o: Partial<SpawnerDef> = {}): SpawnerDef => ({
-  id, x, y: 136, sequence, interval, ...o,
-});
-const rep = (spec: SpawnSpec, n: number): SpawnSpec[] => Array.from({ length: n }, () => spec);
-const alt = (a: SpawnSpec, b: SpawnSpec, pairs: number): SpawnSpec[] =>
-  Array.from({ length: pairs * 2 }, (_, i) => (i % 2 === 0 ? a : b));
-
-/** Portrait play field: 720 wide, from the top bar down to the control strip. */
-const base = { width: GAME_W, height: PLAY_H };
-/** Centre y for a standard bin standing on the bottom edge. */
-const BIN_Y = PLAY_H - 78;
+import { GAME_W, PLAY_H, type ObjType } from '../config';
+import { parseSpawn, type BinDef, type ConveyorDef, type LevelDef, type MachineDef, type SpawnSpec, type SpawnerDef, type TutorialStep } from './LevelTypes';
 
 /**
- * The 15 handcrafted puzzle levels (portrait, 720 wide).
+ * The 20 sorting levels (portrait, 720 wide).
  *
- * Every level carries its intended `solution`. `npm run solve` and the test
- * suite replay each solution headlessly (plus jittered variants) to prove the
- * level is solvable, and check that the untouched default layout does NOT win.
+ * One thing to learn: TAP A BELT TO FLIP IT. Toys drop in, ride the belts and
+ * fall into the bins; the player flips belts (before or while toys are moving)
+ * so every toy reaches the bin of its own colour. Nothing is dragged, rotated
+ * or timed, and the bins span the whole floor so a toy can never be lost: the
+ * only way to slip is a wrong bin.
+ *
+ * Difficulty comes from four layouts and from longer, faster toy sequences.
+ * Each level carries a `routes` table (which way each belt must run for each
+ * colour). The test suite plays every level with a bot that follows it, both
+ * instantly and with a human-like reaction delay.
  */
+
+// --- layout pieces ------------------------------------------------------------
+
+/** Centre y for a bin standing on the floor. */
+const BIN_Y = PLAY_H - 78;
+const SPEED = 2.2;
+
+const belt = (id: string, x: number, y: number, length: number, dir: 1 | -1): ConveyorDef => ({
+  id, kind: 'conveyor', x, y, length, speed: SPEED, dir, flippable: true,
+});
+const bin = (id: string, x: number, accepts: ObjType, width: number): BinDef => ({ id, kind: 'bin', x, y: BIN_Y, accepts, width });
+const spawner = (id: string, x: number, sequence: SpawnSpec[], interval: number, delay = 1500): SpawnerDef => ({
+  id, x, y: 136, sequence, interval, delay,
+});
+
+/** Two bins covering the whole floor. */
+const twoBins = (left: ObjType, right: ObjType): MachineDef[] => [bin('binL', 180, left, 350), bin('binR', 540, right, 350)];
+/** Three bins covering the whole floor. */
+const threeBins = (a: ObjType, b: ObjType, c: ObjType): MachineDef[] => [bin('binL', 121, a, 232), bin('binM', 360, b, 232), bin('binR', 599, c, 232)];
+
+type Routes = NonNullable<LevelDef['routes']>;
+
+/** Layout A: one belt over two bins. */
+const layoutA = (dir: 1 | -1): { machines: MachineDef[]; routes: Routes } => ({
+  machines: [belt('belt', 360, 760, 300, dir), ...twoBins('blue', 'pink')],
+  routes: { belt: { blue: -1, pink: 1 } },
+});
+
+/** Layout X: two belts side by side, each with its own chute, over three bins. */
+const layoutX = (): { machines: MachineDef[]; routes: Routes } => ({
+  machines: [belt('beltL', 190, 760, 180, 1), belt('beltR', 530, 760, 180, -1), ...threeBins('blue', 'pink', 'yellow')],
+  routes: { beltL: { blue: -1, pink: 1 }, beltR: { pink: -1, yellow: 1 } },
+});
+
+/** Layout C: a top belt feeding two lower belts, over three bins (same arena as Panic mode). */
+const layoutC = (): { machines: MachineDef[]; routes: Routes } => ({
+  machines: [
+    belt('top', 360, 560, 200, 1),
+    belt('left', 165, 740, 190, 1),
+    belt('right', 555, 740, 190, -1),
+    { id: 'funnel', kind: 'funnel', x: 360, y: BIN_Y - 116, topWidth: 330, bottomWidth: 140, height: 84 },
+    bin('binL', 100, 'blue', 190),
+    bin('binM', 360, 'pink', 190),
+    bin('binR', 620, 'yellow', 190),
+  ],
+  routes: {
+    top: { blue: -1, yellow: 1 },
+    left: { blue: -1, pink: 1, yellow: 1 },
+    right: { yellow: 1, pink: -1, blue: -1 },
+  },
+});
+
+// --- toy sequences --------------------------------------------------------------
+
+/** Deterministic shuffled sequence of `n` toys from `types`, never three alike in a row. */
+function mixed(seed: number, n: number, types: ObjType[]): SpawnSpec[] {
+  let s = seed >>> 0;
+  const rnd = (): number => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+  const out: SpawnSpec[] = [];
+  for (let i = 0; i < n; i++) {
+    let t = types[Math.floor(rnd() * types.length)];
+    if (i >= 2 && out[i - 1] === t && out[i - 2] === t) t = types[(types.indexOf(t) + 1) % types.length];
+    out.push(t);
+  }
+  return out;
+}
+const BP: ObjType[] = ['blue', 'pink'];
+const PY: ObjType[] = ['pink', 'yellow'];
+const BPY: ObjType[] = ['blue', 'pink', 'yellow'];
+
+// --- level builder --------------------------------------------------------------
+
+interface SortSpec {
+  id: string;
+  name: string;
+  hint: string;
+  layout: { machines: MachineDef[]; routes: Routes };
+  spawners: SpawnerDef[];
+  mistakesAllowed?: number;
+  tutorial?: TutorialStep[];
+}
+
+function sortLevel(spec: SortSpec): LevelDef {
+  const objective: Partial<Record<ObjType, number>> = {};
+  for (const sp of spec.spawners) for (const s of sp.sequence) objective[parseSpawn(s).type] = (objective[parseSpawn(s).type] ?? 0) + 1;
+  // the tutorial hand needs the "right" resting direction of each belt it points at
+  const solution: LevelDef['solution'] = {};
+  for (const step of spec.tutorial ?? []) {
+    const first = spec.spawners.flatMap((sp) => sp.sequence).map((s) => parseSpawn(s).type).find((t) => spec.layout.routes[step.machine]?.[t]);
+    const dir = first ? spec.layout.routes[step.machine]?.[first] : undefined;
+    if (dir) solution[step.machine] = { dir };
+  }
+  return {
+    id: spec.id,
+    name: spec.name,
+    hint: spec.hint,
+    width: GAME_W,
+    height: PLAY_H,
+    objective,
+    spawners: spec.spawners,
+    machines: spec.layout.machines,
+    walls: [],
+    mistakesAllowed: spec.mistakesAllowed ?? 2,
+    par: 999,
+    sortAll: true,
+    routes: spec.layout.routes,
+    tutorial: spec.tutorial,
+    solution,
+  };
+}
+
+/** Two chutes for layout X: the right one runs half a beat behind the left one. */
+const twoChutes = (seedL: number, seedR: number, each: number, interval: number): SpawnerDef[] => [
+  spawner('sL', 190, mixed(seedL, each, BP), interval),
+  spawner('sR', 530, mixed(seedR, each, PY), interval, 1500 + interval / 2),
+];
+
 export const LEVELS: LevelDef[] = [
-  // ---------------------------------------------------------------- 1-3 Learning
-  {
-    ...base,
-    id: 'first-shift',
-    name: 'First Shift',
+  // ---------------------------------------------------------------- Warm Up
+  sortLevel({
+    id: 'first-flip',
+    name: 'First Flip',
     hint: 'Tap the belt to flip it',
-    objective: { blue: 3 },
-    mistakesAllowed: 0,
-    par: 14,
-    spawners: [spawner('s1', 250, rep('blue', 3), 1400)],
-    walls: [],
-    machines: [
-      conveyor('belt', 300, 420, 320, { dir: -1, flippable: true }),
-      round('bumper', 440, 600),
-      bin('bin', 560, BIN_Y, 'blue', { width: 270 }),
-    ],
+    layout: layoutA(1),
+    spawners: [spawner('s1', 360, ['blue', 'blue', 'blue'], 1900, 2200)],
+    mistakesAllowed: 1,
     tutorial: [{ machine: 'belt', op: 'flip', text: 'Tap the belt to flip it!' }],
-    solution: { belt: { dir: 1 } },
-  },
-  {
-    ...base,
-    id: 'color-match',
-    name: 'Color Match',
-    hint: 'Send each toy to its own bin',
-    objective: { blue: 3, pink: 3 },
+  }),
+  sortLevel({
+    id: 'two-lines',
+    name: 'Two Lines',
+    hint: 'Match each toy to its bin',
+    layout: {
+      machines: [belt('beltL', 190, 760, 180, 1), belt('beltR', 530, 760, 180, -1), ...twoBins('blue', 'pink')],
+      routes: { beltL: { blue: -1 }, beltR: { pink: 1 } },
+    },
+    spawners: [spawner('sL', 190, ['blue', 'blue', 'blue'], 2000, 2200), spawner('sR', 530, ['pink', 'pink', 'pink'], 2000, 3200)],
     mistakesAllowed: 1,
-    par: 16,
-    spawners: [spawner('sA', 200, rep('blue', 3), 1500), spawner('sB', 520, rep('pink', 3), 1500, { delay: 1100 })],
-    walls: [],
-    machines: [
-      conveyor('beltA', 200, 380, 240, { dir: 1, flippable: true }),
-      conveyor('beltB', 520, 560, 240, { dir: -1, flippable: true }),
-      bin('binBlue', 125, BIN_Y, 'blue', { width: 230 }),
-      bin('binPink', 595, BIN_Y, 'pink', { width: 230 }),
-    ],
     tutorial: [
-      { machine: 'beltA', op: 'flip', text: 'Blue toys go in the blue bin' },
-      { machine: 'beltB', op: 'flip', text: 'Pink toys go in the pink bin' },
+      { machine: 'beltL', op: 'flip', text: 'Blue toys go in the blue bin' },
+      { machine: 'beltR', op: 'flip', text: 'Pink toys go in the pink bin' },
     ],
-    solution: { beltA: { dir: -1 }, beltB: { dir: 1 } },
-  },
-  {
-    ...base,
-    id: 'uphill',
-    name: 'Uphill',
-    hint: 'Tilt the belt',
-    objective: { pink: 4 },
-    mistakesAllowed: 0,
-    par: 18,
-    spawners: [spawner('s1', 270, rep('pink', 4), 1500)],
-    walls: [wall(570, 924, 44, 440)],
-    machines: [
-      conveyor('belt', 300, 640, 340, { speed: 4, rotatable: true, angleMin: -30, angleMax: 30 }),
-      bin('bin', 570, 640, 'pink', { width: 170, height: 120 }),
-    ],
-    tutorial: [{ machine: 'belt', op: 'rotate', text: 'Tilt the belt up' }],
-    solution: { belt: { angle: -15 } },
-  },
-  // ---------------------------------------------------------------- 4-6 Bouncing
-  {
-    ...base,
-    id: 'boing',
-    name: 'Boing!',
-    hint: 'Drag the spring under the toys',
-    objective: { blue: 4 },
-    mistakesAllowed: 0,
-    par: 18,
-    spawners: [spawner('s1', 180, rep('blue', 4), 1500)],
-    walls: [],
-    machines: [
-      pad('spring', 420, 760, 30, { power: 8, movable: true, zone: { x: 150, y: 760, w: 270, h: 0 } }),
-      bin('bin', 520, BIN_Y, 'blue', { width: 260 }),
-    ],
-    tutorial: [{ machine: 'spring', op: 'move', text: 'Drag the spring under the toys' }],
-    solution: { spring: { x: 180, y: 760 } },
-  },
-  {
-    ...base,
-    id: 'aim-high',
-    name: 'Aim High',
-    hint: 'Aim over the wall',
-    objective: { yellow: 4 },
-    mistakesAllowed: 0,
-    par: 18,
-    spawners: [spawner('s1', 160, rep('yellow', 4), 1600)],
-    walls: [wall(340, 870, 30, 360)],
-    machines: [
-      pad('spring', 160, 800, -30, { rotatable: true, power: 9 }),
-      bin('bin', 545, BIN_Y, 'yellow', { width: 300 }),
-    ],
-    tutorial: [{ machine: 'spring', op: 'rotate', text: 'Turn the spring to aim' }],
-    solution: { spring: { angle: 30 } },
-  },
-  {
-    ...base,
-    id: 'double-bounce',
-    name: 'Double Bounce',
-    hint: 'Two springs, two colors',
-    objective: { blue: 3, pink: 3 },
-    mistakesAllowed: 1,
-    par: 20,
-    spawners: [spawner('sA', 120, rep('blue', 3), 1700), spawner('sB', 620, rep('pink', 3), 1700, { delay: 1200 })],
-    walls: [],
-    machines: [
-      pad('springA', 120, 620, -30, { rotatable: true, power: 8 }),
-      pad('springC', 410, 800, 30, { power: 8 }),
-      pad('springB', 440, 420, -30, { power: 8, movable: true, zone: { x: 440, y: 420, w: 180, h: 0 } }),
-      bin('binPink', 150, BIN_Y, 'pink', { width: 250 }),
-      bin('binBlue', 590, BIN_Y, 'blue', { width: 220 }),
-    ],
-    solution: { springA: { angle: 30 }, springB: { x: 590, y: 420 } },
-  },
-  // ---------------------------------------------------------------- 7-9 Machinery
-  {
-    ...base,
-    id: 'push-it',
-    name: 'Push It',
-    hint: 'Slide the pusher into place',
-    objective: { pink: 4 },
-    mistakesAllowed: 0,
-    par: 22,
-    spawners: [spawner('s1', 380, rep('pink', 4), 2000)],
-    walls: [wall(380, 590, 150, 24), wall(650, 600, 30, 400)],
-    machines: [
-      piston('ram', 110, 540, 0, { stroke: 150, period: 2000, extendTicks: 26, movable: true, zone: { x: 110, y: 540, w: 80, h: 0 } }),
-      bin('bin', 560, BIN_Y, 'pink', { width: 250 }),
-    ],
-    tutorial: [{ machine: 'ram', op: 'move', text: 'Slide the pusher up to the toys' }],
-    solution: { ram: { x: 190, y: 540 } },
-  },
-  {
-    ...base,
+  }),
+  sortLevel({
     id: 'take-turns',
     name: 'Take Turns',
-    hint: 'Set the timer',
-    objective: { blue: 3, pink: 3 },
-    mistakesAllowed: 1,
-    par: 30,
-    spawners: [spawner('s1', 260, alt('blue', 'pink', 3), 2400, { delay: 650 })],
-    walls: [],
-    machines: [
-      conveyor('belt', 300, 500, 160, { speed: 1.5 }),
-      piston('ram', 571, 448, 180, { stroke: 150, period: 4800, extendTicks: 16, timing: true }),
-      bin('binBlue', 115, BIN_Y, 'blue', { width: 220 }),
-      bin('binPink', 440, BIN_Y, 'pink', { width: 210 }),
-    ],
-    tutorial: [{ machine: 'ram', op: 'timing', text: 'Tap the pusher to set its timer' }],
-    solution: { ram: { phase: 0.5 } },
-  },
-  {
-    ...base,
-    id: 'assembly-line',
-    name: 'Assembly Line',
-    hint: 'Belt, pusher, spring!',
-    objective: { pink: 4 },
-    mistakesAllowed: 0,
-    par: 26,
-    spawners: [spawner('s1', 160, rep('pink', 4), 2000)],
-    walls: [wall(440, 520, 160, 24)],
-    machines: [
-      conveyor('belt', 220, 330, 240, { dir: -1, flippable: true }),
-      piston('ram', 250, 470, 0, { stroke: 150, period: 2000, extendTicks: 26 }),
-      pad('spring', 640, 860, 0, { rotatable: true, power: 9 }),
-      bin('bin', 200, BIN_Y, 'pink', { width: 270 }),
-    ],
-    solution: { belt: { dir: 1 }, spring: { angle: -45 } },
-  },
-  // ---------------------------------------------------------------- 10-12 Chain reactions
-  {
-    ...base,
-    id: 'relay',
-    name: 'Relay',
-    hint: 'Split them up, then pass them on',
-    objective: { blue: 3, yellow: 3 },
-    mistakesAllowed: 1,
-    par: 32,
-    spawners: [spawner('s1', 260, alt('blue', 'yellow', 3), 2400, { delay: 950 })],
-    walls: [],
-    machines: [
-      conveyor('belt', 300, 330, 160, { speed: 1.5 }),
-      piston('ram', 571, 278, 180, { stroke: 150, period: 4800, extendTicks: 16, timing: true }),
-      pad('spring', 190, 900, -30, { rotatable: true, power: 9 }),
-      conveyor('belt2', 430, 620, 220, { dir: -1, flippable: true }),
-      bin('binBlue', 440, BIN_Y, 'blue', { width: 180 }),
-      bin('binYellow', 620, BIN_Y, 'yellow', { width: 180 }),
-    ],
-    solution: { ram: { phase: 0.5 }, spring: { angle: 15 }, belt2: { dir: 1 } },
-  },
-  {
-    ...base,
-    id: 'crossfire',
-    name: 'Crossfire',
-    hint: 'Swap sides in mid-air',
-    objective: { blue: 3, pink: 3 },
-    mistakesAllowed: 1,
-    par: 24,
-    spawners: [spawner('sA', 90, rep('blue', 3), 1800), spawner('sB', 630, rep('pink', 3), 1800, { delay: 1300 })],
-    walls: [],
-    machines: [
-      conveyor('beltA', 130, 330, 180, { dir: -1, flippable: true }),
-      conveyor('beltB', 590, 330, 180, { dir: 1, flippable: true }),
-      pad('springA', 270, 760, 0, { rotatable: true, power: 10 }),
-      pad('springB', 450, 760, 0, { rotatable: true, power: 10 }),
-      bin('binPink', 110, BIN_Y, 'pink', { width: 200 }),
-      bin('binBlue', 610, BIN_Y, 'blue', { width: 200 }),
-    ],
-    solution: { beltA: { dir: 1 }, beltB: { dir: -1 }, springA: { angle: 30 }, springB: { angle: -30 } },
-  },
-  {
-    ...base,
-    id: 'up-and-over',
-    name: 'Up and Over',
-    hint: 'Timer, tilt and spring',
-    objective: { blue: 3, pink: 3 },
-    mistakesAllowed: 1,
-    par: 34,
-    spawners: [spawner('s1', 260, alt('blue', 'pink', 3), 2400, { delay: 950 })],
-    walls: [wall(420, 1024, 44, 240)],
-    machines: [
-      conveyor('belt', 300, 330, 160, { speed: 1.5 }),
-      piston('ram', 571, 278, 180, { stroke: 150, period: 4800, extendTicks: 16, timing: true }),
-      conveyor('tilt', 180, 820, 280, { speed: 4, rotatable: true, angleMin: -30, angleMax: 30 }),
-      bin('binBlue', 420, 840, 'blue', { width: 170, height: 120 }),
-      pad('spring', 570, 540, 30, { power: 7, movable: true, zone: { x: 420, y: 540, w: 150, h: 0 } }),
-      bin('binPink', 620, BIN_Y, 'pink', { width: 190 }),
-    ],
-    solution: { ram: { phase: 0.5 }, tilt: { angle: -30 }, spring: { x: 450, y: 540 } },
-  },
-  // ---------------------------------------------------------------- 13-15 Factory panic
-  {
-    ...base,
-    id: 'heavyweights',
-    name: 'Heavyweights',
-    hint: 'Heavy toys do not fly far',
-    objective: { blue: 3, pink: 3 },
-    mistakesAllowed: 1,
-    par: 26,
-    spawners: [spawner('s1', 110, alt('blue', 'pink:heavy', 3), 1900)],
-    walls: [],
-    machines: [
-      conveyor('belt', 150, 330, 200, { dir: -1, flippable: true }),
-      pad('spring', 220, 900, 0, { power: 9, rotatable: true, movable: true, zone: { x: 220, y: 900, w: 160, h: 0 } }),
-      bin('binPink', 430, BIN_Y, 'pink', { width: 170 }),
-      bin('binBlue', 620, BIN_Y, 'blue', { width: 190 }),
-    ],
-    solution: { belt: { dir: 1 }, spring: { x: 300, y: 900, angle: 15 } },
-  },
-  {
-    ...base,
-    id: 'slip-n-slide',
-    name: 'Slip and Slide',
-    hint: 'Icy toys slide downhill',
-    objective: { pink: 3, yellow: 3 },
-    mistakesAllowed: 1,
-    par: 28,
-    spawners: [spawner('s1', 360, alt('pink', 'yellow:slippery', 3), 2000)],
-    walls: [wall(600, 874, 44, 540)],
-    machines: [
-      conveyor('tilt', 360, 520, 280, { speed: 3, rotatable: true, angleMin: -30, angleMax: 30 }),
-      bin('binPink', 600, 540, 'pink', { width: 170, height: 120 }),
-      pad('spring', 300, 860, 30, { power: 7, movable: true, zone: { x: 80, y: 860, w: 220, h: 0 } }),
-      bin('binYellow', 330, BIN_Y, 'yellow', { width: 220 }),
-    ],
-    solution: { tilt: { angle: -30 }, spring: { x: 80, y: 860 } },
-  },
-  {
-    ...base,
+    hint: 'Flip the belt for each colour',
+    layout: layoutA(-1),
+    spawners: [spawner('s1', 360, ['blue', 'pink', 'blue', 'pink', 'blue', 'pink'], 2700, 1800)],
+  }),
+  sortLevel({
+    id: 'mixed-bag',
+    name: 'Mixed Bag',
+    hint: 'Watch what drops next',
+    layout: layoutA(-1),
+    spawners: [spawner('s1', 360, mixed(11, 8, BP), 2300)],
+  }),
+  // ---------------------------------------------------------------- Speed Up
+  sortLevel({
+    id: 'quick-hands',
+    name: 'Quick Hands',
+    hint: 'They are coming faster',
+    layout: layoutA(1),
+    spawners: [spawner('s1', 360, mixed(23, 10, BP), 1900)],
+  }),
+  sortLevel({
+    id: 'rush-hour',
+    name: 'Rush Hour',
+    hint: 'Stay sharp!',
+    layout: layoutA(-1),
+    spawners: [spawner('s1', 360, mixed(37, 12, BP), 1600)],
+  }),
+  sortLevel({
+    id: 'side-by-side',
+    name: 'Side by Side',
+    hint: 'Two belts, three bins',
+    layout: layoutX(),
+    spawners: twoChutes(5, 9, 4, 3000),
+  }),
+  sortLevel({
+    id: 'double-duty',
+    name: 'Double Duty',
+    hint: 'Keep an eye on both belts',
+    layout: layoutX(),
+    spawners: twoChutes(41, 43, 6, 2500),
+  }),
+  // ---------------------------------------------------------------- Three Ways
+  sortLevel({
+    id: 'junction',
+    name: 'Junction',
+    hint: 'The top belt feeds the lower two',
+    layout: layoutC(),
+    spawners: [spawner('s1', 360, ['blue', 'blue', 'yellow', 'yellow', 'pink', 'pink'], 2900, 2000)],
+  }),
+  sortLevel({
+    id: 'crossroads',
+    name: 'Crossroads',
+    hint: 'Pink goes to the middle',
+    layout: layoutC(),
+    spawners: [spawner('s1', 360, mixed(51, 8, BPY), 2600)],
+  }),
+  sortLevel({
+    id: 'busy-junction',
+    name: 'Busy Junction',
+    hint: 'Three belts to watch',
+    layout: layoutC(),
+    spawners: [spawner('s1', 360, mixed(63, 10, BPY), 2300)],
+  }),
+  sortLevel({
+    id: 'gridlock',
+    name: 'Gridlock',
+    hint: 'Keep them moving',
+    layout: layoutC(),
+    spawners: [spawner('s1', 360, mixed(77, 12, BPY), 2050)],
+  }),
+  // ---------------------------------------------------------------- Overtime
+  sortLevel({
+    id: 'twin-shift',
+    name: 'Twin Shift',
+    hint: 'Both chutes are busy',
+    layout: layoutX(),
+    spawners: twoChutes(81, 83, 8, 2200),
+  }),
+  sortLevel({
+    id: 'night-shift',
+    name: 'Night Shift',
+    hint: 'Faster on both sides',
+    layout: layoutX(),
+    spawners: twoChutes(91, 93, 10, 1950),
+  }),
+  sortLevel({
+    id: 'belt-maze',
+    name: 'Belt Maze',
+    hint: 'A long run of toys',
+    layout: layoutC(),
+    spawners: [spawner('s1', 360, mixed(101, 14, BPY), 1900)],
+  }),
+  sortLevel({
+    id: 'full-load',
+    name: 'Full Load',
+    hint: 'Sixteen toys, three bins',
+    layout: layoutC(),
+    spawners: [spawner('s1', 360, mixed(113, 16, BPY), 1750)],
+  }),
+  // ---------------------------------------------------------------- Factory Panic
+  sortLevel({
+    id: 'double-time',
+    name: 'Double Time',
+    hint: 'Two chutes at full speed',
+    layout: layoutX(),
+    spawners: twoChutes(121, 123, 12, 1800),
+  }),
+  sortLevel({
+    id: 'pile-up',
+    name: 'Pile Up',
+    hint: 'Do not blink',
+    layout: layoutC(),
+    spawners: [spawner('s1', 360, mixed(131, 18, BPY), 1750)],
+  }),
+  sortLevel({
+    id: 'meltdown',
+    name: 'Meltdown',
+    hint: 'Twenty toys, no breaks',
+    layout: layoutC(),
+    spawners: [spawner('s1', 360, mixed(141, 20, BPY), 1700)],
+  }),
+  sortLevel({
     id: 'factory-panic',
     name: 'Factory Panic',
-    hint: 'Everything at once!',
-    objective: { blue: 4, pink: 4 },
-    mistakesAllowed: 2,
-    par: 44,
-    spawners: [spawner('s1', 150, alt('blue', 'pink', 4), 2400, { delay: 900 })],
-    walls: [wall(420, 1099, 44, 90)],
-    machines: [
-      conveyor('feeder', 200, 300, 200, { dir: -1, flippable: true }),
-      conveyor('belt', 340, 480, 160, { speed: 1.5 }),
-      piston('ram', 611, 428, 180, { stroke: 150, period: 4800, extendTicks: 16, timing: true }),
-      conveyor('tilt', 180, 970, 280, { speed: 4, rotatable: true, angleMin: -30, angleMax: 30 }),
-      bin('binBlue', 420, 990, 'blue', { width: 170, height: 120 }),
-      pad('spring', 610, 690, 30, { power: 7, movable: true, zone: { x: 460, y: 690, w: 150, h: 0 } }),
-      bin('binPink', 620, BIN_Y, 'pink', { width: 190 }),
-    ],
-    solution: { feeder: { dir: 1 }, ram: { phase: 0.5 }, tilt: { angle: -30 }, spring: { x: 470, y: 690 } },
-  },
+    hint: 'The final shift!',
+    layout: layoutC(),
+    spawners: [spawner('s1', 360, mixed(151, 24, BPY), 1650)],
+  }),
 ];

@@ -26,7 +26,7 @@ export const PANIC_LEVEL: LevelDef = {
     { id: 'top', kind: 'conveyor', x: 360, y: 560, length: 200, speed: 2.2, dir: 1, interactive: true },
     { id: 'left', kind: 'conveyor', x: 165, y: 740, length: 190, speed: 2.2, dir: -1, interactive: true },
     { id: 'right', kind: 'conveyor', x: 555, y: 740, length: 190, speed: 2.2, dir: 1, interactive: true },
-    { id: 'fC', kind: 'funnel', x: 360, y: 950, topWidth: 330, bottomWidth: 140, height: 84 },
+    { id: 'fC', kind: 'funnel', x: 360, y: BIN_Y - 116, topWidth: 330, bottomWidth: 140, height: 84 },
     { id: 'binBlue', kind: 'bin', x: 100, y: BIN_Y, accepts: 'blue', width: 190 },
     { id: 'binPink', kind: 'bin', x: 360, y: BIN_Y, accepts: 'pink', width: 190 },
     { id: 'binYellow', kind: 'bin', x: 620, y: BIN_Y, accepts: 'yellow', width: 190 },

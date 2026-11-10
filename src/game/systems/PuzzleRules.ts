@@ -1,5 +1,5 @@
 import { OBJ_TYPES, STEP_MS, TYPE_COLORS, msToTicks, type ObjType } from '../config';
-import type { LevelDef } from '../levels/LevelTypes';
+import { parseSpawn, type LevelDef } from '../levels/LevelTypes';
 import type { FactoryWorld } from '../sim/FactoryWorld';
 
 export type RuleStatus = 'running' | 'won' | 'failed';
@@ -60,6 +60,12 @@ export class PuzzleRules {
   }
 
   needed(type: ObjType): number {
+    if (this.level.sortAll) {
+      // every toy the spawners will ever drop
+      let n = 0;
+      for (const s of this.level.spawners) for (const spec of s.sequence) if (parseSpawn(spec).type === type) n++;
+      return n;
+    }
     return this.level.objective[type] ?? 0;
   }
 
@@ -91,6 +97,22 @@ export class PuzzleRules {
   update(): RuleStatus {
     if (this.status !== 'running' || !this.world.running) return this.status;
     const world = this.world;
+
+    if (this.level.sortAll) {
+      // Sorting levels: a toy that leaves play any other way than its own bin is a slip.
+      if (this.mistakes + this.lost > this.level.mistakesAllowed) {
+        this.fail('Too many mix-ups!');
+      } else if (world.allSpawned && world.objects.length === 0) {
+        this.status = 'won';
+        this.endTick = world.tick;
+      } else if (world.allSpawned) {
+        let stuck = true;
+        for (const o of world.objects) if (o.restTicks < STUCK_TICKS) stuck = false;
+        if (stuck) this.fail('The toys got stuck!');
+        else if (world.tick - this.lastSpawnTick > OVERTIME_TICKS) this.fail('That took too long!');
+      }
+      return this.status;
+    }
 
     let complete = true;
     for (const type of OBJ_TYPES) if (this.remaining(type) > 0) complete = false;

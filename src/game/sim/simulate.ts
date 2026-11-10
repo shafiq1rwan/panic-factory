@@ -21,7 +21,14 @@ export interface SimResult {
  * Run a level headlessly to completion with the given machine configuration.
  * Used by automated tests and the level solver to prove levels are solvable.
  */
-export function simulateLevel(level: LevelDef, config: LevelConfig = {}, opts: WorldOptions = {}, maxTicks = 60 * 120): SimResult {
+export function simulateLevel(
+  level: LevelDef,
+  config: LevelConfig = {},
+  opts: WorldOptions = {},
+  maxTicks = 60 * 180,
+  /** optional player stand-in, called before every tick (e.g. the route bot) */
+  player?: (world: FactoryWorld) => void,
+): SimResult {
   const world = new FactoryWorld(level, opts);
   const rules = new PuzzleRules(world, level);
   world.applyConfig(config);
@@ -35,6 +42,7 @@ export function simulateLevel(level: LevelDef, config: LevelConfig = {}, opts: W
   world.start();
   let status: SimResult['status'] = 'timeout';
   for (let i = 0; i < maxTicks; i++) {
+    player?.(world);
     world.step();
     const s = rules.update();
     if (s !== 'running') {

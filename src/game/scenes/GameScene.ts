@@ -95,7 +95,8 @@ export class GameScene extends Phaser.Scene {
 
     this.world = new FactoryWorld(this.level);
     this.rules = new PuzzleRules(this.world, this.level);
-    const stored = sessionConfigs.get(this.level.id);
+    // Classic puzzle levels remember the player's layout; sorting levels always start fresh.
+    const stored = this.level.sortAll ? undefined : sessionConfigs.get(this.level.id);
     if (stored) this.world.applyConfig(stored);
     this.view = new WorldView(this, this.world);
 
@@ -123,6 +124,22 @@ export class GameScene extends Phaser.Scene {
 
     platform.gameplayStart();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
+    // Sorting levels have no RUN button: the factory starts by itself after the intro card.
+    if (this.level.sortAll) this.scheduleStart(1000);
+  }
+
+  private scheduleStart(ms: number): void {
+    const token = this.runToken;
+    this.time.delayedCall(ms, () => {
+      if (token === this.runToken && this.state === 'prep') this.run();
+    });
+  }
+
+  /** Flippable belts, top to bottom then left to right (keyboard order). */
+  private get liveBelts(): ConveyorBelt[] {
+    return this.world.machines
+      .filter((m): m is ConveyorBelt => m instanceof ConveyorBelt && m.canFlip)
+      .sort((a, b) => a.y - b.y || a.x - b.x);
   }
 
   private shutdown(): void {
@@ -166,6 +183,16 @@ export class GameScene extends Phaser.Scene {
     this.acc = 0;
     if (wasRunning) audio.powerDown();
     platform.gameplayStart();
+    if (this.level.sortAll) {
+      // put every belt back the way the level starts, then go again
+      for (const b of this.liveBelts) {
+        if (b.dir !== (b.def.dir ?? 1)) {
+          b.dir = b.def.dir ?? 1;
+          this.world.events.emit('machineChanged', b);
+        }
+      }
+      this.scheduleStart(800);
+    }
   }
 
   toggleRun(): void {
@@ -275,8 +302,25 @@ export class GameScene extends Phaser.Scene {
 
   private onDown(pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]): void {
     audio.unlock();
-    if (over.length > 0 || this.state !== 'prep') return;
+    if (over.length > 0) return;
     const p = this.worldPoint(pointer);
+    if (this.level.sortAll) {
+      // The one verb of the game: tap a belt to flip it, before or while toys are moving.
+      if (this.state !== 'prep' && this.state !== 'running') return;
+      let best: ConveyorBelt | null = null;
+      let bestD = Infinity;
+      for (const b of this.liveBelts) {
+        if (!b.hitTest(p.x, p.y, 48)) continue; // generous: belts are the only controls
+        const d = Math.abs(b.y - p.y) * 2 + Math.abs(b.x - p.x);
+        if (d < bestD) {
+          bestD = d;
+          best = b;
+        }
+      }
+      best?.flip();
+      return;
+    }
+    if (this.state !== 'prep') return;
     const m = this.pick(p.x, p.y);
     if (!m) {
       this.select(null);
@@ -428,6 +472,15 @@ export class GameScene extends Phaser.Scene {
       this.pause();
       return;
     }
+    if (this.level.sortAll) {
+      // keyboard: Space flips the first belt, 1 / 2 / 3 flip belts top-to-bottom, left-to-right
+      audio.unlock();
+      const belts = this.liveBelts;
+      const i = k === ' ' ? 0 : ['1', '2', '3', '4'].indexOf(k);
+      if (i >= 0 && belts[i] && (this.state === 'prep' || this.state === 'running')) belts[i].flip();
+      else if (k === 'r') this.retry();
+      return;
+    }
     if (k === ' ' || k === 'enter') {
       audio.unlock();
       this.toggleRun();
@@ -473,7 +526,9 @@ export class GameScene extends Phaser.Scene {
     halo.clear();
     sel.clear();
     this.ops.setVisible(this.state === 'prep');
-    if (this.state !== 'prep') return;
+    // sorting levels keep their belts highlighted while toys are moving: they stay tappable
+    const live = !!this.level.sortAll && this.state === 'running';
+    if (this.state !== 'prep' && !live) return;
     const wave = 0.5 + 0.5 * Math.sin(this.pulse / 260);
 
     for (const m of this.world.machines) {
@@ -557,7 +612,8 @@ export class GameScene extends Phaser.Scene {
 
   /** What the tutorial hand should point at right now (null = no tutorial). */
   tutorialHint(): TutorialHint | null {
-    if (this.state !== 'prep' || !this.level.tutorial || save.data.tutorialsDone[this.level.id]) return null;
+    const live = !!this.level.sortAll && this.state === 'running';
+    if ((this.state !== 'prep' && !live) || !this.level.tutorial || save.data.tutorialsDone[this.level.id]) return null;
     for (const step of this.level.tutorial) {
       const m = this.world.machine(step.machine);
       if (!m || this.stepDone(step, m)) continue;
@@ -573,6 +629,7 @@ export class GameScene extends Phaser.Scene {
       }
       return { kind: 'tap', x: target.x, y: target.y, text: step.text };
     }
+    if (this.level.sortAll) return null; // nothing to press: the factory runs by itself
     return { kind: 'run', x: 0, y: 0, text: 'Now press RUN!' };
   }
 

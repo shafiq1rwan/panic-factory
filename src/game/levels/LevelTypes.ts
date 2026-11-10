@@ -135,6 +135,16 @@ export interface LevelDef {
   tutorial?: TutorialStep[];
   /** Verified intended solution (also drives tutorials and automated checks). */
   solution: LevelConfig;
+  /**
+   * Sorting level: every toy must end up in a bin, and the level is won when all of them have,
+   * with no more wrong deliveries than `mistakesAllowed`. Belts are flipped live while toys move.
+   */
+  sortAll?: boolean;
+  /**
+   * For sorting levels: which way each flippable belt must run for each toy type
+   * (1 = towards +x). Drives the tutorial hand and the automated play-through bot.
+   */
+  routes?: Record<string, Partial<Record<ObjType, 1 | -1>>>;
 }
 
 export function parseSpawn(spec: SpawnSpec): { type: ObjType; material: MaterialId } {

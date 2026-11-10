@@ -8,7 +8,8 @@ import { LevelManager } from '../systems/LevelManager';
 import { save } from '../systems/SaveManager';
 import { Button, drawStar, fadeIn, gotoScene, txt } from '../ui/UIComponents';
 
-const CHAPTERS = ['Learning', 'Bouncing', 'Machinery', 'Chain Reactions', 'Factory Panic'];
+const CHAPTERS = ['Warm Up', 'Speed Up', 'Three Ways', 'Overtime', 'Factory Panic'];
+const PER_ROW = 4;
 const CHAPTER_COLORS = [COLORS.blue, COLORS.pink, COLORS.yellow, COLORS.mint, COLORS.lavender];
 
 /** Level grid: 5 chapters of 3 levels, with stars and locked states. */
@@ -31,8 +32,8 @@ export class LevelSelectScene extends Phaser.Scene {
     roundRect(tg, -84, -27, 168, 54, 22, 0xffffff, 3);
     total.add([tg, drawStar(this, -50, 0, 16, true), txt(this, 20, 0, `${save.totalStars} / ${LEVELS.length * 3}`, 22)]);
 
-    // portrait: one chapter per row, three levels across
-    const colW = 228;
+    // portrait: one chapter per row, four levels across
+    const colW = 172;
     const blockH = 208;
     const next = LevelManager.nextUnfinished;
 
@@ -43,25 +44,26 @@ export class LevelSelectScene extends Phaser.Scene {
       roundRect(hg, GAME_W / 2 - 130, by, 260, 38, 19, CHAPTER_COLORS[c], 3);
       txt(this, GAME_W / 2, by + 19, name, 19);
 
-      for (let r = 0; r < 3; r++) {
-        const index = c * 3 + r;
+      for (let r = 0; r < PER_ROW; r++) {
+        const index = c * PER_ROW + r;
         const level = LEVELS[index];
         if (!level) continue;
         const unlocked = LevelManager.isUnlocked(index);
         const stars = save.starsFor(level.id);
-        const x = GAME_W / 2 + (r - 1) * colW;
+        const x = GAME_W / 2 + (r - (PER_ROW - 1) / 2) * colW;
         const y = by + 118;
         const btn = new Button(this, x, y, {
-          w: 208, h: 132, radius: 28,
+          w: 158, h: 132, radius: 26,
           color: unlocked ? 0xffffff : 0x4a3f8f,
           onClick: () => gotoScene(this, 'Game', { level: index }),
         });
         btn.setEnabled(unlocked);
         if (unlocked) {
-          const num = txt(this, 0, -32, `${index + 1}`, 44, TEXT.dark);
-          const nm = txt(this, 0, 6, level.name, 18, TEXT.soft);
+          const num = txt(this, 0, -32, `${index + 1}`, 42, TEXT.dark);
+          const nm = txt(this, 0, 6, level.name, 15, TEXT.soft);
+          if (nm.width > 146) nm.setFontSize((15 * 146) / nm.width);
           btn.addToFace(num, nm);
-          for (let s = 0; s < 3; s++) btn.addToFace(drawStar(this, (s - 1) * 40, 40, 16, s < stars));
+          for (let s = 0; s < 3; s++) btn.addToFace(drawStar(this, (s - 1) * 36, 40, 14, s < stars));
           if (index === next && stars === 0 && !save.settings.reducedMotion) {
             // gently bounce the next level to play
             this.tweens.add({ targets: btn, y: y - 6, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
