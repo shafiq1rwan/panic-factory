@@ -1,0 +1,50 @@
+# Build Tiny Factory Panic and publish dist/ to GitHub Pages.
+#
+# One-time setup: in the repository on GitHub, open Settings -> Pages and set
+# "Source" to "GitHub Actions". After that every push to main deploys, and the
+# game is served at https://<user>.github.io/<repo>/
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two deployments at once; let a running one finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Headless physics, rules, save and level-solvability tests.
+      - run: npm test
+      # Type-check and build static files into dist/ (relative paths, so any sub-folder works).
+      - run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

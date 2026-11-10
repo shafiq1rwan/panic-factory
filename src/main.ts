@@ -1,0 +1,117 @@
+import Phaser from 'phaser';
+import './styles/main.css';
+import { GAME_H, GAME_W, view, WORKSHOP } from './game/config';
+import { LEVELS } from './game/levels/levels';
+import { provideMatter } from './game/physics/MatterLib';
+import { platform } from './game/platform';
+import { BootScene } from './game/scenes/BootScene';
+import { GameScene } from './game/scenes/GameScene';
+import { LevelSelectScene } from './game/scenes/LevelSelectScene';
+import { MenuScene } from './game/scenes/MenuScene';
+import { PanicScene } from './game/scenes/PanicScene';
+import { PauseScene } from './game/scenes/PauseScene';
+import { ResultScene } from './game/scenes/ResultScene';
+import { SettingsScene } from './game/scenes/SettingsScene';
+import { UIScene } from './game/scenes/UIScene';
+import { audio } from './game/systems/AudioManager';
+import { save } from './game/systems/SaveManager';
+
+// The simulation uses the Matter.js build bundled with Phaser, driven with our own fixed timestep.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+provideMatter((Phaser.Physics.Matter as any).Matter);
+
+// Render resolution: draw the 1280x720 logical scene at up to 2x so vectors stay crisp on
+// high-DPI screens, without paying for more pixels than the display can show.
+//
+// Visible area: the 1280x720 play field always fits, and the view is extended on one axis so the
+// canvas fills the whole window (no letterbox bars) whatever its shape.
+function computeView(): void {
+  const ww = Math.max(window.innerWidth, 1);
+  const wh = Math.max(window.innerHeight, 1);
+  const aspect = ww / wh;
+  let w = GAME_W;
+  let h = GAME_H;
+  if (aspect > GAME_W / GAME_H) w = Math.min(GAME_H * aspect, GAME_W * 1.6);
+  else h = Math.min(GAME_W / aspect, GAME_H * 2.2);
+  view.w = Math.round(w);
+  view.h = Math.round(h);
+  const fit = Math.min(ww / view.w, wh / view.h);
+  view.res = Phaser.Math.Clamp(Math.round(fit * (window.devicePixelRatio || 1) * 4) / 4, 1, 2);
+}
+computeView();
+
+const K = Phaser.Input.Keyboard.KeyCodes;
+
+const game = new Phaser.Game({
+  type: Phaser.AUTO,
+  parent: 'game',
+  backgroundColor: WORKSHOP.wallTop,
+  banner: false,
+  disableContextMenu: true,
+  audio: { noAudio: true }, // all audio is synthesised by AudioManager
+  render: { antialias: true, powerPreference: 'high-performance' },
+  // Phaser calls preventDefault on these keys itself (after reading them), which stops the page
+  // from scrolling. Do NOT preventDefault them in a separate window listener: Phaser ignores
+  // key events that were already default-prevented.
+  input: {
+    activePointers: 3,
+    keyboard: { capture: [K.SPACE, K.UP, K.DOWN, K.LEFT, K.RIGHT, K.TAB] },
+  },
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: Math.round(view.w * view.res),
+    height: Math.round(view.h * view.res),
+  },
+  // Order matters: later scenes render (and receive input) on top.
+  scene: [BootScene, MenuScene, LevelSelectScene, GameScene, PanicScene, UIScene, ResultScene, PauseScene, SettingsScene],
+});
+
+// Re-fit when the window changes shape. Scenes re-centre their cameras on the scale RESIZE event.
+let resizeTimer = 0;
+window.addEventListener('resize', () => {
+  window.clearTimeout(resizeTimer);
+  resizeTimer = window.setTimeout(() => {
+    computeView();
+    game.scale.setGameSize(Math.round(view.w * view.res), Math.round(view.h * view.res));
+    game.scale.refresh();
+  }, 80);
+});
+
+// --- page-level behaviour ---------------------------------------------------------
+
+// Keep the page from scrolling / zooming under the game (also required by web portals).
+// Scroll keys are handled by Phaser's keyboard capture list in the game config above.
+window.addEventListener('wheel', (ev) => ev.preventDefault(), { passive: false });
+window.addEventListener('touchmove', (ev) => ev.preventDefault(), { passive: false });
+window.addEventListener('gesturestart', (ev) => ev.preventDefault());
+window.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
+// Audio may only start after a user gesture.
+const unlock = () => audio.unlock();
+window.addEventListener('pointerdown', unlock);
+window.addEventListener('keydown', unlock);
+
+// Silence + freeze when the tab is hidden or the phone is held upright.
+const portraitQuery = window.matchMedia('(orientation: portrait) and (max-width: 820px)');
+let frozen = false;
+function refreshFreeze(): void {
+  const shouldFreeze = document.hidden || portraitQuery.matches;
+  if (shouldFreeze === frozen) return;
+  frozen = shouldFreeze;
+  if (frozen) {
+    game.loop.sleep();
+    if (!platform.inBreak) audio.setAdMuted(true);
+  } else {
+    game.loop.wake();
+    if (!platform.inBreak) audio.setAdMuted(false);
+  }
+}
+document.addEventListener('visibilitychange', refreshFreeze);
+portraitQuery.addEventListener('change', refreshFreeze);
+refreshFreeze();
+
+// Hook for automated browser tests (dev builds, or any build opened with ?tfptest).
+if (import.meta.env.DEV || new URLSearchParams(location.search).has('tfptest')) {
+  (window as unknown as { __TFP: unknown }).__TFP = { game, save, audio, view, levelCount: LEVELS.length };
+}

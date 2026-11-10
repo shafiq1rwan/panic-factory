@@ -1,0 +1,50 @@
+import type { LevelDef } from '../levels/LevelTypes';
+
+export interface RunSummary {
+  mistakes: number;
+  lost: number;
+  seconds: number;
+}
+
+/**
+ * Three-star rating. Because the simulation is deterministic, the rating
+ * depends on the player's configuration, never on lucky timing.
+ *  1 star: objective complete
+ *  2 stars: at most one slip (wrong bin or lost toy)
+ *  3 stars: no slips at all, finished within the level's par time
+ */
+export function computeStars(level: LevelDef, run: RunSummary): 1 | 2 | 3 {
+  const slips = run.mistakes + run.lost;
+  if (slips === 0 && run.seconds <= level.par) return 3;
+  if (slips <= 1) return 2;
+  return 1;
+}
+
+/** Panic mode scoring: streaks raise a multiplier, quick successive deliveries add a chain bonus. */
+export class PanicScore {
+  score = 0;
+  combo = 0;
+  bestCombo = 0;
+  delivered = 0;
+  private lastDeliveryTick = -9999;
+
+  get multiplier(): number {
+    return Math.min(5, 1 + Math.floor(this.combo / 4));
+  }
+
+  /** Returns the points awarded and whether a chain bonus triggered. */
+  correct(tick: number): { points: number; chain: boolean } {
+    this.combo++;
+    this.delivered++;
+    this.bestCombo = Math.max(this.bestCombo, this.combo);
+    const chain = tick - this.lastDeliveryTick < 50;
+    this.lastDeliveryTick = tick;
+    const points = 10 * this.multiplier + (chain ? 5 : 0);
+    this.score += points;
+    return { points, chain };
+  }
+
+  mistake(): void {
+    this.combo = 0;
+  }
+}
