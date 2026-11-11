@@ -2,9 +2,36 @@
 
 Where the project stands and what is still open. Update this when work is picked up again.
 
+## Picking this up on another machine
+
+1. `git pull`, then `npm install`.
+2. Run commands from a path that starts with an upper-case `C:` (see the Vitest gotcha in `CLAUDE.md`).
+3. `npm test`, `npm run solve`, `npm run build`, `npm run smoke` should all pass (numbers below).
+4. Read `docs/FIT_TEST.md`: the Poki player fit test is running on v1.9.2 and its event CSV is the next thing to analyse.
+
+Owner preferences that matter for the next steps (they were kept in a local assistant memory on the first PC, so they are written here too):
+
+- The dev server runs on port **5273**; 5173 belongs to another project on the owner's machine.
+- **Once the Poki player fit test is passed, the version is reset to v1.0.0.** Not before. At that point: `version` in `package.json`, the `'vX.Y.Z'` label in `src/game/scenes/MenuScene.ts`, a CHANGELOG entry, and the next Poki zip named `tiny-factory-panic-poki-v1.0.0.zip`. The older zips in `output/poki/` carry higher numbers (v1.5.0 to v1.9.2), so say clearly which zip is the newest, or move the old ones to an archive folder.
+- Poki zip names must contain the version, `v1.?.?`.
+- Commit on a new branch, fast-forward `main`; push only when asked. The owner tests on a real phone through the GitHub Pages link, so say plainly when something is committed but not pushed.
+
 ## Current state
 
-The game is a set-up-then-run puzzle in portrait: the player taps machines to set them up (a belt flips, a bouncer turns, a timer moves on a step), presses RUN, and every toy has to land in the bin of its own colour. A wrong toy stops the run and hands the setup back. Panic mode keeps the earlier live play (two belts, two buttons). v1.11.0: world 4 (Harbour, levels 31-40) is on water, with bins floating in place, splashing misses and a new machine, the fan. v1.9.0 has 30 levels in three worlds of ten, each with its own wall, pipe colour and new toys, and a NEW TOY card wherever a toy first appears. v1.7.0 is on `main` and GitHub Pages; the live one-button game it replaced is v1.6.5 in the history.
+`main` is **v1.11.0**, pushed and on GitHub Pages. The Poki player fit test is running on **v1.9.2** (partial result: 208 players, 2 min 16 s average; see `docs/FIT_TEST.md`).
+
+The game is a set-up-then-run puzzle in portrait: the player taps machines to set them up (a belt flips, a bouncer turns, a timer moves its pusher on a step, a fan switches on), presses RUN, and every toy has to land in the bin of its own colour. A wrong toy, or one that misses the bins, stops the run and hands the setup back. Panic mode keeps the earlier live play (two belts, two buttons).
+
+40 levels in four worlds of ten, each with its own wall, pipe colour and new things, and a NEW card wherever something new first appears:
+
+| Levels | World | New |
+| --- | --- | --- |
+| 1-10 | Workshop (mint) | belts, bouncers, timers; plain toys |
+| 11-20 | Toy Room (wooden planks) | green hexagon, heavy toys |
+| 21-30 | Night Shift (blue bricks) | bouncy toys, purple pill |
+| 31-40 | Harbour (sky, water) | bins float on water, misses splash and sink; the fan |
+
+What changed after the fit-test build (v1.9.2): previews no longer overlap and round buttons lost their corner "ears" (v1.9.1, included in v1.9.2); empty bins removed and misses pop with X eyes (v1.9.3); world 4 (v1.10.0, drifting bins); bins float in place with cartoon water and world 4 rebuilt around the fan (v1.11.0). Details in `CHANGELOG.md`.
 
 | Area | Status |
 | --- | --- |
@@ -41,14 +68,17 @@ The game is a set-up-then-run puzzle in portrait: the player taps machines to se
 
 - [x] Owner played v1.7.0 on a phone: "looks interesting", asked for new levels with a different background and shape (v1.8.0).
 - [x] Owner played v1.8.0: the new toys need introducing; asked for up to 30 levels with a new look every 10 (v1.9.0).
-- [ ] Owner to play worlds 2 and 3 on a phone. Several world 2 and 3 levels reuse a layout from world 1 with the new toys; check that they still feel fresh.
-- [ ] More levels: 16 is still a small set. The solver makes adding levels quick (`scripts/plan-lab.ts`).
-- [ ] Play-test on a real phone, cold, with two or three people; note where they stop. The Poki build sends level start / complete / fail events, so a fit test shows where players drop.
+- [x] Owner played v1.9.x: some levels feel repetitive; asked for a fourth world with bins floating on water and a new prop (v1.10.0), then for bins that only float (no drifting) and cartoon water (v1.11.0).
+- [ ] **Analyse the fit-test event CSV** when the owner provides it (`docs/FIT_TEST.md` says how). Decide from it whether to fix the first levels (players leave early) or add depth (players leave late or finish too easily).
+- [ ] Owner to try world 4 (v1.11.0) on a phone: the water, the splash, the fan's wind streaks.
+- [ ] Some world 2 and 3 levels share layouts with world 1 (the owner noticed repetition). Rework the ones the owner names.
+- [ ] Make a Poki zip of the newest `main` when the next submission is due (none exists for v1.9.3 to v1.11.0).
+- [ ] Play-test on a real phone, cold, with two or three people; note where they stop.
 - [ ] Panic mode still uses the live flip mechanic. Decide whether it stays as a separate mode.
 - [ ] The Poki thumbnail shows the old design.
 - [ ] Safe area: confirm on the owner's phone (and on Poki) that the camera no longer overlaps the top bar.
 - [ ] Faint vertical line near the left edge of each level-select card (cause not found).
 - [ ] On very tall phones there is a band of plain wall between the top bar and the play field.
-- [ ] Remove the engine parts no level uses any more: the slippery toy material, dragging, the selection toolbar in `GameScene.ts`, the win and fail dialogs in `ResultScene.ts`.
+- [ ] Remove the engine parts no level uses any more: the slippery toy material, dragging, the selection toolbar in `GameScene.ts`, the win and fail dialogs in `ResultScene.ts`, the spawner's hold-first-toy feature.
 - [ ] Run the Poki build in Poki's inspector before submitting.
 - [ ] The Phaser bundle is about 1.3 MB (350 kB gzipped); a custom Phaser build would shrink it.

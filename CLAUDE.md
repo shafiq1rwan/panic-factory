@@ -1,6 +1,6 @@
 # Tiny Factory Panic — notes for Claude
 
-A set-up-then-run sorting puzzle: before pressing RUN the player taps machines to set them up (a belt flips, a bouncer turns, a timer moves on a step), then the toys drop and every one must land in the bin of its own colour. Panic mode is the exception: there the player flips two belts live with two buttons. TypeScript, Phaser 3, Matter.js (the build bundled inside Phaser), Vite. Portrait, 720 x 1280 logical screen. Read `README.md` for the full picture and `PROGRESS.md` for what is open.
+A set-up-then-run sorting puzzle: before pressing RUN the player taps machines to set them up (a belt flips, a bouncer turns, a timer moves on a step), then the toys drop and every one must land in the bin of its own colour. Panic mode is the exception: there the player flips two belts live with two buttons. TypeScript, Phaser 3, Matter.js (the build bundled inside Phaser), Vite. Portrait, 720 x 1280 logical screen. Read `README.md` for the full picture and `PROGRESS.md` for what is open (start with its "Picking this up on another machine" section). The Poki player fit test and how to read its event CSV are in `docs/FIT_TEST.md`.
 
 ## Commands
 
@@ -57,5 +57,6 @@ After any change to physics, machines, levels or rules, run `npm run solve` and 
 ## Working agreements with the owner
 
 - Commit only when asked. Commit on a new branch, then fast-forward `main`. Push only when asked.
+- Once the Poki player fit test is passed, the owner resets the version to v1.0.0 (details in `PROGRESS.md`). Do not reset it before.
 - GitHub Pages deploys from `main` through `.github/workflows/deploy.yml`.
 - The owner tests on a real phone through the Pages link, so tell them plainly when something is committed but not yet pushed.

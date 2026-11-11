@@ -57,7 +57,7 @@ Audio is muted and keyboard input is ignored for the length of a commercial brea
 - [ ] Load that build in Poki's inspector (https://inspector.poki.dev) and confirm the SDK events appear in the order in the table above.
 - [ ] Play the whole game on a real phone held upright. This has only been done in a desktop browser's phone emulation so far.
 - [ ] Listen to the sound and music. Nobody has yet.
-- [ ] Check play time. One winning run of each of the 30 levels is 218 s of toys moving; real play time depends on thinking and retries and has not been measured. The owner's earlier submission needed roughly 9 minutes of average play to pass Poki's fit test; that figure is from experience, not from Poki's documentation, and average play time across real players is not known for this game.
+- [ ] Check play time. The v1.9.2 fit test reported 2 min 16 s average after 208 players (see `docs/FIT_TEST.md`). One winning run of each of the 40 levels on `main` is 291 s of toys moving; real play time depends on thinking and retries and has not been measured. The owner's earlier submission needed roughly 9 minutes of average play to pass Poki's fit test; that figure is from experience, not from Poki's documentation, and average play time across real players is not known for this game.
 - [ ] Re-read Poki's current requirements for game size, thumbnail and mobile support. They were not all checked while building this.
 
 ## Known gaps to mention or fix first

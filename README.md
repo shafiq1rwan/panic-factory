@@ -90,6 +90,7 @@ scripts/
 .github/workflows/deploy.yml       Tests, builds and publishes to GitHub Pages on every push to main
 output/poki/                       Portal thumbnail and the prompt it was generated from
 docs/POKI_SUBMISSION.md            Listing copy and pre-submission checklist
+docs/FIT_TEST.md                   Poki player fit test: results so far, events, how to read the CSV
 ```
 
 Two design decisions shape everything else:
@@ -152,4 +153,4 @@ Not tested, so treat as unverified:
 - Audio was not listened to by a person; the headless runs only confirm it produces no errors.
 - The Poki build (see above).
 
-See `PROGRESS.md` for current status and open items, `CHANGELOG.md` for how the design got here, and `docs/POKI_SUBMISSION.md` for the portal listing and checklist.
+See `PROGRESS.md` for current status and open items, `CHANGELOG.md` for how the design got here, `docs/POKI_SUBMISSION.md` for the portal listing and checklist, and `docs/FIT_TEST.md` for the fit test in progress.
