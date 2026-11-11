@@ -9,6 +9,7 @@ import { audio } from '../systems/AudioManager';
 import { ParticleManager } from '../systems/ParticleManager';
 import { save } from '../systems/SaveManager';
 import { BumperView, createMachineView, DEPTH, type MachineView, SpawnerView } from './MachineViews';
+import { layoutQueues } from './queueLayout';
 import { ObjectView } from './ObjectView';
 import { lighten, roundRect, shadowOffset, type G } from './VectorFactory';
 
@@ -50,6 +51,9 @@ export class WorldView {
     this.drawWalls();
     for (const m of world.machines) this.machineViews.set(m, createMachineView(scene, world, m));
     for (const s of world.spawners) this.spawnerViews.push(new SpawnerView(scene, world, s, opts.queues ?? true, opts.pipeTop, opts.pipe));
+    // preview bubbles: pick sides for all pipes together so they never overlap a pipe or each other
+    const slots = layoutQueues(world.spawners.map((s) => ({ x: s.def.x, toys: s.def.sequence.length })), world.width);
+    this.spawnerViews.forEach((v, i) => v.setQueueSlot(slots[i]));
     this.bind();
   }
 

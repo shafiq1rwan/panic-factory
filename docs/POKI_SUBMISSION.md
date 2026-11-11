@@ -45,7 +45,7 @@ Audio is muted and keyboard input is ignored for the length of a commercial brea
 
 ## Before submitting
 
-- [x] Build with the Poki adapter and zip it. Done for v1.9.0: `output/poki/tiny-factory-panic-poki-v1.9.0.zip` (`index.html` at the root of the zip, about 350 kB). It was checked to boot to the title screen and into level 1 on an emulated phone, with the Poki SDK loading.
+- [x] Build with the Poki adapter and zip it. Done for v1.9.1: `output/poki/tiny-factory-panic-poki-v1.9.1.zip` (`index.html` at the root of the zip, about 350 kB). It was checked to boot to the title screen and into level 1 on an emulated phone, with the Poki SDK loading.
 - [ ] To rebuild after a change: bump `version` in `package.json` and the label in `MenuScene.ts`, run `$env:VITE_PLATFORM = 'poki'; npm run build` (PowerShell) or `VITE_PLATFORM=poki npm run build` (bash), check it with `node scripts/boot-check.mjs`, then zip the contents of `dist/` (not the folder itself) under a new versioned name.
 - [ ] Load that build in Poki's inspector (https://inspector.poki.dev) and confirm the SDK events appear in the order in the table above.
 - [ ] Play the whole game on a real phone held upright. This has only been done in a desktop browser's phone emulation so far.

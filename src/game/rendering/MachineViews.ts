@@ -11,6 +11,7 @@ import { SpringBumper } from '../machines/SpringBumper';
 import type { FactoryWorld } from '../sim/FactoryWorld';
 import { save } from '../systems/SaveManager';
 import { toyKey } from './Textures';
+import { QUEUE, queueWidth, type QueueSlot } from './queueLayout';
 import { capsule, capsulePoints, circle, darken, lighten, roundRect, shadowOffset, star, type G } from './VectorFactory';
 
 export const DEPTH = {
@@ -457,6 +458,8 @@ export class SpawnerView {
   private peekKey = '';
   private clock = 0;
   private queue: Phaser.GameObjects.Container;
+  /** which side of the pipe the preview bubble sits on, and its row (set by WorldView) */
+  private slot: QueueSlot | null = null;
   private squish = 0;
   private lastTick = -999;
   private lastIndex = -1;
@@ -496,18 +499,24 @@ export class SpawnerView {
     roundRect(g, x - rw / 2, bottom - 6 + k * 4, rw, rh, 9, this.colors.rim, 0);
   }
 
+  /** Place the preview bubble (chosen for all pipes together so bubbles never overlap). */
+  setQueueSlot(slot: QueueSlot): void {
+    this.slot = slot;
+    this.refreshQueue();
+  }
+
   /** Small preview of what will drop next, so players can plan. */
   private refreshQueue(): void {
     this.queue.removeAll(true);
     if (!this.showQueue) return;
-    const upcoming = this.spawner.upcoming(4) as SpawnSpec[];
+    const upcoming = this.spawner.upcoming(QUEUE.max) as SpawnSpec[];
     if (upcoming.length === 0) return;
     const { x } = this.spawner.def;
-    const side = x > this.world.width - 160 ? -1 : 1;
-    const step = 36;
-    const w = upcoming.length * step + 14;
-    const bx = x + side * (62 + w / 2);
-    const by = HUD_H + 28;
+    const side = this.slot?.side ?? (x > this.world.width - 160 ? -1 : 1);
+    const step = QUEUE.step;
+    const w = queueWidth(upcoming.length);
+    const bx = x + side * (QUEUE.offset + w / 2);
+    const by = HUD_H + 28 + (this.slot?.row ?? 0) * QUEUE.rowH;
     const bg = this.scene.add.graphics();
     roundRect(bg, -w / 2, -22, w, 44, 22, 0xffffff, 0, COLORS.outline, 0.95);
     this.queue.add(bg);

@@ -24,7 +24,7 @@ The game is a set-up-then-run puzzle in portrait: the player taps machines to se
 
 ## Verified
 
-- `npm test`: 204 tests pass.
+- `npm test`: 234 tests pass.
 - `npm run solve`: all 30 levels pass. Pressing RUN without changes fails every level; each solution wins and survives random spawn offsets; in the harder levels only 1 of 8, 12 or 32 setups wins; every possible run ends within 11 s.
 - `npm run smoke`: 44 checks pass against the production build in headless Edge, including a level set up and won with the keyboard, one with the mouse, one with touch taps at phone size, and the safe-area insets.
 - One winning run of every level adds up to 218 s of toys moving. Real play time depends on thinking and failed runs, which no one has measured.

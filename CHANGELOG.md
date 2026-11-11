@@ -2,6 +2,12 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## Preview and button fixes (v1.9.1)
+
+- Next-toy previews are placed for all pipes together, so they never cover another pipe or each other. In Crossroads (19) and Junction (27) the two previews overlapped between the pipes. Tested for every level.
+- The glossy strip along the top of round buttons started inside the button's straight edge only, so on very round buttons (the Panic button most visibly) it poked out past the corners as pale "ears". It now starts where the corner has curved in.
+- Poki build zipped: `output/poki/tiny-factory-panic-poki-v1.9.1.zip`.
+
 ## Three worlds, 30 levels (v1.9.0)
 
 After the owner played v1.8.0: players cannot know a heavy toy is coming unless the game says so, and the game should grow to about 30 levels with a new look every 10.

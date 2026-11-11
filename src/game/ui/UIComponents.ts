@@ -127,8 +127,16 @@ export class Button extends Phaser.GameObjects.Container {
     }
     roundRect(this.lip, -w / 2, -h / 2 + 5, w, h, r, darken(c, 0.38), 3);
     roundRect(this.bg, -w / 2, -h / 2, w, h, r, c, 3);
-    this.bg.fillStyle(0xffffff, 0.35);
-    this.bg.fillRoundedRect(-w / 2 + 7, -h / 2 + 5, w - 14, Math.min(8, h * 0.18), Math.min(4, h * 0.09));
+    // top gloss strip: start it where the rounded corner has curved in at that height, plus a
+    // margin, so it never pokes out past the corners on very round buttons
+    const top = 5;
+    const sh = Math.min(8, h * 0.18);
+    const curve = top < r ? r - Math.sqrt(r * r - (r - top) * (r - top)) : 0;
+    const inset = Math.max(7, Math.ceil(curve) + 6);
+    if (w - inset * 2 > sh) {
+      this.bg.fillStyle(0xffffff, 0.35);
+      this.bg.fillRoundedRect(-w / 2 + inset, -h / 2 + top, w - inset * 2, sh, Math.min(4, sh / 2));
+    }
   }
 
   setContent(label?: string, icon?: IconName): this {

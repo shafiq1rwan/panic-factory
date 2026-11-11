@@ -10,6 +10,7 @@ import { simulateLevel } from '../game/sim/simulate';
 import { PanicDirector } from '../game/systems/PanicDirector';
 import { computeStars, PanicScore, starsForRuns } from '../game/systems/ScoreManager';
 import { allConfigs, planOptions, robust, solvePlan } from '../game/sim/planSolver';
+import { layoutQueues, QUEUE, queueSpan } from '../game/rendering/queueLayout';
 
 describe('level data', () => {
   it('has 30 levels (three worlds of ten) with unique ids', () => {
@@ -87,6 +88,24 @@ describe('level data', () => {
           expect(s.x).toBeGreaterThan(40);
           expect(s.x).toBeLessThan(GAME_W - 40);
         }
+      });
+
+      it('shows every pipe\'s next toys without overlapping another pipe or preview', () => {
+        const pipes = level.spawners.map((s) => ({ x: s.x, toys: s.sequence.length }));
+        const slots = layoutQueues(pipes, level.width);
+        const boxes = pipes.map((p, k) => ({ span: queueSpan(p.x, p.toys, slots[k].side), row: slots[k].row }));
+        boxes.forEach((a, k) => {
+          expect(a.span[0]).toBeGreaterThanOrEqual(QUEUE.margin);
+          expect(a.span[1]).toBeLessThanOrEqual(level.width - QUEUE.margin);
+          pipes.forEach((p, j) => {
+            if (j === k || a.row > 0) return;
+            expect(a.span[1] <= p.x - QUEUE.pipeHalf || a.span[0] >= p.x + QUEUE.pipeHalf, 'covers a pipe').toBe(true);
+          });
+          boxes.forEach((b, j) => {
+            if (j <= k || a.row !== b.row) return;
+            expect(a.span[1] <= b.span[0] || b.span[1] <= a.span[0], 'previews overlap').toBe(true);
+          });
+        });
       });
 
       it('is not won by pressing RUN without setting anything up', () => {
