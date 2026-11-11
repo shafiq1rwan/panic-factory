@@ -9,6 +9,7 @@ import { Funnel, FUNNEL_WALL } from '../machines/Funnel';
 import { Piston, PISTON_HOUSING_H } from '../machines/Piston';
 import { SpringBumper } from '../machines/SpringBumper';
 import type { FactoryWorld } from '../sim/FactoryWorld';
+import { save } from '../systems/SaveManager';
 import { toyKey } from './Textures';
 import { capsule, capsulePoints, circle, darken, lighten, roundRect, shadowOffset, star, type G } from './VectorFactory';
 
@@ -438,8 +439,15 @@ export class BinView extends MachineView<DeliveryBin> {
 // Spawner (not a machine in the sim, but drawn like one)
 // ---------------------------------------------------------------------------------
 
+/** How long before a drop the next toy starts to slide out of the pipe (0.6 s). */
+const PEEK_TICKS = 36;
+
 export class SpawnerView {
   private g: G;
+  /** the next toy, peeking out of the pipe mouth just before it drops */
+  private peek: Phaser.GameObjects.Image;
+  private peekKey = '';
+  private clock = 0;
   private queue: Phaser.GameObjects.Container;
   private squish = 0;
   private lastTick = -999;
@@ -453,6 +461,8 @@ export class SpawnerView {
     private pipeTop = -1400,
   ) {
     this.g = scene.add.graphics().setDepth(DEPTH.machineFront);
+    // just behind the pipe, so it emerges from inside it
+    this.peek = scene.add.image(0, 0, '__DEFAULT').setDepth(DEPTH.machineFront - 0.5).setVisible(false);
     this.queue = scene.add.container(0, 0).setDepth(DEPTH.machineFront + 1);
     this.redraw();
     this.refreshQueue();
@@ -517,9 +527,42 @@ export class SpawnerView {
       this.squish = Math.max(0, this.squish - dt / 220);
       this.redraw();
     }
+    this.updatePeek(dt);
+  }
+
+  private updatePeek(dt: number): void {
+    this.clock += dt;
+    const s = this.spawner;
+    const next = s.upcoming(1)[0] as SpawnSpec | undefined;
+    const t = s.ticksToNext();
+    const p = !next || t === Infinity ? 0 : s.holding ? 1 : Phaser.Math.Clamp(1 - t / PEEK_TICKS, 0, 1);
+    if (p <= 0 || !next) {
+      this.peek.setVisible(false);
+      return;
+    }
+    const { type, material } = parseSpawn(next);
+    const key = toyKey(type, material);
+    if (key !== this.peekKey) {
+      this.peekKey = key;
+      this.peek.setTexture(key).setScale(1 / TEX_SCALE);
+    }
+    const { x, y } = this.spawner.def;
+    const bottom = y - 38;
+    const calm = save.settings.reducedMotion;
+    // held toys wiggle to say "I'm waiting for you"; arriving toys just slide out
+    const wig = calm ? 0 : s.holding ? 1 : 0.35 * p;
+    this.peek
+      .setVisible(true)
+      .setPosition(x + Math.sin(this.clock / 140) * 2.5 * wig, bottom - 34 + p * 50)
+      .setAngle(Math.sin(this.clock / 90) * 9 * wig);
+    if (s.holding && !calm) {
+      this.squish = Math.max(this.squish, 0.18 + 0.12 * Math.sin(this.clock / 90));
+      this.redraw();
+    }
   }
 
   destroy(): void {
+    this.peek.destroy();
     this.g.destroy();
     this.queue.destroy();
   }

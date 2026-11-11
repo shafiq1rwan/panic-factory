@@ -11,6 +11,7 @@ import type { PlatformAdapter } from './PlatformAdapter';
  *   PokiSDK.commercialBreak(onStart?): Promise
  *   PokiSDK.rewardedBreak(onStart?): Promise<boolean>
  *   PokiSDK.movePill(topPercent, topPx)   mobile only; default (0, 24); pill is 46 x 62 px
+ *   PokiSDK.measure(category, what, action)   https://developers.poki.com/guide/game-events
  *
  * This adapter has NOT been verified inside Poki's inspector / QA tooling.
  * Build with `VITE_PLATFORM=poki` to enable it, then test at
@@ -26,6 +27,7 @@ interface PokiSDKGlobal {
   commercialBreak(onStart?: () => void): Promise<void>;
   rewardedBreak(onStart?: () => void): Promise<boolean>;
   movePill?(topPercent: number, topPx: number): void;
+  measure?(category: string, what: string, action: string): void;
 }
 
 export class PokiAdapter implements PlatformAdapter {
@@ -71,6 +73,15 @@ export class PokiAdapter implements PlatformAdapter {
       this.sdk.movePill(0, this.pillTop);
     } catch {
       /* cosmetic only */
+    }
+  }
+
+  measure(category: string, what: string, action: string): void {
+    if (typeof this.sdk?.measure !== 'function') return;
+    try {
+      this.sdk.measure(category, what, action);
+    } catch {
+      /* analytics only */
     }
   }
 

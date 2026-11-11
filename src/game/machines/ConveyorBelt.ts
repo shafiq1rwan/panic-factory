@@ -60,6 +60,7 @@ export class ConveyorBelt extends BaseMachine<ConveyorDef> {
 
   flip(): void {
     this.dir = this.dir === 1 ? -1 : 1;
+    this.world.flipCount++;
     this.world.events.emit('conveyorFlip', this);
     this.world.events.emit('machineChanged', this);
   }

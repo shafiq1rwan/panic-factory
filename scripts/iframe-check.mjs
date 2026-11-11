@@ -57,6 +57,12 @@ try {
     let seen = null;
     const orig = sdk.movePill.bind(sdk);
     sdk.movePill = (a, b) => { seen = [a, b]; return orig(a, b); };
+    // also record analytics events from here on
+    window.__measured = [];
+    if (typeof sdk.measure === 'function') {
+      const m = sdk.measure.bind(sdk);
+      sdk.measure = (...args) => { window.__measured.push(args.join(' ')); return m(...args); };
+    }
     for (let i = 0; i < 30 && !seen; i++) {
       window.dispatchEvent(new Event('resize'));
       await new Promise((r) => setTimeout(r, 500));
@@ -75,6 +81,7 @@ try {
     await page.waitForTimeout(2500);
     await page.screenshot({ path: `${out}/iframe-${name}.png` });
   }
+  console.log('measure events:', JSON.stringify(await f.evaluate(() => window.__measured ?? null)));
   ok = info.framed && info.safeTopCss > 0;
 } finally {
   await browser?.close();

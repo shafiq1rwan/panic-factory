@@ -79,6 +79,7 @@ export class PanicScene extends Phaser.Scene {
     this.world.start();
     audio.whirr();
     platform.gameplayStart();
+    platform.measure('panic', 'endless', 'start');
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.off('pointerdown', this.onDown, this);
       this.input.keyboard?.off('keydown', this.onKey, this);
@@ -139,6 +140,9 @@ export class PanicScene extends Phaser.Scene {
 
   private gameOver(): void {
     this.ended = true;
+    // an endless run always ends in a game over: 'complete' means it ended, the score is a separate event
+    platform.measure('panic', 'endless', 'complete');
+    platform.measure('panic-score', String(Math.floor(this.director.score.score / 100) * 100), 'reached');
     platform.gameplayStop();
     audio.fail();
     const score = this.director.score.score;

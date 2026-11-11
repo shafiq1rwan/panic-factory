@@ -19,6 +19,8 @@ export const platform = {
   },
   init: (): Promise<void> => adapter.init(),
   placeOverlayButton: (topPx: number): void => adapter.placeOverlayButton(topPx),
+  /** Analytics funnel event, e.g. ('level', '3', 'start'); see PlatformAdapter.measure. */
+  measure: (category: string, what: string, action: string): void => adapter.measure(category, what, action),
   loadingFinished: (): void => adapter.loadingFinished(),
   gameplayStart(): void {
     if (playing) return;

@@ -22,6 +22,9 @@ export class StandaloneAdapter implements PlatformAdapter {
     this.log('commercialBreak (skipped)');
   }
   placeOverlayButton(): void {}
+  measure(category: string, what: string, action: string): void {
+    this.log(`measure ${category} ${what} ${action}`);
+  }
   async rewardedBreak(): Promise<boolean> {
     this.log('rewardedBreak (unavailable)');
     return false;

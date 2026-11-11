@@ -204,7 +204,9 @@ export const LEVELS: LevelDef[] = [
     name: 'First Flip',
     hint: 'Press the button to flip the belt',
     layout: layoutSprings(1),
-    spawners: [spawner('s1', 360, ['blue', 'blue', 'blue'], 3200, 3400)],
+    // the first toy shows up quickly and waits at the pipe until the player presses the button
+    // (or 7 s pass, so doing nothing still fails), then the rest follow at the usual pace
+    spawners: [{ ...spawner('s1', 360, ['blue', 'blue', 'blue'], 3200, 1500), holdFirstForFlip: 7000 }],
     tutorial: [{ machine: 'belt', op: 'flip', text: 'Press the button to flip the belt!' }],
   }),
   sortLevel({

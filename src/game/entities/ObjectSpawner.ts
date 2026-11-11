@@ -9,6 +9,10 @@ export class ObjectSpawner {
   private nextTick = 0;
   /** tick of the most recent spawn, for the view's squish animation */
   lastSpawnTick = -999;
+  /** True while the first object is held at the pipe mouth waiting for the first flip. */
+  holding = false;
+  private holdStart = -1;
+  private releaseTick = -1;
 
   constructor(
     private world: FactoryWorld,
@@ -28,6 +32,15 @@ export class ObjectSpawner {
     this.active = false;
     this.index = 0;
     this.lastSpawnTick = -999;
+    this.holding = false;
+    this.holdStart = -1;
+    this.releaseTick = -1;
+  }
+
+  /** Ticks until the next object is due (0 while holding), or Infinity when idle or finished. */
+  ticksToNext(): number {
+    if (!this.active || this.done) return Infinity;
+    return Math.max(0, this.nextTick - this.world.tick);
   }
 
   get done(): boolean {
@@ -60,6 +73,15 @@ export class ObjectSpawner {
     if (!this.active || this.done) return;
     const world = this.world;
     if (world.tick < this.nextTick) return;
+
+    if (this.index === 0 && this.def.holdFirstForFlip !== undefined) {
+      if (this.holdStart < 0) this.holdStart = world.tick;
+      const limit = this.holdStart + msToTicks(this.def.holdFirstForFlip);
+      // a flip while the toy is waiting releases it a beat later, so the player sees the belt turn first
+      if (world.flipCount > 0 && this.releaseTick < 0) this.releaseTick = Math.min(limit, world.tick + (world.tick > this.holdStart ? 18 : 0));
+      this.holding = world.tick < (this.releaseTick >= 0 ? this.releaseTick : limit);
+      if (this.holding) return;
+    }
 
     // Never spawn into another object.
     for (const o of world.objects) {

@@ -24,4 +24,9 @@ export interface PlatformAdapter {
    * `topPx` CSS px from the top of the game area. No-op where there is none.
    */
   placeOverlayButton(topPx: number): void;
+  /**
+   * Analytics event for the portal's dashboard, e.g. ('level', '3', 'start'). For one attempt
+   * send either 'complete' or 'fail', never both. No '/' or '^' in any argument.
+   */
+  measure(category: string, what: string, action: string): void;
 }

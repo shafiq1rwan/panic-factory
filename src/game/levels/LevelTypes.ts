@@ -24,6 +24,11 @@ export interface SpawnerDef {
   vy?: number;
   /** Restart the sequence forever (menu backdrop). */
   loop?: boolean;
+  /**
+   * Tutorial: when the first object is due, keep it peeking out of the pipe until the player
+   * flips a belt (then it drops a moment later), or until this many ms have passed.
+   */
+  holdFirstForFlip?: number;
 }
 
 export interface WallDef {

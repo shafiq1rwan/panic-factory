@@ -2,6 +2,15 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## Toys announce themselves (v1.6.5)
+
+Changes after playtesters were left waiting and wondering when the first toy suddenly dropped in level 1.
+
+- In every level the next toy slides out of the pipe mouth about 0.6 s before it drops, so drops never come out of nowhere.
+- Level 1: the first toy appears after 1.5 s instead of 3.4 s and waits at the pipe, wiggling, until the player presses the button (or 7 s pass, so doing nothing still fails). It drops a moment after the press, so the player sees the belt turn first.
+- Poki analytics: level start / complete / fail and Panic start / end are sent with `PokiSDK.measure`, so test results show where players stop.
+- Poki build zipped: `output/poki/tiny-factory-panic-poki-v1.6.5.zip`.
+
 ## Clearer belt buttons (v1.6.4)
 
 Changes after playtesters did not realise the buttons flip the belts, and some tried to drag the springs.

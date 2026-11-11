@@ -60,6 +60,8 @@ export class FactoryWorld {
   wallBodies: Body[] = [];
   /** Multiplier applied to conveyor speeds (Panic mode "turbo"). */
   machineSpeedScale = 1;
+  /** Belt flips since the last reset (a spawner can hold its first toy until the first one). */
+  flipCount = 0;
   lostCount = 0;
 
   private onCollisionStart: (e: { pairs: Pair[] }) => void;
@@ -133,6 +135,7 @@ export class FactoryWorld {
     for (const s of this.spawners) s.reset();
     this.tick = 0;
     this.lostCount = 0;
+    this.flipCount = 0;
     this.machineSpeedScale = 1;
     this.engine.gravity.y = 1;
     this.events.emit('cleared');

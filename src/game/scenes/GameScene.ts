@@ -180,6 +180,7 @@ export class GameScene extends Phaser.Scene {
     this.state = 'running';
     this.acc = 0;
     this.world.start();
+    platform.measure('level', String(this.levelIndex + 1), 'start');
     audio.whirr();
   }
 
@@ -231,6 +232,7 @@ export class GameScene extends Phaser.Scene {
 
   private finish(result: 'won' | 'failed'): void {
     this.state = result;
+    platform.measure('level', String(this.levelIndex + 1), result === 'won' ? 'complete' : 'fail');
     this.speed = 1;
     const token = this.runToken;
     platform.gameplayStop();
