@@ -2,6 +2,19 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## New shapes and a room per chapter (v1.8.0)
+
+After the owner played v1.7.0 and asked for new levels with a different background and different shapes.
+
+- Chapter 4, "New Shapes", four levels that bring in new toys one at a time:
+  - **Hex Nuts:** the green hexagon, sorted with two belts into four bins.
+  - **Heavy Load:** heavy toys (darker, a little bigger, with rivets). A bouncer throws them only about half as far, so one bouncer angle sends pink to the right bin and heavy blue to the middle.
+  - **Boing:** bouncy toys (white ring). They fly further than plain ones off the same bouncer.
+  - **Night Shift:** timer and bouncer with green hexagons and heavy blues across four bins; 1 of 12 setups wins.
+- Each chapter is played in its own room: mint wall sheets (Belts), warm wooden planks (Bouncers), cool blue tiles (Timers), lavender bricks (New Shapes). The title screen, level select and Panic mode keep the mint workshop.
+- The level-select chapter label for New Shapes is lavender to match its room.
+- All 16 levels pass the solver; every run still ends within 11 s.
+
 ## Set up, then run (v1.7.0)
 
 The live one-button version kept players under a minute in playtests and the first fit test result was weak, so the owner asked to go back to setting up the factory before pressing RUN, as in the first design, without the problems that sank it then (too many controls, levels too hard).

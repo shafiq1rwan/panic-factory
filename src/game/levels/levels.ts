@@ -68,6 +68,11 @@ const twoBins = (left: ObjType, right: ObjType): MachineDef[] => [bin('binL', 18
 /** Three bins covering the whole floor. */
 const threeBins = (a: ObjType, b: ObjType, c: ObjType): MachineDef[] => [bin('binL', 121, a, 232), bin('binM', 360, b, 232), bin('binR', 599, c, 232)];
 
+/** Four bins covering the whole floor. */
+const fourBins = (a: ObjType, b: ObjType, c: ObjType, d: ObjType): MachineDef[] => [
+  bin('bin1', 91, a, 172), bin('bin2', 270, b, 172), bin('bin3', 450, c, 172), bin('bin4', 629, d, 172),
+];
+
 const rep = (t: SpawnSpec, n: number): SpawnSpec[] => Array.from({ length: n }, () => t);
 const alt = (a: SpawnSpec, b: SpawnSpec, n: number): SpawnSpec[] => Array.from({ length: n }, (_, i) => (i % 2 === 0 ? a : b));
 
@@ -218,5 +223,46 @@ export const LEVELS: LevelDef[] = [
     ],
     spawners: [pipe('s1', 300, alt('blue', 'pink', 4), 1500, 350)],
     solution: { ram: { phase: 0.75 }, belt: { dir: -1 }, pad: { angle: -12 } },
+  }),
+  // ---------------------------------------------------------------- New shapes
+  planLevel({
+    id: 'hex-nuts',
+    name: 'Hex Nuts',
+    hint: 'A new shape: the green hexagon',
+    machines: [
+      belt('beltL', 200, 600, 200, 1),
+      belt('beltR', 520, 600, 200, -1, { accent: BELT_B }),
+      ...fourBins('green', 'blue', 'yellow', 'pink'),
+    ],
+    spawners: [pipe('sL', 200, rep('green', 3)), pipe('sR', 520, rep('pink', 3), 1500, 1250)],
+    solution: { beltL: { dir: -1 }, beltR: { dir: 1 } },
+  }),
+  planLevel({
+    id: 'heavy-load',
+    name: 'Heavy Load',
+    hint: 'Heavy toys do not fly as far',
+    machines: [bouncer('pad', 220, 720, [0, 10, 30, -30]), ...threeBins('yellow', 'blue', 'pink')],
+    spawners: [pipe('s1', 220, alt('pink', 'blue:heavy', 4))],
+    solution: { pad: { angle: 30 } },
+  }),
+  planLevel({
+    id: 'boing',
+    name: 'Boing',
+    hint: 'Bouncy toys fly further',
+    machines: [belt('belt', 360, 450, 300, 1), bouncer('pad', 125, 740, [-20, 15, 30]), ...threeBins('blue', 'pink', 'yellow')],
+    spawners: [pipe('s1', 360, alt('pink', 'yellow:bouncy', 4))],
+    solution: { belt: { dir: -1 }, pad: { angle: 30 } },
+  }),
+  planLevel({
+    id: 'night-shift',
+    name: 'Night Shift',
+    hint: 'Kick the heavy ones, bounce the green ones',
+    machines: [
+      timer('ram', 128, 620, 0, 3000, { stroke: 180, extendTicks: 10 }),
+      bouncer('pad', 300, 840, [0, -30, 30]),
+      ...fourBins('green', 'pink', 'yellow', 'blue'),
+    ],
+    spawners: [pipe('s1', 300, alt('green', 'blue:heavy', 4), 1500, 350)],
+    solution: { ram: { phase: 0.75 }, pad: { angle: -30 } },
   }),
 ];

@@ -4,12 +4,12 @@ Where the project stands and what is still open. Update this when work is picked
 
 ## Current state
 
-The game is a set-up-then-run puzzle in portrait: the player taps machines to set them up (a belt flips, a bouncer turns, a timer moves on a step), presses RUN, and every toy has to land in the bin of its own colour. A wrong toy stops the run and hands the setup back. Panic mode keeps the earlier live play (two belts, two buttons). v1.7.0 is on `main` and GitHub Pages; the live one-button game it replaced is v1.6.5 in the history.
+The game is a set-up-then-run puzzle in portrait: the player taps machines to set them up (a belt flips, a bouncer turns, a timer moves on a step), presses RUN, and every toy has to land in the bin of its own colour. A wrong toy stops the run and hands the setup back. Panic mode keeps the earlier live play (two belts, two buttons). v1.8.0 adds a fourth chapter with new toys (green hexagon, heavy, bouncy) and gives each chapter its own background. v1.7.0 is on `main` and GitHub Pages; the live one-button game it replaced is v1.6.5 in the history.
 
 | Area | Status |
 | --- | --- |
 | Core engine (fixed-step Matter.js physics, belts, springs, bumpers, pushers, funnels, bins, chutes) | Done |
-| 12 set-up levels in 3 chapters (belts, bouncers, timers) | Done, every setup of every level tried by the solver |
+| 16 set-up levels in 4 chapters (belts, bouncers, timers, new shapes), one background per chapter | Done, every setup of every level tried by the solver |
 | Tap-to-set machines, RUN / STOP, free retries that keep the setup, stars by runs | Done |
 | Panic Factory (endless live mode with announced malfunctions) | Done |
 | Title screen, level select, pause, settings, Panic game-over screen | Done |
@@ -24,10 +24,10 @@ The game is a set-up-then-run puzzle in portrait: the player taps machines to se
 
 ## Verified
 
-- `npm test`: 113 tests pass.
-- `npm run solve`: all 12 levels pass. Pressing RUN without changes fails every level; each solution wins and survives random spawn offsets; in the harder levels only 1 of 8, 12 or 32 setups wins; every possible run ends within 11 s.
+- `npm test`: 134 tests pass.
+- `npm run solve`: all 16 levels pass. Pressing RUN without changes fails every level; each solution wins and survives random spawn offsets; in the harder levels only 1 of 8, 12 or 32 setups wins; every possible run ends within 11 s.
 - `npm run smoke`: 44 checks pass against the production build in headless Edge, including a level set up and won with the keyboard, one with the mouse, one with touch taps at phone size, and the safe-area insets.
-- One winning run of every level adds up to 86 s of toys moving. Real play time depends on thinking and failed runs, which no one has measured.
+- One winning run of every level adds up to 116 s of toys moving. Real play time depends on thinking and failed runs, which no one has measured.
 
 ## Not verified
 
@@ -39,14 +39,15 @@ The game is a set-up-then-run puzzle in portrait: the player taps machines to se
 
 ## Open items
 
-- [ ] Owner to play the 12 levels on a phone and decide whether to keep this design.
-- [ ] More levels: 12 is a prototype set. The solver makes adding levels quick (`scripts/plan-lab.ts`).
+- [x] Owner played v1.7.0 on a phone: "looks interesting", asked for new levels with a different background and shape (v1.8.0).
+- [ ] Owner to play chapter 4 and the new backgrounds on a phone.
+- [ ] More levels: 16 is still a small set. The solver makes adding levels quick (`scripts/plan-lab.ts`).
 - [ ] Play-test on a real phone, cold, with two or three people; note where they stop. The Poki build sends level start / complete / fail events, so a fit test shows where players drop.
 - [ ] Panic mode still uses the live flip mechanic. Decide whether it stays as a separate mode.
 - [ ] The Poki thumbnail shows the old design.
 - [ ] Safe area: confirm on the owner's phone (and on Poki) that the camera no longer overlaps the top bar.
 - [ ] Faint vertical line near the left edge of each level-select card (cause not found).
 - [ ] On very tall phones there is a band of plain wall between the top bar and the play field.
-- [ ] Remove the engine parts no level uses any more: special toy materials, dragging, the selection toolbar in `GameScene.ts`, the win and fail dialogs in `ResultScene.ts`.
+- [ ] Remove the engine parts no level uses any more: the slippery toy material, dragging, the selection toolbar in `GameScene.ts`, the win and fail dialogs in `ResultScene.ts`.
 - [ ] Run the Poki build in Poki's inspector before submitting.
 - [ ] The Phaser bundle is about 1.3 MB (350 kB gzipped); a custom Phaser build would shrink it.

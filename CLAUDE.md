@@ -21,7 +21,8 @@ After any change to physics, machines, levels or rules, run `npm run solve` and 
 ## Rules of the design
 
 - **Set up, then run.** The owner chose this after the live one-button version kept players under a minute. One gesture only: tap a machine wearing a badge to change it (belt: flip; bouncer: next of its listed `angles`; timer: next of its `timingSteps`). No dragging. Nothing changes while toys move. Do not add new kinds of adjustable machine without the owner asking.
-- **Teach one thing at a time.** A level that introduces a new kind of machine has nothing else to set; the tests enforce it. At most three adjustable machines per level.
+- **Teach one thing at a time.** A level that introduces a new kind of machine has nothing else to set; the tests enforce it. At most three adjustable machines per level. New toys (green hexagon, heavy, bouncy) appear only from chapter 4, one new kind per level.
+- **One room per chapter.** Chapters are four levels each; `themeForLevel` in `rendering/Background.ts` picks the wall colours and pattern. Keep wall patterns faint and large so nothing looks like a toy or a machine.
 - **Failing is cheap.** One wrong toy stops the run; the setup comes back exactly as the player left it. Stars count runs (first run 3, up to three runs 2, else 1). Keep runs short: every run, won or lost, ends within 13 s (tested).
 - **Safe area.** HUD elements pin to `safeTop()` / `safeBottom()`, never to the raw window edge.
 - **Portrait only on mobile.** Phones held sideways get a turn-upright prompt. Do not add a landscape layout.

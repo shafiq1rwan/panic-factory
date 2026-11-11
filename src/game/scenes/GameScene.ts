@@ -6,7 +6,7 @@ import { ConveyorBelt } from '../machines/ConveyorBelt';
 import { Piston } from '../machines/Piston';
 import { SpringBumper } from '../machines/SpringBumper';
 import { platform } from '../platform';
-import { drawFactoryBackground, safeTop, setupCamera } from '../rendering/Background';
+import { drawFactoryBackground, safeTop, setupCamera, themeForLevel } from '../rendering/Background';
 import { drawIcon, type IconName } from '../rendering/Icons';
 import { DEPTH } from '../rendering/MachineViews';
 import { circle } from '../rendering/VectorFactory';
@@ -99,7 +99,7 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     setupCamera(this);
-    drawFactoryBackground(this, true, true);
+    drawFactoryBackground(this, true, true, themeForLevel(this.levelIndex));
     fadeIn(this);
 
     this.world = new FactoryWorld(this.level);

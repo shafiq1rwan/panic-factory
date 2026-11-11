@@ -12,8 +12,8 @@ import { computeStars, PanicScore, starsForRuns } from '../game/systems/ScoreMan
 import { allConfigs, planOptions, robust, solvePlan } from '../game/sim/planSolver';
 
 describe('level data', () => {
-  it('has 12 levels with unique ids', () => {
-    expect(LEVELS.length).toBe(12);
+  it('has 16 levels (four chapters of four) with unique ids', () => {
+    expect(LEVELS.length).toBe(16);
     expect(new Set(LEVELS.map((l) => l.id)).size).toBe(LEVELS.length);
   });
 
@@ -30,8 +30,18 @@ describe('level data', () => {
       const adjustable = planOptions(level);
       expect(adjustable.length).toBeGreaterThanOrEqual(1);
       expect(adjustable.length).toBeLessThanOrEqual(3);
-      // plain toys only: no special materials to learn
-      for (const s of level.spawners) for (const spec of s.sequence) expect(parseSpawn(spec).material).toBe('standard');
+    }
+  });
+
+  it('introduces one new kind of toy at a time, and only in the last chapter', () => {
+    const kinds = (i: number): Set<string> => new Set(LEVELS[i].spawners.flatMap((s) => s.sequence.map((spec) => { const p = parseSpawn(spec); return p.material === 'standard' ? p.type : p.material; })));
+    const seen = new Set<string>();
+    for (let i = 0; i < LEVELS.length; i++) {
+      const fresh = [...kinds(i)].filter((k) => !seen.has(k));
+      // the first chapters stick to the three plain toys everyone meets in level 1-3
+      if (i < 12) for (const k of kinds(i)) expect(['blue', 'pink', 'yellow'], LEVELS[i].name).toContain(k);
+      else expect(fresh.length, LEVELS[i].name).toBeLessThanOrEqual(1);
+      for (const k of kinds(i)) seen.add(k);
     }
   });
 
