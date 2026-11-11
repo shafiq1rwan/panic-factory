@@ -67,6 +67,7 @@ export class GameScene extends Phaser.Scene {
   runs = 0;
   /** water worlds: the wave strip in front of the bins */
   private waves: Phaser.GameObjects.Graphics | null = null;
+  private backWaves: Phaser.GameObjects.Graphics | null = null;
   private waveColors: { top: number; deep: number; foam: number } | null = null;
   /** set-up levels: until when the machines' badges flash after a tap that missed them */
   badgeFlashUntil = 0;
@@ -106,6 +107,7 @@ export class GameScene extends Phaser.Scene {
     const theme = themeForLevel(this.levelIndex);
     drawFactoryBackground(this, true, true, theme);
     this.waves = theme.water ? this.add.graphics().setDepth(DEPTH.machineFront + 2) : null;
+    this.backWaves = theme.water ? this.add.graphics().setDepth(DEPTH.machineBack - 1) : null;
     this.waveColors = theme.water ?? null;
     fadeIn(this);
 
@@ -299,30 +301,36 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Water worlds: a moving wave strip in front of the floating bins. */
+  /**
+   * Water worlds: two rolling waves. One behind the bins (the surface they float in) and one
+   * in front of them, see-through, with a thick foam crest, moving the other way.
+   */
   private drawWaves(time: number): void {
-    const g = this.waves;
     const c = this.waveColors;
-    if (!g || !c) return;
-    g.clear();
+    if (!c || !this.waves || !this.backWaves) return;
     const x0 = GAME_W / 2 - view.w / 2 - 20;
     const x1 = GAME_W / 2 + view.w / 2 + 20;
-    const top = WATER_Y + 26;
-    g.fillStyle(c.top, 0.55);
-    g.beginPath();
-    g.moveTo(x0, PLAY_H + 40);
-    for (let x = x0; x <= x1; x += 12) g.lineTo(x, top + Math.sin(x / 38 + time / 520) * 5);
-    g.lineTo(x1, PLAY_H + 40);
-    g.closePath();
-    g.fillPath();
-    g.lineStyle(3, c.foam, 0.85);
-    g.beginPath();
-    for (let x = x0; x <= x1; x += 12) {
-      const y = top + Math.sin(x / 38 + time / 520) * 5;
-      if (x === x0) g.moveTo(x, y);
-      else g.lineTo(x, y);
-    }
-    g.strokePath();
+    const wave = (g: Phaser.GameObjects.Graphics, top: number, amp: number, len: number, speed: number, fill: number, alpha: number, foam: number): void => {
+      const yAt = (x: number): number => top + Math.sin(x / len + time * speed) * amp + Math.sin(x / (len * 0.47) - time * speed * 1.7) * amp * 0.35;
+      g.fillStyle(fill, alpha);
+      g.beginPath();
+      g.moveTo(x0, PLAY_H + 60);
+      for (let x = x0; x <= x1; x += 10) g.lineTo(x, yAt(x));
+      g.lineTo(x1, PLAY_H + 60);
+      g.closePath();
+      g.fillPath();
+      g.lineStyle(foam, c.foam, 0.95);
+      g.beginPath();
+      for (let x = x0; x <= x1; x += 10) {
+        if (x === x0) g.moveTo(x, yAt(x));
+        else g.lineTo(x, yAt(x));
+      }
+      g.strokePath();
+    };
+    this.backWaves.clear();
+    wave(this.backWaves, WATER_Y - 2, 5, 46, -0.0016, c.top, 1, 3);
+    this.waves.clear();
+    wave(this.waves, WATER_Y + 34, 6, 34, 0.0021, c.top, 0.62, 5);
   }
 
   override update(_time: number, delta: number): void {

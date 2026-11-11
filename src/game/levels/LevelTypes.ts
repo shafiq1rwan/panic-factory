@@ -105,20 +105,6 @@ export interface BinDef extends MachineCommon {
   accepts: ObjType;
   width?: number;
   height?: number;
-  /**
-   * Floating bin (world 4): once RUN is pressed it drifts side to side on the water,
-   * x = x0 + range * sin(2 pi (t / period + phase)). Set by the level, never by the player.
-   */
-  drift?: BinDrift;
-}
-
-export interface BinDrift {
-  /** px either side of the bin's x */
-  range: number;
-  /** ms for one full swing there and back */
-  period: number;
-  /** 0..1, where in the swing the bin starts */
-  phase?: number;
 }
 
 /** Fan (world 4): blows sideways across a band of the room; a tap changes its setting. */

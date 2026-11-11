@@ -51,24 +51,21 @@ describe('level data', () => {
     }
   });
 
-  it('floating bins and the fan come only in world 4, each first shown with an intro card', () => {
-    const floats = (i: number): boolean => LEVELS[i].machines.some((m) => m.kind === 'bin' && !!m.drift);
+  it('the water (level 31) and the fan come only in world 4, each first shown with an intro card', () => {
     const fans = (i: number): boolean => LEVELS[i].machines.some((m) => m.kind === 'fan');
-    for (let i = 0; i < 30; i++) expect(floats(i) || fans(i), LEVELS[i].name).toBe(false);
-    const firstFloat = LEVELS.findIndex((_, i) => floats(i));
+    for (let i = 0; i < 30; i++) expect(fans(i), LEVELS[i].name).toBe(false);
     const firstFan = LEVELS.findIndex((_, i) => fans(i));
-    expect(LEVELS[firstFloat].intro?.picture).toBe('float');
+    expect(LEVELS[30].intro?.picture).toBe('float');
     expect(LEVELS[firstFan].intro?.picture).toBe('fan');
-    for (const [i, l] of LEVELS.entries()) if (l.intro) expect([firstFloat, firstFan], l.name).toContain(i);
+    for (const [i, l] of LEVELS.entries()) if (l.intro) expect([30, firstFan], l.name).toContain(i);
   });
 
-  it('bins never overlap or leave the floor, wherever floating bins drift', () => {
+  it('bins never overlap or leave the floor', () => {
     for (const level of LEVELS) {
       const spans = level.machines.flatMap((m) => {
         if (m.kind !== 'bin') return [];
-        const r = m.drift?.range ?? 0;
         const hw = (m.width ?? 196) / 2;
-        return [[m.x - r - hw, m.x + r + hw]];
+        return [[m.x - hw, m.x + hw]];
       });
       for (const [a, b] of spans) {
         expect(a, level.name).toBeGreaterThanOrEqual(0);

@@ -4,12 +4,12 @@ Where the project stands and what is still open. Update this when work is picked
 
 ## Current state
 
-The game is a set-up-then-run puzzle in portrait: the player taps machines to set them up (a belt flips, a bouncer turns, a timer moves on a step), presses RUN, and every toy has to land in the bin of its own colour. A wrong toy stops the run and hands the setup back. Panic mode keeps the earlier live play (two belts, two buttons). v1.10.0 adds world 4 (Harbour, levels 31-40) with floating bins that drift once RUN is pressed and a new machine, the fan. v1.9.0 has 30 levels in three worlds of ten, each with its own wall, pipe colour and new toys, and a NEW TOY card wherever a toy first appears. v1.7.0 is on `main` and GitHub Pages; the live one-button game it replaced is v1.6.5 in the history.
+The game is a set-up-then-run puzzle in portrait: the player taps machines to set them up (a belt flips, a bouncer turns, a timer moves on a step), presses RUN, and every toy has to land in the bin of its own colour. A wrong toy stops the run and hands the setup back. Panic mode keeps the earlier live play (two belts, two buttons). v1.11.0: world 4 (Harbour, levels 31-40) is on water, with bins floating in place, splashing misses and a new machine, the fan. v1.9.0 has 30 levels in three worlds of ten, each with its own wall, pipe colour and new toys, and a NEW TOY card wherever a toy first appears. v1.7.0 is on `main` and GitHub Pages; the live one-button game it replaced is v1.6.5 in the history.
 
 | Area | Status |
 | --- | --- |
 | Core engine (fixed-step Matter.js physics, belts, springs, bumpers, pushers, funnels, bins, chutes) | Done |
-| 40 set-up levels in 4 worlds of ten (Workshop, Toy Room, Night Shift, Harbour), each with its own wall, pipe colour and toys; world 4 adds floating bins and the fan | Done, every setup of every level tried by the solver |
+| 40 set-up levels in 4 worlds of ten (Workshop, Toy Room, Night Shift, Harbour), each with its own wall, pipe colour and toys; world 4 is on water (floating bins, splashing misses) and adds the fan | Done, every setup of every level tried by the solver |
 | Tap-to-set machines, RUN / STOP, free retries that keep the setup, stars by runs | Done |
 | Panic Factory (endless live mode with announced malfunctions) | Done |
 | Title screen, level select, pause, settings, Panic game-over screen | Done |
@@ -27,7 +27,7 @@ The game is a set-up-then-run puzzle in portrait: the player taps machines to se
 - `npm test`: 297 tests pass.
 - `npm run solve`: all 40 levels pass. Pressing RUN without changes fails every level; each solution wins and survives random spawn offsets; in the harder levels only 1 of 8, 12 or 32 setups wins; every possible run ends within 11 s.
 - `npm run smoke`: 44 checks pass against the production build in headless Edge, including a level set up and won with the keyboard, one with the mouse, one with touch taps at phone size, and the safe-area insets.
-- One winning run of every level adds up to 282 s of toys moving. Real play time depends on thinking and failed runs, which no one has measured.
+- One winning run of every level adds up to 291 s of toys moving. Real play time depends on thinking and failed runs, which no one has measured.
 
 ## Not verified
 

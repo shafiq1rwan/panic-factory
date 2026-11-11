@@ -8,7 +8,8 @@ import type { FactoryWorld } from '../sim/FactoryWorld';
 import { audio } from '../systems/AudioManager';
 import { ParticleManager } from '../systems/ParticleManager';
 import { save } from '../systems/SaveManager';
-import { BumperView, createMachineView, DEPTH, type MachineView, SpawnerView } from './MachineViews';
+import { BinView, BumperView, createMachineView, DEPTH, type MachineView, SpawnerView } from './MachineViews';
+import { WATER_Y } from './Background';
 import { layoutQueues } from './queueLayout';
 import { ObjectView } from './ObjectView';
 import { lighten, roundRect, shadowOffset, type G } from './VectorFactory';
@@ -53,7 +54,11 @@ export class WorldView {
     this.water = opts.water ?? false;
     this.particles = new ParticleManager(scene, DEPTH.fx);
     this.drawWalls();
-    for (const m of world.machines) this.machineViews.set(m, createMachineView(scene, world, m));
+    for (const m of world.machines) {
+      const v = createMachineView(scene, world, m);
+      if (this.water && v instanceof BinView) v.floating = true;
+      this.machineViews.set(m, v);
+    }
     for (const s of world.spawners) this.spawnerViews.push(new SpawnerView(scene, world, s, opts.queues ?? true, opts.pipeTop, opts.pipe));
     // preview bubbles: pick sides for all pipes together so they never overlap a pipe or each other
     const slots = layoutQueues(world.spawners.map((s) => ({ x: s.def.x, toys: s.def.sequence.length })), world.width);
@@ -159,11 +164,13 @@ export class WorldView {
       const v = this.objViews.get(obj);
       this.objViews.delete(obj);
       if (obj.missed && v && this.water) {
-        const { x, y } = obj;
+        const { x } = obj;
         v.sinkMissed(this.scene);
-        p.burst(x, y + 16, 0x58c0ef, 14);
-        p.burst(x, y + 16, 0xffffff, 6);
-        if (this.sound) this.floatText(x, y - 46, 'splash!', '#2A86C2', 20);
+        p.splash(x, WATER_Y + 4);
+        this.ripple(x, WATER_Y + 10, 0);
+        this.ripple(x, WATER_Y + 10, 180);
+        this.bubbles(x, WATER_Y + 70);
+        if (this.sound) this.floatText(x, WATER_Y - 60, 'splash!', '#2A86C2', 20);
         if (this.sound) audio.drop();
         return;
       }
@@ -205,6 +212,30 @@ export class WorldView {
   shake(intensity: number, duration: number): void {
     if (save.settings.reducedShake) return;
     this.scene.cameras.main.shake(duration, intensity, false);
+  }
+
+  /** A ring spreading on the water surface. */
+  private ripple(x: number, y: number, delay: number): void {
+    const g = this.scene.add.graphics().setDepth(DEPTH.machineFront + 3).setPosition(x, y).setAlpha(0);
+    g.lineStyle(4, 0xffffff, 0.95);
+    g.strokeEllipse(0, 0, 70, 16);
+    g.setScale(0.4, 0.6);
+    this.scene.tweens.add({ targets: g, scaleX: 2.3, scaleY: 1.3, alpha: { from: 1, to: 0 }, delay, duration: 640, ease: 'Quad.easeOut', onComplete: () => g.destroy() });
+  }
+
+  /** Bubbles rising from a toy that sank. */
+  private bubbles(x: number, y: number): void {
+    if (save.settings.reducedMotion) return;
+    for (let i = 0; i < 6; i++) {
+      const g = this.scene.add.graphics().setDepth(DEPTH.machineFront + 3);
+      const r = 3 + Math.random() * 4;
+      g.lineStyle(2, 0xffffff, 0.9);
+      g.strokeCircle(0, 0, r);
+      g.fillStyle(0xffffff, 0.25);
+      g.fillCircle(0, 0, r);
+      g.setPosition(x + (Math.random() - 0.5) * 50, y + Math.random() * 20).setAlpha(0);
+      this.scene.tweens.add({ targets: g, y: WATER_Y + 22, x: g.x + (Math.random() - 0.5) * 16, alpha: { from: 1, to: 0.2 }, delay: 250 + i * 110, duration: 700, ease: 'Sine.easeOut', onComplete: () => g.destroy() });
+    }
   }
 
   floatText(x: number, y: number, text: string, color: string, size = 22): void {

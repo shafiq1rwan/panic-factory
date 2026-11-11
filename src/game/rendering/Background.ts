@@ -125,15 +125,19 @@ function paint(g: G, withPit: boolean, arena: boolean, t: Theme): void {
     // water instead of a pit: deep blue with a lighter surface band
     const wx0 = arena ? 0 : x0;
     const wx1 = arena ? GAME_W : x1;
-    g.fillStyle(t.water.deep, 1);
-    g.fillRect(wx0, WATER_Y, wx1 - wx0, y1 - WATER_Y);
+    const bands = 5;
+    for (let i = 0; i < bands; i++) {
+      const top = WATER_Y + 18 + i * 22;
+      g.fillStyle(mix(t.water.top, t.water.deep, (i + 1) / bands), 1);
+      g.fillRect(wx0, top, wx1 - wx0, (i === bands - 1 ? y1 : top + 22) - top + 1);
+    }
     g.fillStyle(t.water.top, 1);
-    g.fillRect(wx0, WATER_Y, wx1 - wx0, 26);
-    g.lineStyle(3, t.water.foam, 0.8);
-    for (let x = Math.floor(wx0 / 48) * 48; x < wx1; x += 48) {
-      g.beginPath();
-      g.arc(x + 24, WATER_Y + 4, 24, Math.PI * 1.15, Math.PI * 1.85, false);
-      g.strokePath();
+    g.fillRect(wx0, WATER_Y, wx1 - wx0, 20);
+    // light glints on the water
+    g.fillStyle(0xffffff, 0.28);
+    for (let x = Math.floor(wx0 / 90) * 90; x < wx1; x += 90) {
+      g.fillRoundedRect(x + 12, WATER_Y + 46, 34, 5, 2.5);
+      g.fillRoundedRect(x + 56, WATER_Y + 74, 22, 4, 2);
     }
   } else if (withPit) {
     // open bottom: toys that fall here are lost

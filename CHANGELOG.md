@@ -2,6 +2,15 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## Floating in place, cartoon water (v1.11.0)
+
+The owner found the drifting bins looked weird: the bins should only float, and a toy that misses should splash and sink, with water in a bold cartoon style.
+
+- Bins no longer drift. In world 4 they float in place, bobbing and rocking a little on the waves (view only; the simulation never moves them). The dotted drift track is gone.
+- New water: a light-to-deep gradient with glints, a wave behind the bins and a see-through wave in front of them with a thick white foam crest, rolling the other way.
+- A toy that misses the bins splashes: water droplets thrown up, two ripple rings on the surface, X eyes as it sinks, and bubbles rising after it.
+- World 4 redesigned around the fan, since its puzzles had depended on the drift: Afloat (water intro), Breeze (fan intro), Weigh the Wind, Crosswind (belt + fan), Sea Breeze (bouncer + fan), Kick Wind (pusher + fan), Updraft (two belts + fan), Headwind, Tailwind, Storm (pusher + belt + fan). Every level after the fan intro needs a fan switched on to win. All 40 levels pass the solver.
+
 ## World 4: Harbour, floating bins and the fan (v1.10.0)
 
 The owner asked for a fourth world where the bins float on water, then for a new prop and mechanic because some levels felt repetitive. The owner chose drifting bins (over bins that only bob) and the fan (over a trapdoor, a geyser or a seesaw).

@@ -346,8 +346,8 @@ export class BinView extends MachineView<DeliveryBin> {
   private label: Phaser.GameObjects.Text;
   private lastTick = -999;
   private lastCount = -1;
-  /** floating bins: the dotted line of where it drifts */
-  private track: G | null = null;
+  /** set by WorldView in a water world: the bin bobs on the waves */
+  floating = false;
   private shake = { x: 0 };
   private clock = Math.random() * 3000;
 
@@ -360,23 +360,6 @@ export class BinView extends MachineView<DeliveryBin> {
       .setOrigin(0.5)
       .setDepth(DEPTH.machineFront + 3)
       .setResolution(Math.min(3, view.res * 1.5));
-    const d = machine.def.drift;
-    if (d) {
-      // the bin's whole drift range, dotted, with posts at the ends and an arrow for its first move
-      const t = (this.track = scene.add.graphics().setDepth(DEPTH.machineBack - 1));
-      const hw = machine.width / 2;
-      const x0 = machine.def.x - d.range - hw + 10;
-      const x1 = machine.def.x + d.range + hw - 10;
-      const y = machine.y + machine.height / 2 - 18;
-      t.fillStyle(0xffffff, 0.85);
-      for (let x = x0; x < x1; x += 22) t.fillRoundedRect(x, y - 3, 12, 6, 3);
-      t.fillStyle(0xffffff, 0.95);
-      for (const x of [x0, x1]) t.fillRoundedRect(x - 4, y - 22, 8, 30, 4);
-      const dir = Math.cos(2 * Math.PI * (d.phase ?? 0)) >= 0 ? 1 : -1;
-      const ax = machine.x + dir * (hw + 22);
-      t.fillStyle(0xffffff, 1);
-      t.fillTriangle(ax + dir * 14, y - 26, ax - dir * 4, y - 38, ax - dir * 4, y - 14);
-    }
     this.sync();
   }
 
@@ -387,13 +370,14 @@ export class BinView extends MachineView<DeliveryBin> {
     this.redrawFront();
   }
 
-  /** Follow the bin (floating bins drift and bob) plus any shake. */
+  /** Stay on the bin, plus any shake; a floating bin also bobs and rocks a little on the waves. */
   private place(): void {
     const m = this.machine;
-    const bob = m.def.drift ? Math.sin(this.clock / 420) * 3 : 0;
+    const bob = this.floating ? Math.sin(this.clock / 480) * 4 : 0;
+    const tilt = this.floating ? Math.sin(this.clock / 760) * 0.025 : 0;
     const x = m.x + this.shake.x;
     const y = m.y + bob;
-    for (const o of [this.g, this.front, this.flash]) o.setPosition(x, y);
+    for (const o of [this.g, this.front, this.flash]) o.setPosition(x, y).setRotation(tilt);
     this.label.setPosition(x, y + 12);
   }
 
@@ -471,7 +455,6 @@ export class BinView extends MachineView<DeliveryBin> {
     this.front.destroy();
     this.flash.destroy();
     this.label.destroy();
-    this.track?.destroy();
   }
 }
 

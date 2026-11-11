@@ -16,6 +16,7 @@ export class ParticleManager {
   private confetti: Emitter;
   private puffs: Emitter;
   private rings: Emitter;
+  private drops: Emitter;
 
   constructor(scene: Phaser.Scene, depth = 60) {
     const mk = (tex: string, cfg: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig): Emitter =>
@@ -57,6 +58,15 @@ export class ParticleManager {
       tint: 0xd9cdb8,
       maxAliveParticles: 60,
     });
+    this.drops = mk('p_dot', {
+      lifespan: { min: 480, max: 820 },
+      speed: { min: 160, max: 420 },
+      angle: { min: 238, max: 302 },
+      scale: { start: 0.85 * S * 2, end: 0.35 * S * 2 },
+      gravityY: 1100,
+      tint: [0x58c0ef, 0xffffff, 0xa8e4fb, 0x2a86c2],
+      maxAliveParticles: 120,
+    });
     this.rings = mk('p_ring', {
       lifespan: 320,
       speed: 0,
@@ -90,11 +100,16 @@ export class ParticleManager {
     this.rings.explode(1, x, y);
   }
 
+  /** Water thrown up where something fell in. */
+  splash(x: number, y: number, count = 18): void {
+    this.drops.explode(Math.max(4, Math.round(count * this.scale)), x, y);
+  }
+
   celebrate(x: number, y: number, count = 60): void {
     this.confetti.explode(Math.round(count * this.scale), x, y);
   }
 
   destroy(): void {
-    for (const e of [this.dots, this.stars, this.confetti, this.puffs, this.rings]) e.destroy();
+    for (const e of [this.dots, this.stars, this.confetti, this.puffs, this.rings, this.drops]) e.destroy();
   }
 }

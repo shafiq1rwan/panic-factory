@@ -2,7 +2,7 @@
 
 A set-up-then-run physics puzzle for the browser. **Tap the machines to set them up, then press RUN**: the toys drop, bounce and ride through the factory, and every one has to land in the bin of its own colour.
 
-- **40 levels** in 4 worlds of ten (Workshop, Toy Room, Night Shift, Harbour). Each world has its own wall, pipe colour and new toys (green hexagon and heavy toys in the Toy Room, bouncy toys and the purple pill on the Night Shift, floating bins and the fan in the Harbour); a level that brings in something new shows a NEW card before the first run; three-star ratings for solving a level in few runs. One gesture: tap a machine to change it. Nothing to drag.
+- **40 levels** in 4 worlds of ten (Workshop, Toy Room, Night Shift, Harbour). Each world has its own wall, pipe colour and new toys (green hexagon and heavy toys in the Toy Room, bouncy toys and the purple pill on the Night Shift, bins floating on water and the fan in the Harbour); a level that brings in something new shows a NEW card before the first run; three-star ratings for solving a level in few runs. One gesture: tap a machine to change it. Nothing to drag.
 - **Panic Factory**: an endless mode with malfunctions, unlocked after 5 levels.
 - Portrait layout, built for phones and playable on desktop.
 - Built with TypeScript, Phaser 3, Matter.js (the build bundled with Phaser) and Vite.
