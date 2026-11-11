@@ -119,6 +119,15 @@ export class ObjectView {
     });
   }
 
+  /** It fell in the water outside every bin: X eyes, then it sinks out of sight. */
+  sinkMissed(scene: Phaser.Scene): void {
+    this.shadow.destroy();
+    this.face.setTexture(faceKey('ouch'));
+    const c = this.container;
+    c.setDepth(DEPTH.machineFront + 1); // under the wave strip
+    scene.tweens.add({ targets: c, y: c.y + 70, angle: c.angle + 25, alpha: 0, duration: 650, ease: 'Quad.easeIn', onComplete: () => c.destroy() });
+  }
+
   /** Detach from physics and play a short exit animation. */
   finish(scene: Phaser.Scene, kind: 'correct' | 'wrong' | 'lost', tx: number, ty: number): void {
     this.shadow.destroy();

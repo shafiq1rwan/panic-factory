@@ -1,4 +1,4 @@
-import type { ObjType } from '../config';
+import { msToTicks, type ObjType } from '../config';
 import type { FactoryObject } from '../entities/FactoryObject';
 import type { BinDef } from '../levels/LevelTypes';
 import { FILTER } from '../physics/CollisionCategories';
@@ -52,6 +52,30 @@ export class DeliveryBin extends BaseMachine<BinDef> {
     return { hw: this.width / 2, hh: this.height / 2 };
   }
 
+  /** Where a floating bin is at a given tick of the run (its own x if it does not float). */
+  driftX(tick: number): number {
+    const d = this.def.drift;
+    if (!d) return this.def.x;
+    return this.def.x + d.range * Math.sin(2 * Math.PI * (tick / msToTicks(d.period) + (d.phase ?? 0)));
+  }
+
+  /** Slide the whole bin (walls and sensor) sideways. */
+  private slideTo(x: number): void {
+    const dx = x - this.x;
+    if (dx === 0) return;
+    for (const b of this.bodies) M.Body.setPosition(b, { x: b.position.x + dx, y: b.position.y });
+    this.x = x;
+  }
+
+  override create(): void {
+    super.create();
+    this.slideTo(this.driftX(0));
+  }
+
+  override update(tick: number): void {
+    if (this.def.drift) this.slideTo(this.driftX(tick));
+  }
+
   override onContact(obj: FactoryObject, role: string): void {
     if (role !== 'sensor' || obj.state !== 'active') return;
     const ok = obj.type === this.accepts;
@@ -64,6 +88,7 @@ export class DeliveryBin extends BaseMachine<BinDef> {
 
   override reset(): void {
     super.reset();
+    this.slideTo(this.driftX(0));
     this.correct = 0;
     this.wrong = 0;
     this.lastTick = -999;

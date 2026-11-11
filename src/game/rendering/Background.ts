@@ -16,9 +16,11 @@ export interface Theme {
   seam: number;
   frame: number;
   floor: number;
-  pattern: 'sheets' | 'planks' | 'bricks';
+  pattern: 'sheets' | 'planks' | 'bricks' | 'sky';
   pipe: number;
   pipeRim: number;
+  /** the floor is water: bins float, a missed toy splashes */
+  water?: { top: number; deep: number; foam: number };
 }
 
 /** Levels per world. Every world has its own look and brings in new toys. */
@@ -43,7 +45,17 @@ export const THEMES: Theme[] = [
     wallTop: 0xe3e8f6, wallBottom: 0xbfc9e8, seam: 0xaab5dc, frame: 0x7f8cc0, floor: 0x4f5b8e,
     pattern: 'bricks', pipe: 0x1fb3a3, pipeRim: 0xaaeee4,
   },
+  // levels 31-40: a harbour under open sky, golden pipes; bins float on the water, the fan
+  {
+    name: 'Harbour', tag: 0x2b9fe0,
+    wallTop: 0xe4f4fc, wallBottom: 0xc6e6f5, seam: 0xb0d6ea, frame: 0x7fb2cf, floor: 0x2f8fc4,
+    pattern: 'sky', pipe: 0xf5a524, pipeRim: 0xffe0a3,
+    water: { top: 0x58c0ef, deep: 0x2a86c2, foam: 0xe9f8ff },
+  },
 ];
+
+/** y of the water surface in a water world (bins float with their lower part under it). */
+export const WATER_Y = PLAY_H - 66;
 
 /** The world a level belongs to. */
 export const worldOf = (levelIndex: number): number => Math.min(THEMES.length - 1, Math.floor(levelIndex / WORLD_SIZE));
@@ -109,7 +121,21 @@ function paint(g: G, withPit: boolean, arena: boolean, t: Theme): void {
     g.fillRect(GAME_W, HUD_H, 8, y1 - HUD_H);
   }
 
-  if (withPit) {
+  if (withPit && t.water) {
+    // water instead of a pit: deep blue with a lighter surface band
+    const wx0 = arena ? 0 : x0;
+    const wx1 = arena ? GAME_W : x1;
+    g.fillStyle(t.water.deep, 1);
+    g.fillRect(wx0, WATER_Y, wx1 - wx0, y1 - WATER_Y);
+    g.fillStyle(t.water.top, 1);
+    g.fillRect(wx0, WATER_Y, wx1 - wx0, 26);
+    g.lineStyle(3, t.water.foam, 0.8);
+    for (let x = Math.floor(wx0 / 48) * 48; x < wx1; x += 48) {
+      g.beginPath();
+      g.arc(x + 24, WATER_Y + 4, 24, Math.PI * 1.15, Math.PI * 1.85, false);
+      g.strokePath();
+    }
+  } else if (withPit) {
     // open bottom: toys that fall here are lost
     const px0 = arena ? 0 : x0;
     const px1 = arena ? GAME_W : x1;
@@ -163,6 +189,18 @@ function drawPattern(g: G, t: Theme, x0: number, x1: number, y0: number, y1: num
           g.fillCircle(x + 12, y + h / 2, 2);
         }
       }
+      break;
+    }
+    case 'sky': {
+      // open sky: a few large, faint clouds and a pier rail
+      const clouds = [[120, 300, 1], [520, 210, 1.3], [330, 520, 0.9], [640, 640, 1.1], [60, 760, 0.8]];
+      g.fillStyle(0xffffff, 0.55);
+      for (const [cx, cy, s] of clouds) {
+        for (const [dx, dy, r] of [[-38, 6, 26], [0, -8, 34], [40, 4, 28], [0, 12, 30]]) g.fillCircle(cx + dx * s, cy + dy * s, r * s);
+      }
+      g.lineStyle(6, t.frame, 0.35);
+      g.lineBetween(x0, PLAY_H - 150, x1, PLAY_H - 150);
+      for (let x = Math.floor(x0 / 180) * 180 + 90; x < x1; x += 180) g.lineBetween(x, PLAY_H - 150, x, PLAY_H - 70);
       break;
     }
     case 'bricks': {

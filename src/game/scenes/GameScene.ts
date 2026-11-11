@@ -4,9 +4,10 @@ import type { LevelDef, TutorialStep } from '../levels/LevelTypes';
 import type { BaseMachine } from '../machines/BaseMachine';
 import { ConveyorBelt } from '../machines/ConveyorBelt';
 import { Piston } from '../machines/Piston';
+import { Fan } from '../machines/Fan';
 import { SpringBumper } from '../machines/SpringBumper';
 import { platform } from '../platform';
-import { drawFactoryBackground, safeTop, setupCamera, themeForLevel } from '../rendering/Background';
+import { drawFactoryBackground, safeTop, setupCamera, themeForLevel, WATER_Y } from '../rendering/Background';
 import { drawIcon, type IconName } from '../rendering/Icons';
 import { DEPTH } from '../rendering/MachineViews';
 import { circle } from '../rendering/VectorFactory';
@@ -64,6 +65,9 @@ export class GameScene extends Phaser.Scene {
   lastNewBest = false;
   /** RUN presses on this level so far (set-up-then-run levels are rated on it) */
   runs = 0;
+  /** water worlds: the wave strip in front of the bins */
+  private waves: Phaser.GameObjects.Graphics | null = null;
+  private waveColors: { top: number; deep: number; foam: number } | null = null;
   /** set-up levels: until when the machines' badges flash after a tap that missed them */
   badgeFlashUntil = 0;
   /** bumps on every prep reset so delayed callbacks from an old run are ignored */
@@ -101,6 +105,8 @@ export class GameScene extends Phaser.Scene {
     setupCamera(this);
     const theme = themeForLevel(this.levelIndex);
     drawFactoryBackground(this, true, true, theme);
+    this.waves = theme.water ? this.add.graphics().setDepth(DEPTH.machineFront + 2) : null;
+    this.waveColors = theme.water ?? null;
     fadeIn(this);
 
     this.world = new FactoryWorld(this.level);
@@ -110,7 +116,7 @@ export class GameScene extends Phaser.Scene {
     // Classic puzzle levels remember the player's layout; sorting levels always start fresh.
     const stored = this.level.sortAll && !this.level.plan ? undefined : sessionConfigs.get(this.level.id);
     if (stored) this.world.applyConfig(stored);
-    this.view = new WorldView(this, this.world, { pipe: { body: theme.pipe, rim: theme.pipeRim } });
+    this.view = new WorldView(this, this.world, { pipe: { body: theme.pipe, rim: theme.pipeRim }, water: !!theme.water });
 
     this.haloG = this.add.graphics().setDepth(DEPTH.zone + 1);
     this.selG = this.add.graphics().setDepth(DEPTH.select - 1);
@@ -293,7 +299,34 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Water worlds: a moving wave strip in front of the floating bins. */
+  private drawWaves(time: number): void {
+    const g = this.waves;
+    const c = this.waveColors;
+    if (!g || !c) return;
+    g.clear();
+    const x0 = GAME_W / 2 - view.w / 2 - 20;
+    const x1 = GAME_W / 2 + view.w / 2 + 20;
+    const top = WATER_Y + 26;
+    g.fillStyle(c.top, 0.55);
+    g.beginPath();
+    g.moveTo(x0, PLAY_H + 40);
+    for (let x = x0; x <= x1; x += 12) g.lineTo(x, top + Math.sin(x / 38 + time / 520) * 5);
+    g.lineTo(x1, PLAY_H + 40);
+    g.closePath();
+    g.fillPath();
+    g.lineStyle(3, c.foam, 0.85);
+    g.beginPath();
+    for (let x = x0; x <= x1; x += 12) {
+      const y = top + Math.sin(x / 38 + time / 520) * 5;
+      if (x === x0) g.moveTo(x, y);
+      else g.lineTo(x, y);
+    }
+    g.strokePath();
+  }
+
   override update(_time: number, delta: number): void {
+    this.drawWaves(_time);
     const dt = Math.min(delta, 100);
     if (this.state !== 'prep') {
       this.acc += dt * this.speed;
@@ -402,6 +435,9 @@ export class GameScene extends Phaser.Scene {
       audio.boing(1.2);
     } else if (m instanceof Piston && m.canTime) {
       m.cycleTiming();
+      audio.flip();
+    } else if (m instanceof Fan && m.canBlow) {
+      m.nextPower();
       audio.flip();
     }
     this.view.popMachine(m);
@@ -658,7 +694,7 @@ export class GameScene extends Phaser.Scene {
 
       if (!isSel) {
         // little badge telling the player what this machine can do
-        const icon: IconName = m.canMove ? 'move' : m.canRotate ? 'rotR' : m.canFlip ? 'flip' : 'clock';
+        const icon: IconName = m.canMove ? 'move' : m.canRotate ? 'rotR' : m.canFlip ? 'flip' : m.canBlow ? 'wind' : 'clock';
         const reach = Math.abs(Math.sin(m.rad)) * e.hw + Math.abs(Math.cos(m.rad)) * e.hh;
         const bx = m.x + (Math.abs(Math.cos(m.rad)) * e.hw + Math.abs(Math.sin(m.rad)) * e.hh) * 0.72;
         const by = m.y - reach - 16 - wave * 3;
@@ -702,6 +738,8 @@ export class GameScene extends Phaser.Scene {
         return m.angle === sol.angle;
       case 'timing':
         return m instanceof Piston && m.phase === sol.phase;
+      case 'blow':
+        return m instanceof Fan && m.power === sol.power;
       case 'move':
         return Math.abs(m.x - (sol.x ?? m.x)) <= 30 && Math.abs(m.y - (sol.y ?? m.y)) <= 30;
     }

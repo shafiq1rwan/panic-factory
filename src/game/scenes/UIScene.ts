@@ -427,7 +427,7 @@ export class UIScene extends Phaser.Scene {
       this.tweens.add({ targets: card, scale: 1, alpha: 1, duration: 260, ease: 'Back.easeOut' });
       this.tweens.add({ targets: card, alpha: 0, y: 330, duration: 260, delay: 1150, onComplete: () => card.destroy() });
     }
-    if (g.level.newToy) this.createNewToyCard(save.settings.reducedMotion ? 0 : 1350);
+    if (g.level.newToy || g.level.intro) this.createNewToyCard(save.settings.reducedMotion ? 0 : 1350);
   }
 
   /**
@@ -436,8 +436,11 @@ export class UIScene extends Phaser.Scene {
    */
   private createNewToyCard(delay: number): void {
     const g = this.game_;
-    const info = g.level.newToy!;
-    const { type, material } = parseSpawn(info.spec);
+    const info = (g.level.newToy ?? g.level.intro)!;
+    const spec = g.level.newToy?.spec;
+    const toyInfo = spec ? parseSpawn(spec) : null;
+    const pic = g.level.intro?.picture;
+    const accent = toyInfo ? TYPE_COLORS[toyInfo.type].fill : pic === 'fan' ? 0x2fa7d9 : 0x2b9fe0;
     const W = 620;
     const H = 132;
     const card = this.add.container(CX, this.freeBand(H)).setDepth(55);
@@ -445,14 +448,16 @@ export class UIScene extends Phaser.Scene {
     bg.fillStyle(0x294d43, 0.14);
     bg.fillRoundedRect(-W / 2, -H / 2 + 6, W, H, 24);
     roundRect(bg, -W / 2, -H / 2, W, H, 24, WORKSHOP.panel, 0);
-    bg.lineStyle(3, TYPE_COLORS[type].fill, 1);
+    bg.lineStyle(3, accent, 1);
     bg.strokeRoundedRect(-W / 2, -H / 2, W, H, 24);
-    bg.fillStyle(TYPE_COLORS[type].fill, 0.16);
+    bg.fillStyle(accent, 0.16);
     bg.fillCircle(-W / 2 + 72, 0, 50);
-    const toy = this.add.image(-W / 2 + 72, 0, toyKey(type, material)).setScale(1 / TEX_SCALE);
+    const toy: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics = toyInfo
+      ? this.add.image(-W / 2 + 72, 0, toyKey(toyInfo.type, toyInfo.material)).setScale(1 / TEX_SCALE)
+      : this.drawIntroPicture(-W / 2 + 72, 0, pic ?? 'float');
     const tagBg = this.add.graphics();
     roundRect(tagBg, -W / 2 + 144, -H / 2 + 16, 104, 28, 14, COLORS.pink, 0);
-    const tag = txt(this, -W / 2 + 196, -H / 2 + 30, 'NEW TOY', 15, TEXT.white).setLetterSpacing(1.5);
+    const tag = txt(this, -W / 2 + 196, -H / 2 + 30, toyInfo ? 'NEW TOY' : 'NEW', 15, TEXT.white).setLetterSpacing(1.5);
     const title = txt(this, -W / 2 + 144, -2, info.title, 30, WORKSHOP.text).setOrigin(0, 0.5);
     const body = txt(this, -W / 2 + 144, 36, info.text, 19, WORKSHOP.muted).setOrigin(0, 0.5);
     const room = W - 144 - 22;
@@ -462,6 +467,38 @@ export class UIScene extends Phaser.Scene {
     this.tweens.add({ targets: card, alpha: 1, scale: 1, duration: 280, delay, ease: 'Back.easeOut' });
     if (!save.settings.reducedMotion) this.tweens.add({ targets: toy, angle: { from: -8, to: 8 }, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay });
     this.newToyCard = card;
+  }
+
+  /** Small pictures for the intro card: a bin floating on a wave, or a fan. */
+  private drawIntroPicture(x: number, y: number, pic: 'float' | 'fan'): Phaser.GameObjects.Graphics {
+    const g = this.add.graphics().setPosition(x, y);
+    if (pic === 'float') {
+      roundRect(g, -30, -22, 60, 40, 8, TYPE_COLORS.pink.dark, 0);
+      roundRect(g, -30, -14, 60, 32, 8, TYPE_COLORS.pink.fill, 0);
+      g.fillStyle(0x2a86c2, 1);
+      g.fillRect(-44, 10, 88, 22);
+      g.fillStyle(0x58c0ef, 1);
+      g.fillRect(-44, 8, 88, 8);
+      g.lineStyle(3, 0xe9f8ff, 1);
+      for (const wx of [-30, 0, 30]) {
+        g.beginPath();
+        g.arc(wx, 12, 14, Math.PI * 1.15, Math.PI * 1.85, false);
+        g.strokePath();
+      }
+    } else {
+      g.fillStyle(0x1b6f9a, 1);
+      g.fillCircle(0, 0, 32);
+      g.fillStyle(0xffffff, 1);
+      g.fillCircle(0, -2, 26);
+      g.fillStyle(0x1b6f9a, 1);
+      for (let i = 0; i < 3; i++) {
+        const a = (i * Math.PI * 2) / 3 - Math.PI / 2;
+        g.fillEllipse(Math.cos(a) * 12, -2 + Math.sin(a) * 12, 14, 14);
+      }
+      g.fillStyle(0x2fa7d9, 1);
+      g.fillCircle(0, -2, 5);
+    }
+    return g;
   }
 
   /** A y for a full-width card of height h in the upper play field that covers no machine. */

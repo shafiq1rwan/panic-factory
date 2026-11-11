@@ -2,7 +2,7 @@
 
 A set-up-then-run physics puzzle for the browser. **Tap the machines to set them up, then press RUN**: the toys drop, bounce and ride through the factory, and every one has to land in the bin of its own colour.
 
-- **30 levels** in 3 worlds of ten (Workshop, Toy Room, Night Shift). Each world has its own wall, pipe colour and new toys (green hexagon and heavy toys in the Toy Room, bouncy toys and the purple pill on the Night Shift); a level that brings in a new toy shows a NEW TOY card before the first run; three-star ratings for solving a level in few runs. One gesture: tap a machine to change it. Nothing to drag.
+- **40 levels** in 4 worlds of ten (Workshop, Toy Room, Night Shift, Harbour). Each world has its own wall, pipe colour and new toys (green hexagon and heavy toys in the Toy Room, bouncy toys and the purple pill on the Night Shift, floating bins and the fan in the Harbour); a level that brings in something new shows a NEW card before the first run; three-star ratings for solving a level in few runs. One gesture: tap a machine to change it. Nothing to drag.
 - **Panic Factory**: an endless mode with malfunctions, unlocked after 5 levels.
 - Portrait layout, built for phones and playable on desktop.
 - Built with TypeScript, Phaser 3, Matter.js (the build bundled with Phaser) and Vite.
@@ -39,7 +39,8 @@ The layout respects the device safe area: the top bar starts below a camera cut-
 2. **Set up the factory by tapping the machines that wear a badge:**
    - a **belt** flips direction,
    - a **bouncer** turns to its next angle,
-   - a **timer** moves its pusher's timing on one step (the clock on the pusher shows it).
+   - a **timer** moves its pusher's timing on one step (the clock on the pusher shows it),
+   - a **fan** (world 4) switches between off and blowing, or off / right / left.
 3. **Press RUN.** The toys drop from the pipes. While they move nothing can be changed; STOP ends the run early.
 4. Every toy must land in the bin of its own colour. One wrong toy stops the run, says which toy went where, and hands your setup back exactly as you left it.
 5. When every toy is sorted the game moves on to the next level by itself.
@@ -71,7 +72,7 @@ src/
     machines/             BaseMachine, ConveyorBelt, SpringBumper, Piston, Funnel, DeliveryBin
     systems/              PuzzleRules, ScoreManager, PanicDirector, LevelManager, SaveManager,
                           AudioManager, ParticleManager
-    levels/               LevelTypes, the 30 levels, the Panic arena
+    levels/               LevelTypes, the 40 levels, the Panic arena
     rendering/            Vector drawing, texture baking, machine/toy views, WorldView (all the juice)
     scenes/               Boot, Menu, LevelSelect, Game, Panic, UI (HUD), Result, Pause, Settings,
                           Transition (the curtain wipe between screens)
@@ -138,7 +139,7 @@ VITE_PLATFORM=poki npm run build
 
 Run on Windows 11 with Node 26 and headless Microsoft Edge:
 
-- `npm test`: 235 tests pass. They cover the physics and machines, win/lose rules, save/load including corrupted data, scoring, that new toys arrive one at a time after world 1 and always with a NEW TOY card, and for each of the 30 levels: that the next-toy previews of its pipes never overlap a pipe or each other, structure (including no empty bins), that RUN without changes fails, that the solution wins without losing a toy and survives random spawn offsets, that most setups lose, that every possible run ends within 13 s, and determinism. A toy that lands on bare floor counts as missed. Panic mode is checked with a bot over three simulated minutes.
+- `npm test`: 297 tests pass. They cover the physics and machines, win/lose rules, save/load including corrupted data, scoring, that new toys arrive one at a time after world 1 and always with a NEW TOY card, that floating bins never overlap or leave the floor, and for each of the 40 levels: that the next-toy previews of its pipes never overlap a pipe or each other, structure (including no empty bins), that RUN without changes fails, that the solution wins without losing a toy and survives random spawn offsets, that most setups lose, that every possible run ends within 13 s, and determinism. A toy that lands on bare floor counts as missed. Panic mode is checked with a bot over three simulated minutes.
 - `npm run solve`: tries all setups of every level (2 to 32 per level).
 - `npm run smoke`: 44 checks pass against the production build: PLAY into level 1 waiting in setup, a tap on empty space flashing the badges, tapping the belt, RUN, machines locked during a run, auto-advance after a win, a failed run handing the setup back with fewer stars on offer, pause and settings mid-run, level 3 set up and won with the keyboard, level 12 with the mouse, level 7 with touch taps at phone size, safe-area insets, save persistence, a corrupted save, Panic mode, six window shapes and the turn-upright prompt, with no console errors.
 

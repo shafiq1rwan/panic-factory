@@ -5,6 +5,7 @@ import { parseSpawn, type SpawnSpec } from '../levels/LevelTypes';
 import type { BaseMachine } from '../machines/BaseMachine';
 import { BELT_CY, BELT_THICKNESS, BELT_TOP, ConveyorBelt } from '../machines/ConveyorBelt';
 import { DeliveryBin } from '../machines/DeliveryBin';
+import { Fan, FAN_R } from '../machines/Fan';
 import { Funnel, FUNNEL_WALL } from '../machines/Funnel';
 import { Piston, PISTON_HOUSING_H } from '../machines/Piston';
 import { SpringBumper } from '../machines/SpringBumper';
@@ -345,6 +346,10 @@ export class BinView extends MachineView<DeliveryBin> {
   private label: Phaser.GameObjects.Text;
   private lastTick = -999;
   private lastCount = -1;
+  /** floating bins: the dotted line of where it drifts */
+  private track: G | null = null;
+  private shake = { x: 0 };
+  private clock = Math.random() * 3000;
 
   constructor(scene: Phaser.Scene, machine: DeliveryBin, private needed: number) {
     super(scene, machine);
@@ -355,16 +360,41 @@ export class BinView extends MachineView<DeliveryBin> {
       .setOrigin(0.5)
       .setDepth(DEPTH.machineFront + 3)
       .setResolution(Math.min(3, view.res * 1.5));
+    const d = machine.def.drift;
+    if (d) {
+      // the bin's whole drift range, dotted, with posts at the ends and an arrow for its first move
+      const t = (this.track = scene.add.graphics().setDepth(DEPTH.machineBack - 1));
+      const hw = machine.width / 2;
+      const x0 = machine.def.x - d.range - hw + 10;
+      const x1 = machine.def.x + d.range + hw - 10;
+      const y = machine.y + machine.height / 2 - 18;
+      t.fillStyle(0xffffff, 0.85);
+      for (let x = x0; x < x1; x += 22) t.fillRoundedRect(x, y - 3, 12, 6, 3);
+      t.fillStyle(0xffffff, 0.95);
+      for (const x of [x0, x1]) t.fillRoundedRect(x - 4, y - 22, 8, 30, 4);
+      const dir = Math.cos(2 * Math.PI * (d.phase ?? 0)) >= 0 ? 1 : -1;
+      const ax = machine.x + dir * (hw + 22);
+      t.fillStyle(0xffffff, 1);
+      t.fillTriangle(ax + dir * 14, y - 26, ax - dir * 4, y - 38, ax - dir * 4, y - 14);
+    }
     this.sync();
   }
 
   override sync(): void {
     super.sync();
     if (!this.front) return;
-    const m = this.machine;
-    for (const o of [this.front, this.flash]) o.setPosition(m.x, m.y);
-    this.label.setPosition(m.x, m.y + 12);
+    this.place();
     this.redrawFront();
+  }
+
+  /** Follow the bin (floating bins drift and bob) plus any shake. */
+  private place(): void {
+    const m = this.machine;
+    const bob = m.def.drift ? Math.sin(this.clock / 420) * 3 : 0;
+    const x = m.x + this.shake.x;
+    const y = m.y + bob;
+    for (const o of [this.g, this.front, this.flash]) o.setPosition(x, y);
+    this.label.setPosition(x, y + 12);
   }
 
   redraw(): void {
@@ -402,8 +432,10 @@ export class BinView extends MachineView<DeliveryBin> {
     this.flash.fillRoundedRect(-w / 2, -h / 2, w, h, 12);
   }
 
-  override update(): void {
+  override update(dt: number): void {
     const m = this.machine;
+    this.clock += dt;
+    this.place();
     if (m.correct !== this.lastCount) {
       this.lastCount = m.correct;
       this.label.setText(this.needed > 0 ? `${Math.min(m.correct, this.needed)}/${this.needed}` : m.correct > 0 ? `${m.correct}` : '');
@@ -427,11 +459,9 @@ export class BinView extends MachineView<DeliveryBin> {
         this.flash.setAlpha(0.6);
         this.flash.clear().fillStyle(COLORS.red, 1).fillRoundedRect(-m.width / 2, -m.height / 2, m.width, m.height, 12);
         this.scene.tweens.add({ targets: this.flash, alpha: 0, duration: 450 });
-        for (const p of parts) {
-          const x0 = m.x;
-          p.x = x0 - 6;
-          this.scene.tweens.add({ targets: p, x: x0, duration: 380, ease: 'Elastic.easeOut' });
-        }
+        this.scene.tweens.killTweensOf(this.shake);
+        this.shake.x = -6;
+        this.scene.tweens.add({ targets: this.shake, x: 0, duration: 380, ease: 'Elastic.easeOut' });
       }
     }
   }
@@ -441,6 +471,7 @@ export class BinView extends MachineView<DeliveryBin> {
     this.front.destroy();
     this.flash.destroy();
     this.label.destroy();
+    this.track?.destroy();
   }
 }
 
@@ -586,12 +617,141 @@ export class SpawnerView {
   }
 }
 
+
+// ---------------------------------------------------------------------------------
+// Fan (world 4)
+// ---------------------------------------------------------------------------------
+
+const FAN_BODY = 0x2fa7d9;
+const FAN_DARK = 0x1b6f9a;
+
+export class FanView extends MachineView<Fan> {
+  private blades: G;
+  private wind: G;
+  private spin = 0;
+  private clock = 0;
+  private shown = NaN;
+
+  constructor(scene: Phaser.Scene, machine: Fan) {
+    super(scene, machine);
+    this.blades = scene.add.graphics().setDepth(DEPTH.machineBack + 1);
+    this.wind = scene.add.graphics().setDepth(DEPTH.zone + 1);
+  }
+
+  override sync(): void {
+    super.sync();
+    if (!this.blades) return;
+    this.blades.setPosition(this.machine.x, this.machine.y);
+  }
+
+  redraw(): void {
+    const g = this.g;
+    const r = FAN_R;
+    g.clear();
+    const so = shadowOffset(0);
+    g.fillStyle(COLORS.shadow, SHADOW_ALPHA);
+    g.fillCircle(so.x, so.y, r + 2);
+    // stand + round housing with a white grille ring
+    roundRect(g, -10, r - 6, 20, 18, 5, FAN_DARK, 0);
+    g.fillStyle(FAN_DARK, 1);
+    g.fillCircle(0, 0, r + 2);
+    g.fillStyle(FAN_BODY, 1);
+    g.fillCircle(0, -2, r);
+    g.fillStyle(0xffffff, 0.9);
+    g.fillCircle(0, -2, r - 7);
+    g.fillStyle(lighten(FAN_BODY, 0.55), 1);
+    g.fillCircle(0, -2, r - 10);
+    this.drawBlades();
+  }
+
+  private drawBlades(): void {
+    const b = this.blades;
+    if (!b) return;
+    b.clear();
+    for (let i = 0; i < 3; i++) {
+      b.save();
+      b.rotateCanvas((i * Math.PI * 2) / 3);
+      b.fillStyle(FAN_DARK, 1);
+      b.fillEllipse(0, -13, 13, 24);
+      b.restore();
+    }
+    b.fillStyle(COLORS.white, 1);
+    b.fillCircle(0, 0, 6);
+    b.fillStyle(FAN_DARK, 1);
+    b.fillCircle(0, 0, 3);
+    b.y = this.machine.y - 2;
+  }
+
+  /** Wind streaks across the band the fan blows over (also before RUN, so the player sees where it reaches). */
+  private drawWind(prep: boolean): void {
+    const w = this.wind;
+    w.clear();
+    const m = this.machine;
+    const z = m.windZone();
+    if (!z) return;
+    const dir = Math.sign(m.power);
+    const len = z.x1 - z.x0;
+    // faint band
+    w.fillStyle(FAN_BODY, prep ? 0.1 : 0.06);
+    w.fillRoundedRect(z.x0, z.y0, len, z.y1 - z.y0, 18);
+    // streaks drifting along with the wind
+    const rows = 4;
+    const speed = prep ? 0.12 : 0.3;
+    for (let i = 0; i < rows; i++) {
+      const y = z.y0 + ((i + 0.5) * (z.y1 - z.y0)) / rows;
+      for (let k = 0; k < 3; k++) {
+        const t = (((this.clock * speed) / len + k / 3 + i * 0.17) % 1 + 1) % 1;
+        const sx = dir > 0 ? z.x0 + t * len : z.x1 - t * len;
+        const sl = 38;
+        const ex = sx + dir * sl;
+        if (Math.min(sx, ex) < z.x0 || Math.max(sx, ex) > z.x1) continue;
+        const fade = Math.sin(t * Math.PI);
+        w.lineStyle(5, FAN_BODY, 0.7 * fade);
+        w.lineBetween(sx, y, ex, y);
+        w.lineStyle(2, 0xffffff, 0.9 * fade);
+        w.lineBetween(sx + dir * 4, y - 1, ex - dir * 8, y - 1);
+      }
+    }
+    // chevrons at the far end show which way it blows
+    const cx = dir > 0 ? z.x1 - 14 : z.x0 + 14;
+    w.lineStyle(4, FAN_BODY, prep ? 0.8 : 0.45);
+    for (const dy of [-16, 16]) {
+      w.beginPath();
+      w.moveTo(cx - dir * 10, m.y + dy - 10);
+      w.lineTo(cx, m.y + dy);
+      w.lineTo(cx - dir * 10, m.y + dy + 10);
+      w.strokePath();
+    }
+  }
+
+  override update(dt: number, prep: boolean): void {
+    this.clock += dt;
+    const m = this.machine;
+    if (m.power !== 0) {
+      this.spin += (dt / 1000) * (prep ? 3 : 14) * Math.sign(m.power);
+      this.blades.setRotation(this.spin);
+    }
+    this.drawWind(prep);
+    if (this.shown !== m.power) {
+      this.shown = m.power;
+      this.drawBlades();
+    }
+  }
+
+  override destroy(): void {
+    super.destroy();
+    this.blades.destroy();
+    this.wind.destroy();
+  }
+}
+
 export function createMachineView(scene: Phaser.Scene, world: FactoryWorld, m: BaseMachine): MachineView {
   let v: MachineView;
   if (m instanceof ConveyorBelt) v = new ConveyorView(scene, m);
   else if (m instanceof SpringBumper) v = new BumperView(scene, m);
   else if (m instanceof Piston) v = new PistonView(scene, m);
   else if (m instanceof Funnel) v = new FunnelView(scene, m);
+  else if (m instanceof Fan) v = new FanView(scene, m);
   else {
     const bin = m as DeliveryBin;
     v = new BinView(scene, bin, world.level.objective[bin.accepts] ?? 0);

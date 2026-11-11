@@ -31,6 +31,11 @@ export function planOptions(level: LevelDef): PlanOption[] {
       const opts = m.angleOptions();
       const start = Math.max(0, opts.findIndex((a) => Math.abs(a - m.angle) < 0.5));
       settings = [...opts.slice(start), ...opts.slice(0, start)].map((angle) => ({ angle }));
+    } else if (m.canBlow && 'powerOptions' in m) {
+      const opts = (m as unknown as { powerOptions(): number[]; power: number }).powerOptions();
+      const cur = (m as unknown as { power: number }).power;
+      const start = Math.max(0, opts.indexOf(cur));
+      settings = [...opts.slice(start), ...opts.slice(0, start)].map((power) => ({ power }));
     } else if (m.canTime && 'phaseOptions' in m) {
       const opts = (m as unknown as { phaseOptions(): number[]; phase: number }).phaseOptions();
       const cur = (m as unknown as { phase: number }).phase;

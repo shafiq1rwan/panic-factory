@@ -2,7 +2,7 @@ import { capsulePoints, heart, star, type G } from './VectorFactory';
 
 export type IconName =
   | 'play' | 'pause' | 'restart' | 'home' | 'gear' | 'rotL' | 'rotR' | 'flip' | 'clock'
-  | 'lock' | 'star' | 'ff' | 'stop' | 'next' | 'close' | 'grid' | 'heart' | 'bolt' | 'back' | 'move' | 'arrowL' | 'arrowR';
+  | 'lock' | 'star' | 'ff' | 'stop' | 'next' | 'close' | 'grid' | 'heart' | 'bolt' | 'back' | 'move' | 'arrowL' | 'arrowR' | 'wind';
 
 function tri(g: G, x: number, y: number, r: number, rot: number): void {
   const p = [0, 1, 2].map((i) => {
@@ -64,6 +64,16 @@ export function drawIcon(g: G, name: IconName, s: number, color: number): void {
       tri(g, -s * 0.72, 0, s * 0.38, Math.PI);
       tri(g, 0, s * 0.72, s * 0.38, Math.PI / 2);
       tri(g, 0, -s * 0.72, s * 0.38, -Math.PI / 2);
+      break;
+    case 'wind':
+      // three gusts of different lengths, the top one curling at its end
+      g.lineStyle(w * 0.8, color, 1);
+      g.lineBetween(-s * 0.95, -s * 0.45, s * 0.35, -s * 0.45);
+      g.beginPath();
+      g.arc(s * 0.35, -s * 0.72, s * 0.27, Math.PI / 2, -Math.PI * 0.6, true);
+      g.strokePath();
+      g.lineBetween(-s * 0.95, s * 0.05, s * 0.9, s * 0.05);
+      g.lineBetween(-s * 0.6, s * 0.55, s * 0.5, s * 0.55);
       break;
     case 'clock':
       g.lineStyle(w * 0.9, color, 1);

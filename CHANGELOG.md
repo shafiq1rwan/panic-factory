@@ -2,6 +2,18 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## World 4: Harbour, floating bins and the fan (v1.10.0)
+
+The owner asked for a fourth world where the bins float on water, then for a new prop and mechanic because some levels felt repetitive. The owner chose drifting bins (over bins that only bob) and the fan (over a trapdoor, a geyser or a seesaw).
+
+- **World 4, Harbour** (levels 31-40): open sky with faint clouds, golden pipes, and water instead of a floor. Waves roll in front of the bins; a toy that misses the bins splashes and sinks.
+- **Floating bins** (new mechanic): once RUN is pressed a floating bin drifts side to side on a fixed swing. Before RUN a dotted line shows its whole range and an arrow its first move, so the timing can be planned. Bins are never tapped. The swing is computed from the simulation tick, so every level is still checked exactly by the solver.
+- **Fan** (new machine, the first since timers): blows sideways across a band of the room while the factory runs. Tap: off / on, or off / right / left. The push depends on weight, so heavy toys hardly move and light ones fly far. Before RUN, wind streaks show where it blows.
+- The intro card now also introduces things that are not toys: "NEW: Floating bins" (level 31) and "NEW: Fan" (level 33, with the tutorial hand).
+- New levels: Afloat, Bob, Breeze, Weigh the Wind, Gust, Two Docks, Sea Breeze, Canal, Low Tide, Storm. Every level after the intros was chosen so that its solution only works because of the drift or the fan (checked by freezing the bins / switching the fan off).
+- Level select shows four world panels.
+- Tests: 40 levels; floating bins and the fan only in world 4, each first shown with an intro card; bins never overlap or leave the floor at any point of their drift.
+
 ## No empty bins; misses pop (v1.9.3)
 
 The owner asked to remove the bins no toy belongs to, without widening the others, and to make a toy that lands outside the bins pop or show an X.

@@ -132,8 +132,12 @@ export abstract class BaseMachine<D extends MachineDef = MachineDef> {
   get canTime(): boolean {
     return false;
   }
+  /** a fan: a tap changes its setting (off / blow right / blow left) */
+  get canBlow(): boolean {
+    return false;
+  }
   get configurable(): boolean {
-    return this.canMove || this.canRotate || this.canFlip || this.canTime;
+    return this.canMove || this.canRotate || this.canFlip || this.canTime || this.canBlow;
   }
 
   getConfig(): MachineConfig {

@@ -105,11 +105,42 @@ export interface BinDef extends MachineCommon {
   accepts: ObjType;
   width?: number;
   height?: number;
+  /**
+   * Floating bin (world 4): once RUN is pressed it drifts side to side on the water,
+   * x = x0 + range * sin(2 pi (t / period + phase)). Set by the level, never by the player.
+   */
+  drift?: BinDrift;
 }
 
-export type MachineDef = ConveyorDef | BumperDef | PistonDef | FunnelDef | BinDef;
+export interface BinDrift {
+  /** px either side of the bin's x */
+  range: number;
+  /** ms for one full swing there and back */
+  period: number;
+  /** 0..1, where in the swing the bin starts */
+  phase?: number;
+}
+
+/** Fan (world 4): blows sideways across a band of the room; a tap changes its setting. */
+export interface FanDef extends MachineCommon {
+  kind: 'fan';
+  /** how far the wind reaches from the fan, px */
+  reach: number;
+  /** height of the wind band, px (default 150) */
+  band?: number;
+  /** settings a tap cycles through, in order: 0 off, 1 blows right, -1 blows left */
+  powers: number[];
+  /** starting setting (default: the first of powers) */
+  power?: number;
+  /** push on a standard toy, px / tick per tick */
+  strength?: number;
+}
+
+export type MachineDef = ConveyorDef | BumperDef | PistonDef | FunnelDef | BinDef | FanDef;
 
 export interface MachineConfig {
+  /** fan setting */
+  power?: number;
   x?: number;
   y?: number;
   angle?: number;
@@ -118,7 +149,7 @@ export interface MachineConfig {
 }
 export type LevelConfig = Record<string, MachineConfig>;
 
-export type TutorialOp = 'flip' | 'move' | 'rotate' | 'timing';
+export type TutorialOp = 'flip' | 'move' | 'rotate' | 'timing' | 'blow';
 export interface TutorialStep {
   machine: string;
   op: TutorialOp;
@@ -163,6 +194,14 @@ export interface LevelDef {
   plan?: boolean;
   /** The level brings in a toy the player has not met yet: shown on a card before the first run. */
   newToy?: NewToy;
+  /** The level brings in something new that is not a toy (floating bins, the fan): same card. */
+  intro?: Intro;
+}
+
+export interface Intro {
+  picture: 'float' | 'fan';
+  title: string;
+  text: string;
 }
 
 export interface NewToy {

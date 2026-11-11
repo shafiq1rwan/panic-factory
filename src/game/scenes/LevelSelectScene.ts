@@ -10,12 +10,12 @@ import { Button, drawStar, fadeIn, gotoScene, txt } from '../ui/UIComponents';
 
 const PER_ROW = 5;
 const CARD_W = 122;
-const CARD_H = 112;
+const CARD_H = 92;
 const COL_W = 134;
-const ROW_H = 124;
+const ROW_H = 100;
 /** world panel: label strip + two rows of five */
-const PANEL_H = 56 + Math.ceil(WORLD_SIZE / PER_ROW) * ROW_H + 8;
-const PANEL_GAP = 22;
+const PANEL_H = 52 + Math.ceil(WORLD_SIZE / PER_ROW) * ROW_H + 6;
+const PANEL_GAP = 12;
 
 /** Level grid: one panel per world of ten levels, tinted like the world's own wall. */
 export class LevelSelectScene extends Phaser.Scene {
@@ -43,7 +43,7 @@ export class LevelSelectScene extends Phaser.Scene {
     const worlds = Math.ceil(LEVELS.length / WORLD_SIZE);
     for (let w = 0; w < worlds; w++) {
       const theme = THEMES[Math.min(w, THEMES.length - 1)];
-      const top = 136 + w * (PANEL_H + PANEL_GAP);
+      const top = 124 + w * (PANEL_H + PANEL_GAP);
       const panelW = PER_ROW * COL_W + 20;
       // panel in the world's wall colours, with its pipe colour as the edge
       const pg = this.add.graphics();
@@ -67,7 +67,7 @@ export class LevelSelectScene extends Phaser.Scene {
         const r = Math.floor(k / PER_ROW);
         const c = k % PER_ROW;
         const x = GAME_W / 2 + (c - (PER_ROW - 1) / 2) * COL_W;
-        const y = top + 56 + r * ROW_H + CARD_H / 2;
+        const y = top + 52 + r * ROW_H + CARD_H / 2;
         const unlocked = LevelManager.isUnlocked(index);
         const stars = save.starsFor(level.id);
         const btn = new Button(this, x, y, {
@@ -77,13 +77,13 @@ export class LevelSelectScene extends Phaser.Scene {
         });
         btn.setEnabled(unlocked);
         if (unlocked) {
-          btn.addToFace(txt(this, 0, -14, `${index + 1}`, 40, TEXT.dark));
-          for (let s = 0; s < 3; s++) btn.addToFace(drawStar(this, (s - 1) * 30, 30, 12, s < stars));
-          if (level.newToy) {
+          btn.addToFace(txt(this, 0, -12, `${index + 1}`, 36, TEXT.dark));
+          for (let s = 0; s < 3; s++) btn.addToFace(drawStar(this, (s - 1) * 30, 26, 11, s < stars));
+          if (level.newToy || level.intro) {
             // a dot in the toy's colour marks the level that brings in a new toy
             const dot = this.add.graphics();
-            roundRect(dot, 18, -48, 38, 20, 10, COLORS.pink, 0);
-            btn.addToFace(dot, txt(this, 37, -38, 'NEW', 11, TEXT.white));
+            roundRect(dot, 18, -42, 38, 20, 10, COLORS.pink, 0);
+            btn.addToFace(dot, txt(this, 37, -32, 'NEW', 11, TEXT.white));
           }
           if (index === next && stars === 0 && !save.settings.reducedMotion) {
             // gently bounce the next level to play
@@ -92,8 +92,8 @@ export class LevelSelectScene extends Phaser.Scene {
         } else {
           const lock = this.add.graphics();
           drawIcon(lock, 'lock', 20, 0x9d92dc);
-          lock.y = -12;
-          btn.addToFace(lock, txt(this, 0, 30, `${index + 1}`, 18, '#9D92DC'));
+          lock.y = -10;
+          btn.addToFace(lock, txt(this, 0, 26, `${index + 1}`, 18, '#9D92DC'));
         }
       }
     }

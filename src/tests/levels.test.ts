@@ -13,8 +13,8 @@ import { allConfigs, planOptions, robust, solvePlan } from '../game/sim/planSolv
 import { layoutQueues, QUEUE, queueSpan } from '../game/rendering/queueLayout';
 
 describe('level data', () => {
-  it('has 30 levels (three worlds of ten) with unique ids', () => {
-    expect(LEVELS.length).toBe(30);
+  it('has 40 levels (four worlds of ten) with unique ids', () => {
+    expect(LEVELS.length).toBe(40);
     expect(new Set(LEVELS.map((l) => l.id)).size).toBe(LEVELS.length);
   });
 
@@ -48,6 +48,35 @@ describe('level data', () => {
       if (fresh.length) expect(level.newToy && kindOf(level.newToy.spec), level.name).toBe(fresh[0]);
       else expect(level.newToy, level.name).toBeUndefined();
       for (const k of kinds(i)) seen.add(k);
+    }
+  });
+
+  it('floating bins and the fan come only in world 4, each first shown with an intro card', () => {
+    const floats = (i: number): boolean => LEVELS[i].machines.some((m) => m.kind === 'bin' && !!m.drift);
+    const fans = (i: number): boolean => LEVELS[i].machines.some((m) => m.kind === 'fan');
+    for (let i = 0; i < 30; i++) expect(floats(i) || fans(i), LEVELS[i].name).toBe(false);
+    const firstFloat = LEVELS.findIndex((_, i) => floats(i));
+    const firstFan = LEVELS.findIndex((_, i) => fans(i));
+    expect(LEVELS[firstFloat].intro?.picture).toBe('float');
+    expect(LEVELS[firstFan].intro?.picture).toBe('fan');
+    for (const [i, l] of LEVELS.entries()) if (l.intro) expect([firstFloat, firstFan], l.name).toContain(i);
+  });
+
+  it('bins never overlap or leave the floor, wherever floating bins drift', () => {
+    for (const level of LEVELS) {
+      const spans = level.machines.flatMap((m) => {
+        if (m.kind !== 'bin') return [];
+        const r = m.drift?.range ?? 0;
+        const hw = (m.width ?? 196) / 2;
+        return [[m.x - r - hw, m.x + r + hw]];
+      });
+      for (const [a, b] of spans) {
+        expect(a, level.name).toBeGreaterThanOrEqual(0);
+        expect(b, level.name).toBeLessThanOrEqual(GAME_W);
+      }
+      spans.forEach((a, i) => spans.forEach((b, j) => {
+        if (j > i) expect(a[1] <= b[0] || b[1] <= a[0], `${level.name}: bins overlap`).toBe(true);
+      }));
     }
   });
 

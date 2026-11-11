@@ -5,6 +5,7 @@ import type { LevelConfig, LevelDef, MachineDef } from '../levels/LevelTypes';
 import type { BaseMachine } from '../machines/BaseMachine';
 import { ConveyorBelt } from '../machines/ConveyorBelt';
 import { DeliveryBin } from '../machines/DeliveryBin';
+import { Fan } from '../machines/Fan';
 import { Funnel } from '../machines/Funnel';
 import { Piston } from '../machines/Piston';
 import { SpringBumper } from '../machines/SpringBumper';
@@ -31,6 +32,8 @@ function createMachine(world: FactoryWorld, def: MachineDef): BaseMachine {
       return new Funnel(world, def);
     case 'bin':
       return new DeliveryBin(world, def);
+    case 'fan':
+      return new Fan(world, def);
   }
 }
 

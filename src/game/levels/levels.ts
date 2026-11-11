@@ -4,10 +4,12 @@ import {
   type BinDef,
   type BumperDef,
   type ConveyorDef,
+  type FanDef,
   type LevelConfig,
   type LevelDef,
   type MachineDef,
   type NewToy,
+  type Intro,
   type PistonDef,
   type SpawnSpec,
   type SpawnerDef,
@@ -62,6 +64,14 @@ const timer = (id: string, x: number, y: number, angle: number, period: number, 
   id, kind: 'piston', x, y, angle, stroke: 150, period, extendTicks: 14, timing: true, timingSteps: 4, phase: 0, ...o,
 });
 const bin = (id: string, x: number, accepts: ObjType, width: number): BinDef => ({ id, kind: 'bin', x, y: BIN_Y, accepts, width });
+/** A fan (world 4): blows sideways over a band `reach` px long; a tap moves it to the next of `powers` (0 off, 1 right, -1 left). */
+const fan = (id: string, x: number, y: number, reach: number, powers: number[], o: Extra<FanDef> = {}): FanDef => ({
+  id, kind: 'fan', x, y, reach, powers, power: powers[0], ...o,
+});
+/** A bin floating on the water (world 4): drifts `range` px either side of x, one swing per `period` ms. */
+const floatBin = (id: string, x: number, accepts: ObjType, width: number, range: number, period: number, phase = 0): BinDef => ({
+  id, kind: 'bin', x, y: BIN_Y, accepts, width, drift: { range, period, phase },
+});
 const wall = (x: number, y: number, w: number, h: number, angle = 0): WallDef => ({ x, y, w, h, angle });
 const pipe = (id: string, x: number, sequence: SpawnSpec[], interval = 1500, delay = 500): SpawnerDef => ({ id, x, y: 210, sequence, interval, delay });
 
@@ -90,6 +100,7 @@ interface PlanSpec {
   solution: LevelConfig;
   tutorial?: TutorialStep[];
   newToy?: NewToy;
+  intro?: Intro;
 }
 
 export function planLevel(spec: PlanSpec): LevelDef {
@@ -113,6 +124,7 @@ export function planLevel(spec: PlanSpec): LevelDef {
     tutorial: spec.tutorial,
     solution: spec.solution,
     newToy: spec.newToy,
+    intro: spec.intro,
   };
 }
 
@@ -415,7 +427,115 @@ export const LEVELS: LevelDef[] = [
     spawners: [pipe('s1', 300, alt('purple', 'yellow:bouncy', 4), 1500, 350)],
     solution: { ram: { phase: 0.25 }, belt: { dir: -1 }, pad: { angle: 0 } },
   }),
+  // ---------------------------------------------------------------- World 4: Harbour (levels 31-40)
+  // Bins float on the water and drift once RUN is pressed; then the fan arrives.
+  planLevel({
+    id: 'afloat',
+    name: 'Afloat',
+    hint: 'Send the toys where the bin will be',
+    machines: [belt('belt', 360, 520, 300, 1), floatBin('float', 240, 'blue', 200, 120, 1500, 0.5)],
+    spawners: [pipe('s1', 360, rep('blue', 3))],
+    solution: { belt: { dir: -1 } },
+    intro: { picture: 'float', title: 'Floating bins', text: 'They drift along the dotted line once you press RUN.' },
+  }),
+  planLevel({
+    id: 'bob',
+    name: 'Bob',
+    hint: 'Aim for where the bin will be',
+    machines: [bouncer('pad', 360, 720, [-30, -10, 10, 30]), floatBin('float', 360, 'pink', 232, 160, 1500, 0.5)],
+    spawners: [pipe('s1', 360, rep('pink', 3))],
+    solution: { pad: { angle: 10 } },
+  }),
+  planLevel({
+    id: 'breeze',
+    name: 'Breeze',
+    hint: 'Tap the fan to switch it on',
+    machines: [fan('fan', 220, 520, 300, [0, 1]), bin('bin', 600, 'blue', 200)],
+    spawners: [pipe('s1', 420, rep('blue', 3))],
+    solution: { fan: { power: 1 } },
+    tutorial: [{ machine: 'fan', op: 'blow', text: 'Tap the fan to switch it on' }],
+    intro: { picture: 'fan', title: 'Fan', text: 'It blows toys sideways. Tap it to switch it on.' },
+  }),
+  planLevel({
+    id: 'weigh-the-wind',
+    name: 'Weigh the Wind',
+    hint: 'Heavy toys hardly feel the wind',
+    machines: [fan('fan', 170, 480, 300, [-1, 0, 1]), bin('binH', 290, 'blue', 172), bin('binL', 520, 'purple', 172)],
+    spawners: [pipe('s1', 260, alt('purple', 'blue:heavy', 4))],
+    solution: { fan: { power: 1 } },
+  }),
+  planLevel({
+    id: 'gust',
+    name: 'Gust',
+    hint: 'Blow them to the floating bin',
+    machines: [fan('fan', 90, 520, 420, [0, 1]), floatBin('float', 440, 'pink', 200, 100, 1500, 0.5)],
+    spawners: [pipe('s1', 200, rep('pink', 3))],
+    solution: { fan: { power: 1 } },
+  }),
+  planLevel({
+    id: 'two-docks',
+    name: 'Two Docks',
+    hint: 'One bin floats, one stays',
+    machines: [
+      bouncer('padL', 200, 720, [-20, 0, 20]),
+      bouncer('padR', 520, 720, [20, 0, -20]),
+      floatBin('float', 360, 'pink', 200, 60, 1500, 0.5),
+      bin('fixed', 620, 'purple', 172),
+    ],
+    spawners: [pipe('sL', 200, rep('pink', 3)), pipe('sR', 520, rep('purple', 3), 1500, 1250)],
+    solution: { padL: { angle: 20 }, padR: { angle: 20 } },
+  }),
+  planLevel({
+    id: 'sea-breeze',
+    name: 'Sea Breeze',
+    hint: 'Bounce, then blow',
+    machines: [bouncer('pad', 360, 760, [0, 15, 30, -15]), fan('fan', 120, 600, 480, [1, -1, 0], { strength: 0.4 }), floatBin('float', 480, 'purple', 200, 60, 3000, 0)],
+    spawners: [pipe('s1', 360, rep('purple', 3))],
+    solution: { pad: { angle: 15 }, fan: { power: 1 } },
+  }),
+  planLevel({
+    id: 'canal',
+    name: 'Canal',
+    hint: 'Three belts, one floating bin',
+    machines: [
+      belt('top', 360, 420, 260, 1),
+      belt('lowL', 170, 640, 200, 1, { accent: BELT_B }),
+      belt('lowR', 550, 640, 200, 1, { accent: BELT_C }),
+      bin('fixed', 91, 'green', 172),
+      floatBin('float', 450, 'pink', 172, 100, 1500, 0),
+    ],
+    spawners: [pipe('s1', 360, rep('green', 3)), pipe('s2', 600, rep('pink', 3), 1500, 1250)],
+    solution: { top: { dir: -1 }, lowL: { dir: -1 }, lowR: { dir: -1 } },
+  }),
+  planLevel({
+    id: 'low-tide',
+    name: 'Low Tide',
+    hint: 'Kick the pink ones to the floating bin',
+    machines: [
+      timer('ram', 128, 620, 0, 3000, { stroke: 180, extendTicks: 10 }),
+      belt('belt', 330, 830, 200, 1),
+      bin('fixed', 100, 'blue', 172),
+      floatBin('float', 420, 'pink', 200, 60, 1500, 0.75),
+    ],
+    spawners: [pipe('s1', 300, alt('blue', 'pink', 4), 1500, 350)],
+    solution: { ram: { phase: 0.75 }, belt: { dir: -1 } },
+  }),
+  planLevel({
+    id: 'storm',
+    name: 'Storm',
+    hint: 'Pusher, fan and bouncer',
+    machines: [
+      timer('ram', 128, 620, 0, 3000, { stroke: 180, extendTicks: 10 }),
+      fan('fan', 640, 700, 420, [0, -1], { strength: 0.4 }),
+      bouncer('pad', 300, 880, [-30, 0, 30]),
+      floatBin('float', 360, 'blue', 200, 60, 3000, 0.75),
+      bin('fixed', 100, 'pink', 172),
+    ],
+    spawners: [pipe('s1', 300, alt('pink', 'blue:heavy', 4), 1500, 350)],
+    solution: { ram: { phase: 0.5 }, fan: { power: -1 }, pad: { angle: 30 } },
+  }),
+
 ];
 
 /** The building blocks, for the level-design scripts. */
-export const LEVEL_KIT = { belt, fixedBelt, bouncer, spring, timer, bin, wall, pipe, twoBins, threeBins, fourBins, rep, alt, planLevel, BIN_Y };
+export const LEVEL_KIT = { fan, floatBin, belt, fixedBelt, bouncer, spring, timer, bin, wall, pipe, twoBins, threeBins, fourBins, rep, alt, planLevel, BIN_Y };

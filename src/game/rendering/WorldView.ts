@@ -22,6 +22,8 @@ export interface WorldViewOptions {
   pipeTop?: number;
   /** pipe body and rim colours (each world has its own) */
   pipe?: { body: number; rim: number };
+  /** the floor is water: a missed toy splashes and sinks instead of popping */
+  water?: boolean;
 }
 
 /**
@@ -35,6 +37,7 @@ export class WorldView {
   private spawnerViews: SpawnerView[] = [];
   private wallG: G[] = [];
   private sound: boolean;
+  private water: boolean;
   /** recent strong impacts, used to escalate feedback during chain reactions */
   private chain = 0;
   private chainDecay = 0;
@@ -47,6 +50,7 @@ export class WorldView {
     opts: WorldViewOptions = {},
   ) {
     this.sound = opts.sound ?? true;
+    this.water = opts.water ?? false;
     this.particles = new ParticleManager(scene, DEPTH.fx);
     this.drawWalls();
     for (const m of world.machines) this.machineViews.set(m, createMachineView(scene, world, m));
@@ -154,6 +158,15 @@ export class WorldView {
     ev.on('lost', (obj: FactoryObject) => {
       const v = this.objViews.get(obj);
       this.objViews.delete(obj);
+      if (obj.missed && v && this.water) {
+        const { x, y } = obj;
+        v.sinkMissed(this.scene);
+        p.burst(x, y + 16, 0x58c0ef, 14);
+        p.burst(x, y + 16, 0xffffff, 6);
+        if (this.sound) this.floatText(x, y - 46, 'splash!', '#2A86C2', 20);
+        if (this.sound) audio.drop();
+        return;
+      }
       if (obj.missed && v) {
         const { x, y } = obj;
         v.popMissed(this.scene, () => {
