@@ -7,8 +7,8 @@ export const GAME_W = 720;
 export const GAME_H = 1280;
 /** Height of the top bar. */
 export const HUD_H = 96;
-/** Height of the bottom control strip (the big RUN button lives here, in thumb reach). */
-export const FOOTER_H = 104;
+/** Height of the bottom control strip: lives and the big belt buttons, in thumb reach. */
+export const FOOTER_H = 204;
 /** Bottom edge of the play field: toys falling past this are lost. */
 export const PLAY_H = GAME_H - FOOTER_H;
 
@@ -95,6 +95,11 @@ export const view = {
   /** visible logical size: at least GAME_W x GAME_H, larger on one axis to fill the window */
   w: GAME_W,
   h: GAME_H,
+  /** logical y at the centre of the window (shifts when the top and bottom safe-area insets differ) */
+  cy: GAME_H / 2,
+  /** device safe-area insets (camera cut-out, home indicator) in logical units */
+  safeTop: 0,
+  safeBottom: 0,
 };
 
 /** Textures are rasterised at this scale and displayed at 1 / TEX_SCALE. */

@@ -1,14 +1,16 @@
 import { GAME_W, PLAY_H } from '../config';
 import type { LevelDef } from './LevelTypes';
+import { BELT_A, BELT_B } from './levels';
 
 const BIN_Y = PLAY_H - 78;
 
 /**
  * The fixed arena for Panic Factory (endless mode), portrait layout.
- * A toy lands on the top belt, which feeds the two lower belts; every belt can
- * be flipped by tapping. Blue goes left, yellow right, pink in the middle.
- * The bins and the centre funnel span the full width, so nothing can fall out
- * of play: the only way to lose a life is sending a toy to the wrong bin.
+ * Two belts side by side, each under its own chute and each with its own
+ * button, over three bins: the left chute drops blue and pink toys, the right
+ * chute pink and yellow. Blue goes left, pink to the middle, yellow right.
+ * The bins span the whole floor, so nothing can fall out of play: the only
+ * way to lose a life is sending a toy to the wrong bin.
  */
 export const PANIC_LEVEL: LevelDef = {
   id: 'panic',
@@ -19,18 +21,28 @@ export const PANIC_LEVEL: LevelDef = {
   mistakesAllowed: 0,
   par: 0,
   solution: {},
-  // decorative only: gives the drop point its pipe. PanicDirector does the actual spawning.
-  spawners: [{ id: 'chute', x: 360, y: 210, sequence: [], interval: 1000 }],
-  walls: [],
-  machines: [
-    { id: 'top', kind: 'conveyor', x: 360, y: 560, length: 200, speed: 2.2, dir: 1, interactive: true },
-    { id: 'left', kind: 'conveyor', x: 165, y: 740, length: 190, speed: 2.2, dir: -1, interactive: true },
-    { id: 'right', kind: 'conveyor', x: 555, y: 740, length: 190, speed: 2.2, dir: 1, interactive: true },
-    { id: 'fC', kind: 'funnel', x: 360, y: BIN_Y - 116, topWidth: 330, bottomWidth: 140, height: 84 },
-    { id: 'binBlue', kind: 'bin', x: 100, y: BIN_Y, accepts: 'blue', width: 190 },
-    { id: 'binPink', kind: 'bin', x: 360, y: BIN_Y, accepts: 'pink', width: 190 },
-    { id: 'binYellow', kind: 'bin', x: 620, y: BIN_Y, accepts: 'yellow', width: 190 },
+  // decorative only: they give the drop points their pipes. PanicDirector does the actual spawning.
+  spawners: [
+    { id: 'chuteL', x: 190, y: 210, sequence: [], interval: 1000 },
+    { id: 'chuteR', x: 530, y: 210, sequence: [], interval: 1000 },
   ],
+  // posts between the bins: even with turbo belts or low gravity a toy cannot sail past its bin
+  walls: [
+    { x: 240, y: BIN_Y - 200, w: 20, h: 260 },
+    { x: 480, y: BIN_Y - 200, w: 20, h: 260 },
+  ],
+  machines: [
+    { id: 'beltL', kind: 'conveyor', x: 190, y: 600, length: 180, speed: 2.2, dir: 1, flippable: true, interactive: true, accent: BELT_A },
+    { id: 'beltR', kind: 'conveyor', x: 530, y: 600, length: 180, speed: 2.2, dir: -1, flippable: true, interactive: true, accent: BELT_B },
+    { id: 'binBlue', kind: 'bin', x: 121, y: BIN_Y, accepts: 'blue', width: 232 },
+    { id: 'binPink', kind: 'bin', x: 360, y: BIN_Y, accepts: 'pink', width: 232 },
+    { id: 'binYellow', kind: 'bin', x: 599, y: BIN_Y, accepts: 'yellow', width: 232 },
+  ],
+  routes: { beltL: { blue: -1, pink: 1 }, beltR: { pink: -1, yellow: 1 } },
 };
 
-export const PANIC_SPAWN = { x: 360, y: 210 };
+/** Where toys appear, and which colours each chute drops. */
+export const PANIC_CHUTES = [
+  { x: 190, y: 210, types: ['blue', 'pink'] as const },
+  { x: 530, y: 210, types: ['pink', 'yellow'] as const },
+];

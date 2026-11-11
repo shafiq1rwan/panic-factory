@@ -2,6 +2,20 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## Buttons, safe area and a gentler level set (v1.6.0)
+
+Changes after the owner play-tested v1.5.0 on a phone.
+
+- Belts are flipped with big buttons in the control strip at the bottom of the screen: one button for one belt, two for two. Each button has its belt's colour and shows which way the belt is running. Tapping a belt still works.
+- No level has more than two belts. The three-belt junction layout is gone; a new two-step layout sorts three colours with two belts.
+- The HUD respects the device safe area, so the top bar no longer sits under the camera cut-out and the buttons stay above the home indicator.
+- All 20 levels redesigned for a slow, steady ramp: 3 toys rising to 12, never less than 2.5 s between toys on one belt. The earlier set jumped in speed after level 5.
+- The pusher is back as fixed scenery: toys land on a ledge and are shoved into the bin.
+- Posts between the bins in the two-belt layouts, so a toy cannot sail past its bin.
+- Panic Factory now uses two belts, two chutes and the same two buttons.
+- Levels are verified with reaction delays up to half a second.
+- Poki build zipped: `output/poki/tiny-factory-panic-poki-v1.6.0.zip`.
+
 ## Varied layouts (v1.5.0)
 
 - First Poki build zipped: `output/poki/tiny-factory-panic-poki-v1.5.0.zip`.

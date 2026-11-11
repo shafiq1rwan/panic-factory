@@ -26,17 +26,49 @@ provideMatter((Phaser.Physics.Matter as any).Matter);
 //
 // Visible area: the 720x1280 portrait play field always fits, and the view is extended on one axis so the
 // canvas fills the whole window (no letterbox bars) whatever its shape.
+//
+// Safe area: phones can draw the page under a camera cut-out or the home indicator. The 720x1280
+// screen is fitted inside the safe rectangle, and the HUD is pinned to the safe edges, so nothing
+// important ever sits under the camera.
+function safeInsets(): { top: number; bottom: number } {
+  // ?safe=top,bottom (CSS px) lets the layout be checked on a desktop
+  const forced = new URLSearchParams(location.search).get('safe');
+  if (forced) {
+    const [t, b] = forced.split(',').map((n) => parseFloat(n) || 0);
+    return { top: t, bottom: b ?? 0 };
+  }
+  let probe = document.getElementById('safe-probe');
+  if (!probe) {
+    probe = document.createElement('div');
+    probe.id = 'safe-probe';
+    probe.style.cssText =
+      'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;' +
+      'padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)';
+    document.body.appendChild(probe);
+  }
+  const cs = getComputedStyle(probe);
+  let top = parseFloat(cs.paddingTop) || 0;
+  const bottom = parseFloat(cs.paddingBottom) || 0;
+  // Some browsers report no inset even when the page covers the whole screen (fullscreen or
+  // installed app). Assume a typical cut-out height there rather than risk the camera overlap.
+  const touch = window.matchMedia('(pointer: coarse)').matches;
+  const coversScreen = touch && window.innerHeight > window.innerWidth && window.innerHeight >= window.screen.height - 2;
+  if (coversScreen && top < 1) top = 36;
+  return { top, bottom };
+}
+
 function computeView(): void {
   const ww = Math.max(window.innerWidth, 1);
   const wh = Math.max(window.innerHeight, 1);
-  const aspect = ww / wh;
-  let w = GAME_W;
-  let h = GAME_H;
-  if (aspect > GAME_W / GAME_H) w = Math.min(GAME_H * aspect, GAME_W * 4.5);
-  else h = Math.min(GAME_W / aspect, GAME_H * 1.5);
-  view.w = Math.round(w);
-  view.h = Math.round(h);
-  const fit = Math.min(ww / view.w, wh / view.h);
+  const inset = safeInsets();
+  const safeH = Math.max(wh - inset.top - inset.bottom, 1);
+  // CSS px per logical unit: the whole 720x1280 screen must fit inside the safe rectangle
+  const fit = Math.min(ww / GAME_W, safeH / GAME_H);
+  view.w = Math.round(ww / fit);
+  view.h = Math.round(wh / fit);
+  view.safeTop = inset.top / fit;
+  view.safeBottom = inset.bottom / fit;
+  view.cy = GAME_H / 2 + (view.safeBottom - view.safeTop) / 2;
   view.res = Phaser.Math.Clamp(Math.round(fit * (window.devicePixelRatio || 1) * 4) / 4, 1, 2);
 }
 computeView();

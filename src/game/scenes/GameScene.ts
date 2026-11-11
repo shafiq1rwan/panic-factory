@@ -24,6 +24,8 @@ type OpName = 'rotL' | 'rotR' | 'flip' | 'clock';
 
 export interface TutorialHint {
   kind: 'tap' | 'drag' | 'run';
+  /** id of the machine this hint is about */
+  machine?: string;
   x: number;
   y: number;
   x2?: number;
@@ -135,11 +137,21 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  /** Flippable belts, top to bottom then left to right (keyboard order). */
-  private get liveBelts(): ConveyorBelt[] {
+  /** Flippable belts, left to right: the same order as their buttons at the bottom of the screen. */
+  get belts(): ConveyorBelt[] {
     return this.world.machines
       .filter((m): m is ConveyorBelt => m instanceof ConveyorBelt && m.canFlip)
-      .sort((a, b) => a.y - b.y || a.x - b.x);
+      .sort((a, b) => a.x - b.x || a.y - b.y);
+  }
+  private get liveBelts(): ConveyorBelt[] {
+    return this.belts;
+  }
+
+  /** Flip one belt (bottom buttons, taps on the belt and the keyboard all end up here). */
+  flipBelt(id: string): void {
+    if (this.state !== 'prep' && this.state !== 'running') return;
+    const belt = this.world.machine(id);
+    if (belt instanceof ConveyorBelt && belt.canFlip) belt.flip();
   }
 
   private shutdown(): void {
@@ -473,10 +485,10 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     if (this.level.sortAll) {
-      // keyboard: Space flips the first belt, 1 / 2 / 3 flip belts top-to-bottom, left-to-right
+      // keyboard mirrors the bottom buttons: Space / A / Left / 1 = first button, D / Right / 2 = second
       audio.unlock();
       const belts = this.liveBelts;
-      const i = k === ' ' ? 0 : ['1', '2', '3', '4'].indexOf(k);
+      const i = [' ', 'a', 'arrowleft', '1'].includes(k) ? 0 : ['d', 'arrowright', '2'].includes(k) ? Math.min(1, belts.length - 1) : -1;
       if (i >= 0 && belts[i] && (this.state === 'prep' || this.state === 'running')) belts[i].flip();
       else if (k === 'r') this.retry();
       return;
@@ -627,7 +639,7 @@ export class GameScene extends Phaser.Scene {
         const op: OpName = step.op === 'flip' ? 'flip' : step.op === 'timing' ? 'clock' : (sol.angle ?? 0) > m.angle ? 'rotR' : 'rotL';
         target = this.opPos[op] ?? target;
       }
-      return { kind: 'tap', x: target.x, y: target.y, text: step.text };
+      return { kind: 'tap', machine: m.id, x: target.x, y: target.y, text: step.text };
     }
     if (this.level.sortAll) return null; // nothing to press: the factory runs by itself
     return { kind: 'run', x: 0, y: 0, text: 'Now press RUN!' };

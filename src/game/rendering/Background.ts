@@ -22,8 +22,8 @@ function paint(g: G, withPit: boolean, arena: boolean): void {
   // visible logical rectangle plus a margin for camera shake
   const x0 = GAME_W / 2 - view.w / 2 - 40;
   const x1 = GAME_W / 2 + view.w / 2 + 40;
-  const y0 = GAME_H / 2 - view.h / 2 - 40;
-  const y1 = GAME_H / 2 + view.h / 2 + 40;
+  const y0 = view.cy - view.h / 2 - 40;
+  const y1 = view.cy + view.h / 2 + 40;
   const w = x1 - x0;
 
   // gradient, drawn as bands so it also works with the canvas renderer
@@ -112,7 +112,7 @@ export function setupCamera(scene: Phaser.Scene): void {
   const apply = (): void => {
     cam.setViewport(0, 0, scene.scale.width, scene.scale.height);
     cam.setZoom(view.res);
-    cam.centerOn(GAME_W / 2, GAME_H / 2);
+    cam.centerOn(GAME_W / 2, view.cy);
   };
   cam.setBackgroundColor('rgba(0,0,0,0)');
   apply();
@@ -120,6 +120,9 @@ export function setupCamera(scene: Phaser.Scene): void {
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => scene.scale.off(Phaser.Scale.Events.RESIZE, apply));
 }
 
-/** Logical y of the top / bottom edge of what is currently visible. */
-export const viewTop = (): number => GAME_H / 2 - view.h / 2;
-export const viewBottom = (): number => GAME_H / 2 + view.h / 2;
+/** Logical y of the top / bottom edge of what is currently visible (may be under a camera cut-out). */
+export const viewTop = (): number => view.cy - view.h / 2;
+export const viewBottom = (): number => view.cy + view.h / 2;
+/** Logical y of the top / bottom edge of the safe area: pin HUD elements to these. */
+export const safeTop = (): number => viewTop() + view.safeTop;
+export const safeBottom = (): number => viewBottom() - view.safeBottom;

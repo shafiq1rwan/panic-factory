@@ -1,6 +1,6 @@
 # Tiny Factory Panic — notes for Claude
 
-A one-tap sorting game: toys drop into a factory and the player taps belts to flip them so each toy lands in the bin of its own colour. TypeScript, Phaser 3, Matter.js (the build bundled inside Phaser), Vite. Portrait, 720 x 1280 logical screen. Read `README.md` for the full picture and `PROGRESS.md` for what is open.
+A one-button sorting game: toys drop into a factory and the player flips belts (one big button per belt at the bottom of the screen) so each toy lands in the bin of its own colour. TypeScript, Phaser 3, Matter.js (the build bundled inside Phaser), Vite. Portrait, 720 x 1280 logical screen. Read `README.md` for the full picture and `PROGRESS.md` for what is open.
 
 ## Commands
 
@@ -16,7 +16,10 @@ After any change to physics, machines, levels or rules, run `npm run solve` and 
 
 ## Rules of the design
 
-- **One mechanic.** The player taps a belt to flip it. Do not add anything else to learn (no dragging, rotating, timers or special toy types) without the owner asking. New variety should be fixed scenery.
+- **One mechanic.** The player flips a belt with its button at the bottom of the screen. Do not add anything else to learn (no dragging, rotating, timers or special toy types) without the owner asking. New variety should be fixed scenery.
+- **At most two belts per level**, so at most two buttons. Buttons sit left to right in the same order as their belts and share the belt's accent colour.
+- **Gentle pace.** The owner found the earlier set rushed after level 5. Keep at least 2.4 s between toys on one belt and add toys gradually; the pacing tests enforce both.
+- **Safe area.** HUD elements pin to `safeTop()` / `safeBottom()`, never to the raw window edge.
 - **Portrait only on mobile.** Phones held sideways get a turn-upright prompt. Do not add a landscape layout.
 - **Toys must never be lost.** Bins span the whole floor in every level; the tests check it.
 - **Every level must pass `npm run solve`**: doing nothing fails, the bot clears it with no slips, and the bot still wins with 200 ms and 300 ms reaction delays.
@@ -33,6 +36,7 @@ After any change to physics, machines, levels or rules, run `npm run solve` and 
 
 - **Keyboard:** Phaser ignores key events that already had `preventDefault` called. Never add a window `keydown` listener that prevents default for Space, arrows or Tab; use the `input.keyboard.capture` list in the game config.
 - **Port 5173 is taken** on the owner's machine by another project. This project uses 5273; `scripts/smoke.mjs` picks a free port by itself.
+- **Drive-letter case breaks Vitest.** If the shell's working directory is `c:\...` (lower case), every test file fails with "Cannot read properties of undefined (reading 'config')". Run commands from `cd "C:/Users/..."` with an upper-case `C`.
 - **Do not kill processes by PID.** It is blocked in this environment. Stop servers from the script that started them.
 - **Shell heredocs containing apostrophes or backticks have failed here.** Write files with the Write tool, or write a small `.mjs` patch script and run it.
 - **Line endings:** `.gitattributes` keeps LF. When patching files from a script, normalise `\r\n` first.

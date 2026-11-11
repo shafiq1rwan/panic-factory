@@ -66,13 +66,16 @@ const hudBtn = (page, name) =>
     return { x: m.tx, y: m.ty };
   }, name);
 
+/** Logical position of the bottom-of-screen button that flips belt `id`. */
+const beltBtn = (page, id) => page.evaluate((i) => window.__TFP.game.scene.getScene('UI').beltButtonPos(i), id);
+
 /** Logical 720x1280 (portrait) game coordinates -> page coordinates. */
 async function toPage(page, x, y) {
   const box = await page.locator('#game canvas').boundingBox();
-  const v = await page.evaluate(() => ({ w: window.__TFP.view.w, h: window.__TFP.view.h }));
+  const v = await page.evaluate(() => ({ w: window.__TFP.view.w, h: window.__TFP.view.h, cy: window.__TFP.view.cy }));
   const s = box.width / v.w;
   // the 1280x720 play field is centred inside the (possibly larger) visible area
-  return { x: box.x + (x - (360 - v.w / 2)) * s, y: box.y + (y - (640 - v.h / 2)) * s };
+  return { x: box.x + (x - (360 - v.w / 2)) * s, y: box.y + (y - (v.cy - v.h / 2)) * s };
 }
 async function click(page, x, y) {
   const p = await toPage(page, x, y);
@@ -128,7 +131,7 @@ async function playLevel(page, flipBelt) {
           const urgency = above < 80 ? toExit : 1000 + above;
           if (urgency < best) { best = urgency; dir = w; }
         }
-        if (dir && dir !== m.dir) flips.push({ index, x: m.x, y: m.y + 8 });
+        if (dir && dir !== m.dir) flips.push({ index, id: m.id, x: m.x, y: m.y + 8 });
       });
       return { state: g.state, flips };
     });
@@ -173,11 +176,13 @@ try {
   await active(page, 'Game');
   check('PLAY drops straight into level 1', (await ev(page, () => window.__TFP.game.scene.getScene('Game').levelIndex)) === 0);
   await gameState(page, 'running'); // no RUN button: the factory starts by itself
-  check('the level starts by itself, with no RUN button', (await ev(page, () => window.__TFP.game.scene.getScene('UI').runBtn)) === null);
+  check('the level starts by itself, and one belt means one button', (await ev(page, () => window.__TFP.game.scene.getScene('UI').beltButtons.length)) === 1);
+  check('tutorial hand points at the flip button', (await ev(page, () => window.__TFP.game.scene.getScene('Game').tutorialHint()?.machine)) === 'belt');
   check('HUD scene is running', await ev(page, () => window.__TFP.game.scene.isActive('UI')));
   check('tutorial points at the belt', (await ev(page, () => window.__TFP.game.scene.getScene('Game').tutorialHint()?.kind)) === 'tap');
-  await click(page, 360, 570); // tap the belt: the one thing the player has to learn
-  check('tapping the belt flips it', (await ev(page, () => window.__TFP.game.scene.getScene('Game').world.machine('belt').dir)) === -1);
+  let bb = await beltBtn(page, 'belt');
+  await click(page, bb.x, bb.y); // press the big button: the one thing the player has to learn
+  check('pressing the button flips the belt', (await ev(page, () => window.__TFP.game.scene.getScene('Game').world.machine('belt').dir)) === -1);
   check('tutorial hand goes away once the belt is right', (await ev(page, () => window.__TFP.game.scene.getScene('Game').tutorialHint())) === null);
   await page.waitForTimeout(1800);
   await page.screenshot({ path: `${OUT}/smoke-level1-running.png` });
@@ -203,9 +208,9 @@ try {
   await gameState(page, 'running');
   const after = await ev(page, () => {
     const g = window.__TFP.game.scene.getScene('Game');
-    return { mistakes: g.rules.mistakes, toys: g.world.objects.length, tick: g.world.tick, beltL: g.world.machine('beltL').dir, result: window.__TFP.game.scene.isActive('Result') };
+    return { mistakes: g.rules.mistakes, toys: g.world.objects.length, tick: g.world.tick, belt: g.world.machine('belt').dir, result: window.__TFP.game.scene.isActive('Result') };
   });
-  check('after a failure the level resets and starts again by itself', after.mistakes === 0 && after.toys <= 1 && after.tick < 240 && after.beltL === 1 && !after.result, JSON.stringify(after));
+  check('after a failure the level resets and starts again by itself', after.mistakes === 0 && after.toys <= 1 && after.tick < 240 && after.belt === -1 && !after.result, JSON.stringify(after));
 
   // pause / resume
   await page.waitForTimeout(300);
@@ -238,14 +243,18 @@ try {
   const k3 = await playLevel(page, () => page.keyboard.press('Space'));
   check('level 3 can be won by flipping the belt live (keyboard)', k3 === 'won', k3);
 
-  // live flipping with the mouse on three belts (level 9: the junction layout)
-  await startScene(page, 'Game', { level: 8 });
+  // two belts, two buttons, played with the mouse (level 10: the two-step layout)
+  await startScene(page, 'Game', { level: 9 });
   await gameState(page, 'running');
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${OUT}/smoke-level9.png` });
-  const m9 = await playLevel(page, (f) => click(page, f.x, f.y));
+  check('two belts means two buttons', (await ev(page, () => window.__TFP.game.scene.getScene('UI').beltButtons.length)) === 2);
+  const m9 = await playLevel(page, async (f) => {
+    const p = await beltBtn(page, f.id);
+    await click(page, p.x, p.y);
+  });
   const slips9 = await ev(page, () => window.__TFP.game.scene.getScene('Game').rules.mistakes);
-  check('level 9 can be won by clicking three belts live', m9 === 'won', `${m9}, ${slips9} slips`);
+  check('level 10 can be won by clicking its two buttons', m9 === 'won', `${m9}, ${slips9} slips`);
 
   // save persistence across a reload
   await page.reload();
@@ -263,10 +272,11 @@ try {
   await startScene(page, 'Panic');
   await active(page, 'Panic');
   await page.waitForTimeout(2500);
-  const dirBefore = await ev(page, () => window.__TFP.game.scene.getScene('Panic').world.machine('top').dir);
-  await click(page, 360, 570);
-  const dirAfter = await ev(page, () => window.__TFP.game.scene.getScene('Panic').world.machine('top').dir);
-  check('panic mode: tapping a belt flips it live', dirBefore !== dirAfter);
+  const dirBefore = await ev(page, () => window.__TFP.game.scene.getScene('Panic').world.machine('beltL').dir);
+  bb = await beltBtn(page, 'beltL');
+  await click(page, bb.x, bb.y);
+  const dirAfter = await ev(page, () => window.__TFP.game.scene.getScene('Panic').world.machine('beltL').dir);
+  check('panic mode: a button flips its belt live', dirBefore !== dirAfter);
   await page.keyboard.press('a');
   await page.waitForTimeout(3000);
   await page.screenshot({ path: `${OUT}/smoke-panic.png` });
@@ -305,16 +315,20 @@ try {
   await active(tp, 'Game');
   await gameState(tp, 'running');
   await tp.waitForTimeout(500);
-  await tap(tp, 360, 570);
-  check('touch: tapping the belt flips it', (await ev(tp, () => window.__TFP.game.scene.getScene('Game').world.machine('belt').dir)) === -1);
+  const tb = await beltBtn(tp, 'belt');
+  await tap(tp, tb.x, tb.y);
+  check('touch: tapping the button flips the belt', (await ev(tp, () => window.__TFP.game.scene.getScene('Game').world.machine('belt').dir)) === -1);
   await tp.screenshot({ path: `${OUT}/smoke-mobile-level1.png` });
   await gameState(tp, 'won');
   check('touch: level 1 can be completed with one tap', true);
   // a busier level, played entirely with touch taps
-  await startScene(tp, 'Game', { level: 9 });
+  await startScene(tp, 'Game', { level: 12 });
   await gameState(tp, 'running');
-  const t10 = await playLevel(tp, (f) => tap(tp, f.x, f.y));
-  check('touch: level 10 (three belts) can be won with taps only', t10 === 'won', t10);
+  const t10 = await playLevel(tp, async (f) => {
+    const p = await beltBtn(tp, f.id);
+    await tap(tp, p.x, p.y);
+  });
+  check('touch: level 13 (two belts, three colours) can be won by tapping the buttons', t10 === 'won', t10);
   await tp.screenshot({ path: `${OUT}/smoke-mobile-level10.png` });
   check('touch: render resolution adapts to the device', (await ev(tp, () => window.__TFP.game.config.width)) >= 720);
   await tctx.close();
@@ -338,6 +352,29 @@ try {
     await vp.screenshot({ path: `${OUT}/smoke-viewport-${w}x${h}-level.png` });
     await vctx.close();
   }
+
+  // safe area: with a camera cut-out at the top and a home indicator at the bottom, the HUD stays clear
+  const sctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const sp = await sctx.newPage();
+  watch(sp, 'safe-area');
+  await sp.goto(URL + '&safe=47,34');
+  await active(sp, 'Menu');
+  await startScene(sp, 'Game', { level: 5 });
+  await gameState(sp, 'running');
+  await sp.waitForTimeout(500);
+  const sbox = await sp.locator('#game canvas').boundingBox();
+  const edges = await sp.evaluate(() => {
+    const ui = window.__TFP.game.scene.getScene('UI');
+    const v = window.__TFP.view;
+    const top = v.cy - v.h / 2;
+    const lowest = Math.max(...ui.beltButtons.map((b) => b.button.getWorldTransformMatrix().ty + 60));
+    return { barTop: ui.bar.y - top, buttonsBottom: v.cy + v.h / 2 - lowest, perLogical: 0 };
+  });
+  const cssPerLogical = sbox.height / (await sp.evaluate(() => window.__TFP.view.h));
+  check('safe area: the top bar starts below the camera cut-out', edges.barTop * cssPerLogical >= 46.5, `${(edges.barTop * cssPerLogical).toFixed(1)} px from the top`);
+  check('safe area: the buttons stay above the home indicator', edges.buttonsBottom * cssPerLogical >= 33.5, `${(edges.buttonsBottom * cssPerLogical).toFixed(1)} px from the bottom`);
+  await sp.screenshot({ path: `${OUT}/smoke-safe-area.png` });
+  await sctx.close();
 
   // a phone held sideways is asked to turn upright
   const pctx = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });

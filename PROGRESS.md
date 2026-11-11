@@ -4,7 +4,7 @@ Where the project stands and what is still open. Update this when work is picked
 
 ## Current state
 
-The game is a one-tap sorting game in portrait: toys drop into a small factory and the player taps belts to flip them so each toy lands in the bin of its own colour. It is deployed to GitHub Pages from `main`.
+The game is a one-button sorting game in portrait: toys drop into a small factory and the player presses a big button under the play field to flip a belt, so each toy lands in the bin of its own colour. A level has one or two belts, so one or two buttons. It is deployed to GitHub Pages from `main`.
 
 | Area | Status |
 | --- | --- |
@@ -23,10 +23,10 @@ The game is a one-tap sorting game in portrait: toys drop into a small factory a
 
 ## Verified
 
-- `npm test`: 143 tests pass.
-- `npm run solve`: all 20 levels are cleared with no slips by a bot that follows each level's routes, and are still won when the bot only reacts every 200 ms and 300 ms. Doing nothing fails every level, and no toy can leave play.
-- `npm run smoke`: 39 checks pass against the production build in headless Edge, including a level won by keyboard, one by mouse and one by touch taps at phone size.
-- A flawless run of all 20 levels is about 8 minutes of play (485 s measured with the bot), plus intro cards and transitions.
+- `npm test`: 146 tests pass.
+- `npm run solve`: all 20 levels are cleared with no slips by a bot that follows each level's routes, and are still won when the bot only reacts every 200, 300, 400 and 500 ms. Doing nothing fails every level, and no toy can leave play.
+- `npm run smoke`: 43 checks pass against the production build in headless Edge, including a level won by keyboard, one by clicking its two buttons, one by touch taps at phone size, and the safe-area insets.
+- A flawless run of all 20 levels is about 8 minutes of play (474 s measured with the bot), plus intro cards and transitions. Toys on one belt are never less than 2.5 s apart and no level has more than 12 toys.
 
 ## Not verified
 
@@ -40,7 +40,7 @@ The game is a one-tap sorting game in portrait: toys drop into a small factory a
 
 - [ ] Play-test on a real phone, cold, with two or three people; note where they stop.
 - [ ] Decide whether play time is long enough for the portal. The owner's earlier Poki submission needed about 9 minutes of average play. Options: more levels, unlocking Panic mode earlier, a play-time counter in Settings for testing.
-- [ ] Late-game variety: the junction layout is used for six of the last twelve levels.
+- [ ] Safe area: the top bar and buttons follow the insets the browser reports, with a fallback when a touch device covers the whole screen but reports none. Confirm on the owner's phone that the camera no longer overlaps the top bar.
 - [ ] Faint vertical line near the left edge of each level-select card (cause not found).
 - [ ] On very tall phones there is a band of plain wall between the top bar and the play field.
 - [ ] Remove or reuse the engine parts no level uses any more: pistons, special toy materials, drag / rotate / timer editing, the RUN-button flow, the win and fail dialogs in `ResultScene.ts`.

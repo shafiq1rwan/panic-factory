@@ -4,7 +4,6 @@ import { GAME_W, HUD_H, OBJ_TYPES, PLAY_H } from '../game/config';
 import { parseSpawn } from '../game/levels/LevelTypes';
 import { LEVELS } from '../game/levels/levels';
 import { PANIC_LEVEL } from '../game/levels/panicLevel';
-import { ConveyorBelt } from '../game/machines/ConveyorBelt';
 import { FactoryWorld } from '../game/sim/FactoryWorld';
 import { makeRouteBot } from '../game/sim/routeBot';
 import { simulateLevel } from '../game/sim/simulate';
@@ -17,7 +16,7 @@ describe('level data', () => {
     expect(new Set(LEVELS.map((l) => l.id)).size).toBe(20);
   });
 
-  it('asks the player to learn exactly one thing: tapping belts', () => {
+  it('asks the player to learn exactly one thing: flipping belts', () => {
     for (const level of LEVELS) {
       expect(level.sortAll).toBe(true);
       for (const m of level.machines) {
@@ -26,7 +25,10 @@ describe('level data', () => {
         expect(m.rotatable ?? false).toBe(false);
         if (m.kind === 'piston') expect(m.timing ?? false).toBe(false);
       }
-      expect(level.machines.some((m) => m.kind === 'conveyor' && m.flippable)).toBe(true);
+      // one or two belts, so never more than two buttons at the bottom of the screen
+      const belts = level.machines.filter((m) => m.kind === 'conveyor' && m.flippable).length;
+      expect(belts).toBeGreaterThanOrEqual(1);
+      expect(belts).toBeLessThanOrEqual(2);
       // plain toys only: no special materials to learn
       for (const s of level.spawners) for (const spec of s.sequence) expect(parseSpawn(spec).material).toBe('standard');
     }
@@ -77,8 +79,8 @@ describe('level data', () => {
         expect(idle.lost).toBe(0);
       });
 
-      it('is fair for human reactions (200 ms and 300 ms delayed play still wins)', () => {
-        for (const reaction of [12, 18]) {
+      it('is unhurried: still won with reactions as slow as half a second', () => {
+        for (const reaction of [12, 18, 24, 30]) {
           const r = simulateLevel(level, {}, { seed: reaction, jitter: 0.6 }, 60 * 240, makeRouteBot(level, reaction));
           expect(r.status, `reaction ${reaction} ticks: ${r.reason}`).toBe('won');
         }
@@ -91,6 +93,21 @@ describe('level data', () => {
       });
     });
   }
+});
+
+describe('pacing', () => {
+  it('never rushes: toys on one belt are always at least 2.4 s apart', () => {
+    for (const level of LEVELS) {
+      for (const sp of level.spawners) expect(sp.interval, level.name).toBeGreaterThanOrEqual(2400);
+    }
+  });
+
+  it('ramps up gently: no level has many more toys than the one before it', () => {
+    const toys = LEVELS.map((l) => l.spawners.reduce((n, sp) => n + sp.sequence.length, 0));
+    expect(toys[0]).toBeLessThanOrEqual(3);
+    for (let i = 1; i < toys.length; i++) expect(toys[i] - toys[i - 1], LEVELS[i].name).toBeLessThanOrEqual(4);
+    expect(Math.max(...toys)).toBeLessThanOrEqual(12);
+  });
 });
 
 describe('scoring', () => {
@@ -124,58 +141,37 @@ describe('scoring', () => {
 });
 
 describe('panic factory', () => {
-  /**
-   * A simple greedy bot: on each belt, serve whichever toy is closest to the exit it needs.
-   * It is not an optimal player, but if even this survives, the mode is fair.
-   */
-  function playGreedy(world: FactoryWorld): void {
-    const want: Record<string, Record<string, 1 | -1 | 0>> = {
-      top: { blue: -1, yellow: 1, pink: 0 },
-      left: { blue: -1, pink: 1, yellow: 1 },
-      right: { yellow: 1, pink: -1, blue: -1 },
-    };
-    for (const id of ['top', 'left', 'right']) {
-      const b = world.machine(id) as ConveyorBelt;
-      let best = Infinity;
-      let dir = 0;
-      for (const o of world.objects) {
-        if (Math.abs(o.y - (b.y - 44)) > 30 || Math.abs(o.x - b.x) > b.def.length / 2 + 10) continue;
-        const w = want[id][o.type];
-        if (!w) continue;
-        const dist = w === 1 ? b.x + b.def.length / 2 - o.x : o.x - (b.x - b.def.length / 2);
-        if (dist < best) {
-          best = dist;
-          dir = w;
-        }
-      }
-      if (dir && dir !== b.dir && !b.disabled) b.flip();
-    }
-  }
-
-  it('is fair: a simple greedy bot survives three minutes of malfunctions and no toy can fall out', () => {
+  it('is fair: a simple bot survives three minutes of malfunctions and no toy can fall out', () => {
     for (const seed of [3, 11, 42]) {
       const world = new FactoryWorld(PANIC_LEVEL, { seed });
       const director = new PanicDirector(world);
+      const bot = makeRouteBot(PANIC_LEVEL, 6);
       world.start();
       let lost = 0;
       world.events.on('lost', () => lost++);
       for (let i = 0; i < 60 * 180; i++) {
         director.update();
-        playGreedy(world);
+        bot(world);
         world.step();
       }
       expect(lost, 'seed ' + seed + ': toys fell out').toBe(0);
       expect(director.over).toBe(false);
       expect(director.lives, 'seed ' + seed).toBeGreaterThanOrEqual(2);
-      expect(director.score.delivered).toBeGreaterThan(100);
+      expect(director.score.delivered).toBeGreaterThan(80);
       expect(world.objects.length).toBeLessThan(12); // no pile-ups
       world.destroy();
     }
   });
 
+  it('uses two belts, so two buttons', () => {
+    const belts = PANIC_LEVEL.machines.filter((m) => m.kind === 'conveyor');
+    expect(belts.length).toBe(2);
+  });
+
   it('gets harder over time and announces malfunctions before they start', () => {
     const world = new FactoryWorld(PANIC_LEVEL, { seed: 5 });
     const director = new PanicDirector(world);
+    const bot = makeRouteBot(PANIC_LEVEL, 6);
     world.start();
     const early = director.spawnInterval;
     let warnings = 0;
@@ -183,7 +179,7 @@ describe('panic factory', () => {
     world.events.on('panicWarning', () => warnings++);
     for (let i = 0; i < 60 * 100; i++) {
       director.update();
-      playGreedy(world);
+      bot(world);
       world.step();
       if (director.warning) sawWarningText = true;
     }

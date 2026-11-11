@@ -4,7 +4,7 @@
  * For every sorting level it checks that:
  *   - doing nothing does NOT win,
  *   - a bot that follows the level's routes instantly wins with no slips,
- *   - the same bot with a human-like reaction delay still wins within the allowed slips.
+ *   - the same bot with reaction delays of 200, 300, 400 and 500 ms still wins within the allowed slips.
  */
 import './labkit';
 import { LEVELS } from '../src/game/levels/levels';
@@ -19,10 +19,10 @@ LEVELS.forEach((level, i) => {
   const perfect = simulateLevel(level, {}, {}, 60 * 240, makeRouteBot(level, 1));
   const slow: string[] = [];
   let slowOk = true;
-  for (const reaction of [12, 18, 24]) {
+  for (const reaction of [12, 18, 24, 30]) {
     const r = simulateLevel(level, {}, { seed: reaction, jitter: 0.6 }, 60 * 240, makeRouteBot(level, reaction));
     slow.push(`${Math.round((reaction * 1000) / 60)}ms:${r.status === 'won' ? r.mistakes + ' slips' : 'FAILED'}`);
-    if (r.status !== 'won' && reaction <= 18) slowOk = false;
+    if (r.status !== 'won') slowOk = false; // must be winnable even with half-second reactions
   }
   const ok = idle.status !== 'won' && perfect.status === 'won' && perfect.mistakes === 0 && perfect.lost === 0 && slowOk;
   if (!ok) bad++;

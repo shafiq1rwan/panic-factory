@@ -28,6 +28,8 @@ export interface ButtonOpts {
   color?: number;
   textColor?: string;
   iconColor?: number;
+  /** Half-size of the icon in px (default scales with the button height, capped at 15). */
+  iconSize?: number;
   fontSize?: number;
   radius?: number;
   /** Low-profile controls for the workshop HUD. */
@@ -118,7 +120,7 @@ export class Button extends Phaser.GameObjects.Container {
     this.labelT?.destroy();
     this.iconG = null;
     this.labelT = null;
-    const iconSize = Math.min(o.h * 0.26, 15);
+    const iconSize = o.iconSize ?? Math.min(o.h * 0.26, 15);
     const textColor = o.textColor ?? TEXT.dark;
     const iconColor = o.iconColor ?? Phaser.Display.Color.HexStringToColor(textColor).color;
     let textX = 0;

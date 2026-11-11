@@ -86,7 +86,8 @@ export class ConveyorView extends MachineView<ConveyorBelt> {
     // belt loop
     roundRect(g, -L / 2, top, L, T, rr, m.disabled ? 0x6b6690 : COLORS.belt, 0);
     // inner frame
-    g.fillStyle(m.disabled ? 0x8f8ab0 : COLORS.lavenderDark, 1);
+    // the belt face carries the belt's accent colour: its button at the bottom uses the same one
+    g.fillStyle(m.disabled ? 0x8f8ab0 : (m.def.accent ?? COLORS.lavenderDark), 1);
     g.fillRoundedRect(-L / 2 + 9, top + 9, L - 18, T - 18, 9);
     // bright carrying surface
     g.fillStyle(m.disabled ? 0xb8b4d0 : 0x39d5ff, 1);

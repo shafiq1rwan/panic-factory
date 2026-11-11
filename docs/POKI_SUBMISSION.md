@@ -11,18 +11,18 @@ Listing copy to paste into the submission form, and a checklist of what to do be
 **Secondary tags:** Physics, Casual, Sorting
 
 **One-line description:**
-Tap the belts to flip them and get every toy into the bin of its own colour.
+Flip the belts and get every toy into the bin of its own colour.
 
 **Description:**
-The toy factory is running and the toys are coming. Each one rides a conveyor belt and drops into a bin, and it is your job to make sure it is the right bin. Tap a belt to flip its direction. That is the only thing you need to learn.
+The toy factory is running and the toys are coming. Each one rides a conveyor belt and drops into a bin, and it is your job to make sure it is the right bin. Press the big button to flip the belt. That is the only thing you need to learn.
 
-It starts with one belt and two bins. Then the springs arrive and fling toys clean across the room, the bumpers send them pinballing, and three belts are feeding three bins at once. Sort every toy without a slip to earn three stars on each of the 20 levels, then see how long you can last in Panic mode, where the toys never stop and the machines start to misbehave.
+It starts with one belt and two bins. Then the springs arrive and fling toys clean across the room, the pushers shove them off their ledges, the bumpers send them pinballing, and two belts are feeding three bins at once. Sort every toy without a slip to earn three stars on each of the 20 levels, then see how long you can last in Panic mode, where the toys never stop and the machines start to misbehave.
 
 **How to play:**
-- Tap or click a belt to flip its direction.
+- Press the big button at the bottom to flip its belt. Two belts means two buttons, each in the colour of its belt.
 - Blue toys go in the blue bin, pink in the pink bin, yellow in the yellow bin.
 - A toy in the wrong bin costs a life.
-- Keyboard: Space flips the first belt; 1, 2 and 3 flip the belts from top to bottom.
+- Keyboard: Space, A or Left for the first button; D or Right for the second.
 
 **Orientation:** Portrait on mobile. Desktop shows the same portrait play field in the centre of the window.
 
@@ -45,7 +45,7 @@ Audio is muted and keyboard input is ignored for the length of a commercial brea
 
 ## Before submitting
 
-- [x] Build with the Poki adapter and zip it. Done for v1.5.0: `output/poki/tiny-factory-panic-poki-v1.5.0.zip` (`index.html` at the root of the zip, about 350 kB). It was checked to boot to the title screen and into level 1 on an emulated phone, with the Poki SDK loading.
+- [x] Build with the Poki adapter and zip it. Done for v1.6.0: `output/poki/tiny-factory-panic-poki-v1.6.0.zip` (`index.html` at the root of the zip, about 350 kB). It was checked to boot to the title screen and into level 1 on an emulated phone, with the Poki SDK loading.
 - [ ] To rebuild after a change: bump `version` in `package.json` and the label in `MenuScene.ts`, run `$env:VITE_PLATFORM = 'poki'; npm run build` (PowerShell) or `VITE_PLATFORM=poki npm run build` (bash), check it with `node scripts/boot-check.mjs`, then zip the contents of `dist/` (not the folder itself) under a new versioned name.
 - [ ] Load that build in Poki's inspector (https://inspector.poki.dev) and confirm the SDK events appear in the order in the table above.
 - [ ] Play the whole game on a real phone held upright. This has only been done in a desktop browser's phone emulation so far.
@@ -56,5 +56,5 @@ Audio is muted and keyboard input is ignored for the length of a commercial brea
 ## Known gaps to mention or fix first
 
 - No landscape mode on mobile: a phone held sideways is asked to turn upright.
-- The last twelve levels reuse the three-belt junction layout six times.
+- `output/poki/` also still holds the v1.5.0 zip, which predates the bottom buttons, safe-area handling and the gentler level set. Submit the v1.6.0 zip, not that one.
 - The JavaScript bundle is about 1.3 MB (350 kB gzipped), nearly all of it Phaser.

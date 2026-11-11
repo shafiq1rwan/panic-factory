@@ -2,7 +2,7 @@ import { capsulePoints, heart, star, type G } from './VectorFactory';
 
 export type IconName =
   | 'play' | 'pause' | 'restart' | 'home' | 'gear' | 'rotL' | 'rotR' | 'flip' | 'clock'
-  | 'lock' | 'star' | 'ff' | 'stop' | 'next' | 'close' | 'grid' | 'heart' | 'bolt' | 'back' | 'move';
+  | 'lock' | 'star' | 'ff' | 'stop' | 'next' | 'close' | 'grid' | 'heart' | 'bolt' | 'back' | 'move' | 'arrowL' | 'arrowR';
 
 function tri(g: G, x: number, y: number, r: number, rot: number): void {
   const p = [0, 1, 2].map((i) => {
@@ -111,6 +111,14 @@ export function drawIcon(g: G, name: IconName, s: number, color: number): void {
       thick(g, -s * 0.2, 0, s * 0.8, 0, w);
       tri(g, -s * 0.45, 0, s * 0.62, Math.PI);
       break;
+    case 'arrowL':
+    case 'arrowR': {
+      // chunky direction arrow for the belt buttons
+      const d = name === 'arrowR' ? 1 : -1;
+      thick(g, -d * s * 1.15, 0, d * s * 0.2, 0, s * 0.55);
+      tri(g, d * s * 0.55, 0, s * 0.95, d === 1 ? 0 : Math.PI);
+      break;
+    }
     case 'close':
       thick(g, -s * 0.6, -s * 0.6, s * 0.6, s * 0.6, w);
       thick(g, -s * 0.6, s * 0.6, s * 0.6, -s * 0.6, w);

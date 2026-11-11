@@ -59,6 +59,8 @@ export interface ConveyorDef extends MachineCommon {
   flippable?: boolean;
   /** Can be flipped while the factory is running (Panic mode). */
   interactive?: boolean;
+  /** Colour of the belt face; its button at the bottom of the screen uses the same colour. */
+  accent?: number;
 }
 
 export interface BumperDef extends MachineCommon {

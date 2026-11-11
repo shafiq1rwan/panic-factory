@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { COLORS, FOOTER_H, GAME_H, GAME_W, HUD_H, OBJ_TYPES, PLAY_H, TEX_SCALE, TEXT, TYPE_COLORS, WORKSHOP, type ObjType } from '../config';
-import { setupCamera, viewBottom, viewTop } from '../rendering/Background';
+import { BELT_A } from '../levels/levels';
+import type { ConveyorBelt } from '../machines/ConveyorBelt';
+import { safeBottom, safeTop, setupCamera } from '../rendering/Background';
 import { toyKey } from '../rendering/Textures';
 import { heart, roundRect } from '../rendering/VectorFactory';
 import { audio } from '../systems/AudioManager';
@@ -18,50 +20,53 @@ interface Chip {
   shown: number;
 }
 
+/** One big button per belt in the control strip. */
+interface BeltButton {
+  belt: ConveyorBelt;
+  button: Button;
+  shownDir: number;
+  shownOff: boolean;
+}
+
 const CX = GAME_W / 2;
 const BAR_Y = HUD_H / 2;
-/** Centre of the big RUN button, in the control strip under the play field. */
-export const RUN_X = CX;
-export const RUN_Y = PLAY_H + FOOTER_H / 2 - 4;
-const RUN_GREEN = 0x3ee08a;
-const STOP_RED = 0xff7a6b;
-const RETRY_YELLOW = 0xffcf33;
+/** Rows inside the control strip, measured from its top edge. */
+const LIVES_ROW = 36;
+const BUTTON_ROW = 132;
+const BUTTON_H = 112;
 
 /**
  * Heads-up display for the portrait layout, rendered in its own scene above
  * the factory so camera shake never moves it.
  *
- *   top bar      pause, restart, level name, delivery counters
+ *   top bar        pause, restart, level name, delivery counters
  *   play field
- *   control strip: lives, the big RUN button (thumb reach), fast-forward
+ *   control strip  lives, then one big button per belt (never more than two)
  *
- * It polls the active gameplay scene each frame and only redraws what changed.
+ * The top bar is pinned to the top of the device's safe area and the controls
+ * stay clear of the bottom inset, so nothing sits under a camera cut-out or
+ * the home indicator. It polls the gameplay scene each frame and only redraws
+ * what changed.
  */
 export class UIScene extends Phaser.Scene {
   private mode: 'puzzle' | 'panic' = 'puzzle';
-  /** everything in the top bar; pinned to the visible top edge every frame */
+  /** everything in the top bar; pinned to the top of the safe area every frame */
   private bar!: Phaser.GameObjects.Container;
   /** the control strip under the play field */
   private footer!: Phaser.GameObjects.Container;
   private controls!: Phaser.GameObjects.Container;
-  // puzzle
-  private chips: Chip[] = [];
+  private beltButtons: BeltButton[] = [];
   private heartsG!: Phaser.GameObjects.Graphics;
   private heartsKey = '';
-  private runBtn: Button | null = null;
-  private runPulse: Phaser.Tweens.Tween | null = null;
-  private ffBtn: Button | null = null;
+  // puzzle
+  private chips: Chip[] = [];
   private lastState: GameState | '' = '';
-  private lastSpeed = 0;
   private hint!: Phaser.GameObjects.Container;
   private hintText!: Phaser.GameObjects.Text;
   private hintBg!: Phaser.GameObjects.Graphics;
   private hintShown = '';
-  private hintTop = false;
-  private livesX = 96;
   private hand!: Phaser.GameObjects.Image;
   private clock = 0;
-  private timerT: Phaser.GameObjects.Text | null = null;
   private resultCard: Phaser.GameObjects.Container | null = null;
   // panic
   private scoreT: Phaser.GameObjects.Text | null = null;
@@ -82,16 +87,14 @@ export class UIScene extends Phaser.Scene {
   init(data: { mode?: 'puzzle' | 'panic' }): void {
     this.mode = data.mode ?? 'puzzle';
     this.chips = [];
+    this.beltButtons = [];
     this.heartsKey = '';
     this.lastState = '';
-    this.lastSpeed = 0;
     this.hintShown = '';
     this.lastScore = -1;
     this.lastMult = 0;
     this.bannerShown = '';
-    this.runBtn = this.ffBtn = null;
-    this.runPulse = null;
-    this.timerT = this.scoreT = this.multT = this.bannerT = this.effectT = this.tip = null;
+    this.scoreT = this.multT = this.bannerT = this.effectT = this.tip = null;
     this.resultCard = null;
     this.banner = null;
     this.bannerBg = null;
@@ -107,8 +110,8 @@ export class UIScene extends Phaser.Scene {
   create(): void {
     setupCamera(this);
 
-    // top bar
-    this.bar = this.add.container(0, viewTop());
+    // top bar: its background runs far above, so the area under a camera cut-out is simply more bar
+    this.bar = this.add.container(0, safeTop());
     const bg = this.add.graphics();
     bg.fillStyle(WORKSHOP.panel, 1);
     bg.fillRect(-3000, -1400, GAME_W + 6000, HUD_H + 1400);
@@ -132,7 +135,7 @@ export class UIScene extends Phaser.Scene {
     fg.fillStyle(WORKSHOP.border, 1);
     fg.fillRect(-3000, 0, GAME_W + 6000, 2);
     this.footer.add(fg);
-    // controls sit in an inner group that is centred in whatever space the strip has (tall phones have more)
+    // controls sit in an inner group, centred in whatever safe space the strip has (tall phones have more)
     this.controls = this.add.container(0, 0);
     this.footer.add(this.controls);
     this.heartsG = this.add.graphics();
@@ -142,6 +145,53 @@ export class UIScene extends Phaser.Scene {
 
     if (this.mode === 'puzzle') this.createPuzzleHud();
     else this.createPanicHud();
+  }
+
+  // --- belt buttons -----------------------------------------------------------------
+
+  /**
+   * One button per belt, laid out left to right in the same order as the belts
+   * on screen and in the same colour as its belt. Each shows which way its belt
+   * is running right now.
+   */
+  private createBeltButtons(belts: ConveyorBelt[], onFlip: (belt: ConveyorBelt) => void): void {
+    const n = belts.length;
+    if (n === 0) return;
+    const w = n === 1 ? 460 : 326;
+    const gap = 28;
+    const x0 = CX - ((n - 1) * (w + gap)) / 2;
+    belts.forEach((belt, i) => {
+      const button = new Button(this, x0 + i * (w + gap), BUTTON_ROW, {
+        w, h: BUTTON_H, radius: 34, color: belt.def.accent ?? BELT_A, icon: belt.dir === 1 ? 'arrowR' : 'arrowL', iconSize: 34, iconColor: 0xffffff,
+        onClick: () => onFlip(belt),
+      });
+      this.controls.add(button);
+      this.beltButtons.push({ belt, button, shownDir: belt.dir, shownOff: false });
+    });
+  }
+
+  private updateBeltButtons(): void {
+    for (const b of this.beltButtons) {
+      const off = b.belt.disabled;
+      if (b.belt.dir === b.shownDir && off === b.shownOff) continue;
+      const flipped = b.belt.dir !== b.shownDir;
+      b.shownDir = b.belt.dir;
+      b.shownOff = off;
+      b.button.setContent(undefined, b.belt.dir === 1 ? 'arrowR' : 'arrowL');
+      b.button.setColor(off ? 0x9aa5a0 : (b.belt.def.accent ?? BELT_A));
+      if (flipped && !save.settings.reducedMotion) {
+        b.button.setScale(1.06);
+        this.tweens.add({ targets: b.button, scale: 1, duration: 200, ease: 'Back.easeOut' });
+      }
+    }
+  }
+
+  /** Logical position of the button that controls `beltId` (for the tutorial hand and tests). */
+  beltButtonPos(beltId: string): { x: number; y: number } | null {
+    const b = this.beltButtons.find((bb) => bb.belt.id === beltId);
+    if (!b) return null;
+    const m = b.button.getWorldTransformMatrix();
+    return { x: m.tx, y: m.ty };
   }
 
   // --- puzzle HUD -----------------------------------------------------------------
@@ -170,22 +220,7 @@ export class UIScene extends Phaser.Scene {
       this.chips.push({ type, bg: cbg, label, box, shown: -1 });
     });
 
-    // control strip: lives | RUN | fast-forward
-    const fy = RUN_Y - PLAY_H;
-    // sorting levels have no RUN button, so lives take the middle of the strip
-    this.livesX = g.level.sortAll ? CX : 96;
-    this.controls.add(txt(this, this.livesX, fy - 32, 'LIVES', 14, WORKSHOP.muted).setLetterSpacing(2));
-    if (g.level.timeLimit) {
-      this.timerT = txt(this, 96, fy + 42, '', 16, WORKSHOP.muted);
-      this.controls.add(this.timerT);
-    }
-    if (!g.level.sortAll) {
-      this.runBtn = new Button(this, RUN_X, fy, {
-        w: 320, h: 84, label: 'RUN', icon: 'play', color: RUN_GREEN, fontSize: 42, radius: 30, textColor: TEXT.dark, onClick: () => g.toggleRun(),
-      });
-      this.ffBtn = new Button(this, 624, fy, { w: 96, h: 78, icon: 'ff', color: COLORS.white, radius: 26, textColor: TEXT.dark, onClick: () => g.toggleSpeed() });
-      this.controls.add([this.runBtn, this.ffBtn]);
-    }
+    this.createBeltButtons(g.belts, (belt) => g.flipBelt(belt.id));
 
     // hint pill
     this.hintBg = this.add.graphics();
@@ -204,16 +239,6 @@ export class UIScene extends Phaser.Scene {
       card.setScale(0.5).setAlpha(0);
       this.tweens.add({ targets: card, scale: 1, alpha: 1, duration: 260, ease: 'Back.easeOut' });
       this.tweens.add({ targets: card, alpha: 0, y: 330, duration: 260, delay: 1150, onComplete: () => card.destroy() });
-    }
-  }
-
-  /** The RUN button breathes while it is the thing to press, so it reads as a button. */
-  private setRunPulse(on: boolean): void {
-    this.runPulse?.stop();
-    this.runPulse = null;
-    this.runBtn?.setScale(1);
-    if (on && this.runBtn && !save.settings.reducedMotion) {
-      this.runPulse = this.tweens.add({ targets: this.runBtn, scale: 1.06, duration: 620, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
   }
 
@@ -239,43 +264,28 @@ export class UIScene extends Phaser.Scene {
       c.shown = have;
     }
 
-    // lives = allowed mistakes + 1
+    // lives = allowed slips + 1
     const total = g.level.mistakesAllowed + 1;
-    const left = Math.max(0, total - g.rules.mistakes);
-    this.drawHearts(total, left, this.livesX - (total - 1) * 21, RUN_Y - PLAY_H + 10);
-
-    if (this.timerT) {
-      const t = g.state === 'prep' ? g.level.timeLimit! : (g.rules.timeLeft ?? 0);
-      this.timerT.setText(`${Math.ceil(t)}s`);
-    }
+    const left = Math.max(0, total - g.rules.mistakes - g.rules.lost);
+    this.drawHearts(total, left, CX - (total - 1) * 23, LIVES_ROW);
 
     if (g.state !== this.lastState) {
       this.lastState = g.state;
-      const b = this.runBtn;
-      if (b) {
-        if (g.state === 'prep') b.setColor(RUN_GREEN).setContent('RUN', 'play');
-        else if (g.state === 'running') b.setColor(STOP_RED).setContent('STOP', 'stop');
-        else b.setColor(RETRY_YELLOW).setContent('RETRY', 'restart');
-        this.setRunPulse(g.state === 'prep');
-      }
-      this.ffBtn?.setVisible(g.state === 'running');
       this.showResultCard(g.state);
-    }
-    if (g.speed !== this.lastSpeed) {
-      this.lastSpeed = g.speed;
-      this.ffBtn?.setColor(g.speed > 1 ? RETRY_YELLOW : COLORS.white);
     }
 
     // hint + tutorial hand
     const tut = g.tutorialHint();
-    // sorting levels keep their one-line hint up for the first few seconds of play
-    const showHint = g.state === 'prep' || (!!g.level.sortAll && g.state === 'running' && (!!tut || g.world.tick < 360));
+    // the one-line hint stays up for the first few seconds of play
+    const showHint = g.state === 'prep' || (g.state === 'running' && (!!tut || g.world.tick < 420));
     const text = showHint ? (tut?.text ?? g.level.hint ?? '') : '';
     if (text !== this.hintShown) {
       this.hintShown = text;
       this.hint.setVisible(!!text);
       if (text) {
         this.hintText.setText(text);
+        this.hintText.setFontSize(24);
+        if (this.hintText.width > 590) this.hintText.setFontSize((24 * 590) / this.hintText.width);
         const w = this.hintText.width + 84;
         this.hintBg.clear();
         this.hintBg.fillStyle(0x294d43, 0.12);
@@ -293,38 +303,21 @@ export class UIScene extends Phaser.Scene {
       }
     }
 
+    // the tutorial hand taps the button of the belt that needs flipping
     this.clock += dt;
-    if (!tut) {
+    const target = tut?.machine ? this.beltButtonPos(tut.machine) : null;
+    if (!tut || !target) {
       this.hand.setVisible(false);
       return;
     }
-    this.hand.setVisible(true);
-    let hx = tut.x;
-    let hy = tut.y;
-    if (tut.kind === 'run') {
-      hx = RUN_X + 60;
-      hy = RUN_Y + 10 + this.controls.y;
-    }
-    const base = 1.5 / TEX_SCALE;
-    if (tut.kind === 'drag') {
-      const cycle = (this.clock % 2000) / 2000;
-      const k = Phaser.Math.Easing.Cubic.InOut(Phaser.Math.Clamp((cycle - 0.2) / 0.55, 0, 1));
-      hx = tut.x + (tut.x2! - tut.x) * k;
-      hy = tut.y + (tut.y2! - tut.y) * k + 4;
-      this.hand.setScale((cycle < 0.15 || cycle > 0.85 ? 1.12 : 1) * base);
-      this.hand.setAlpha(cycle > 0.9 ? (1 - cycle) * 10 : 1);
-    } else {
-      const bob = Math.abs(Math.sin(this.clock / 230));
-      hy += 8 + bob * 18;
-      hx += bob * 7;
-      this.hand.setScale(base).setAlpha(1);
-    }
-    this.hand.setPosition(hx, hy);
+    const bob = Math.abs(Math.sin(this.clock / 230));
+    this.hand.setVisible(true).setScale(1.5 / TEX_SCALE).setAlpha(1);
+    this.hand.setPosition(target.x + 70 + bob * 7, target.y + 14 + bob * 18);
   }
 
   /**
    * Arcade-style flow: no result dialog. A win shows a quick star card before the game moves
-   * on by itself; a failure shows why for a moment before the layout is handed back.
+   * on by itself; a failure shows why for a moment before the level restarts.
    */
   private showResultCard(state: GameState): void {
     this.resultCard?.destroy();
@@ -380,13 +373,11 @@ export class UIScene extends Phaser.Scene {
         if (m.y + ry > y0 && Math.abs(m.x - cx) < rx + half + 6) clear = false;
       }
       if (clear) {
-        this.hintTop = false;
         this.hint.setPosition(cx, PLAY_H - 52);
         return;
       }
     }
-    // nothing free along the bottom: go under the top bar, as far from the spawner pipes as possible
-    this.hintTop = true;
+    // nothing free along the bottom: go under the top bar, as far from the chute pipes as possible
     const pipes = world.spawners.map((s) => s.def.x);
     let best = CX;
     let bestD = -1;
@@ -408,7 +399,7 @@ export class UIScene extends Phaser.Scene {
     this.heartsKey = key;
     const g = this.heartsG;
     g.clear();
-    for (let i = 0; i < total; i++) heart(g, x0 + i * 42, y, 36, i < left ? 0xe2566b : 0xd3dbd2, 0);
+    for (let i = 0; i < total; i++) heart(g, x0 + i * 46, y, 38, i < left ? 0xe2566b : 0xd3dbd2, 0);
     if (wobble) {
       g.setPosition(0, 0);
       this.tweens.add({ targets: g, y: 5, duration: 70, yoyo: true, repeat: 2 });
@@ -418,6 +409,7 @@ export class UIScene extends Phaser.Scene {
   // --- panic HUD ------------------------------------------------------------------
 
   private createPanicHud(): void {
+    const p = this.panic;
     const bar = this.bar;
     bar.add(txt(this, 110, 30, 'BEST', 14, WORKSHOP.muted).setOrigin(0, 0.5).setLetterSpacing(1.5));
     bar.add(txt(this, 110, 60, `${save.data.panicBest}`, 28, WORKSHOP.text).setOrigin(0, 0.5));
@@ -427,15 +419,14 @@ export class UIScene extends Phaser.Scene {
     this.multT = txt(this, 620, 60, 'x1', 32, WORKSHOP.muted);
     bar.add([this.scoreT, this.multT]);
 
-    const fy = RUN_Y - PLAY_H;
-    this.controls.add(txt(this, 110, fy - 34, 'LIVES', 14, WORKSHOP.muted).setLetterSpacing(2));
-    this.effectT = txt(this, 460, fy, '', 24, WORKSHOP.text);
+    this.effectT = txt(this, 500, LIVES_ROW, '', 22, WORKSHOP.text);
     this.controls.add(this.effectT);
+    this.createBeltButtons(p.belts, (belt) => p.flip(belt.id));
 
     this.bannerBg = this.add.graphics();
     this.bannerT = txt(this, 0, 0, '', 34, TEXT.white);
-    this.banner = this.add.container(CX, HUD_H + 150, [this.bannerBg, this.bannerT]).setDepth(40).setVisible(false);
-    this.tip = txt(this, CX, 400, 'Tap a belt to flip it', 28, WORKSHOP.text, { backgroundColor: '#FFFCF5', padding: { x: 22, y: 12 } });
+    this.banner = this.add.container(CX, HUD_H + 240, [this.bannerBg, this.bannerT]).setDepth(40).setVisible(false);
+    this.tip = txt(this, CX, 420, 'Each button flips its belt', 28, WORKSHOP.text, { backgroundColor: '#FFFCF5', padding: { x: 22, y: 12 } });
   }
 
   private updatePanic(): void {
@@ -458,7 +449,7 @@ export class UIScene extends Phaser.Scene {
         this.tweens.add({ targets: this.multT, scale: 1, duration: 320, ease: 'Back.easeOut' });
       }
     }
-    this.drawHearts(p.maxLives, p.lives, 110 - (p.maxLives - 1) * 21, RUN_Y - PLAY_H + 6);
+    this.drawHearts(p.maxLives, p.lives, 150 - (p.maxLives - 1) * 23, LIVES_ROW);
     this.effectT!.setText(p.activeEffect || 'Keep the toys moving');
     // the tip only shows for the first few seconds
     this.tip!.setVisible(p.director.seconds < 8);
@@ -478,8 +469,10 @@ export class UIScene extends Phaser.Scene {
   }
 
   override update(_t: number, delta: number): void {
-    this.bar.y = viewTop();
-    this.controls.y = Math.max(0, (viewBottom() - GAME_H) / 2);
+    this.bar.y = safeTop();
+    // centre the controls in the safe space under the play field
+    this.controls.y = Math.max(0, (safeBottom() - GAME_H) / 2);
+    this.updateBeltButtons();
     if (this.mode === 'puzzle') this.updatePuzzle(delta);
     else this.updatePanic();
   }

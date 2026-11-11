@@ -37,7 +37,7 @@ export class TransitionScene extends Phaser.Scene {
     const w = view.w + 200;
     const h = view.h + 200;
     const cx = GAME_W / 2;
-    const cy = GAME_H / 2;
+    const cy = view.cy;
     this.curtain.removeAll(true);
     const colors = [COLORS.yellow, COLORS.pink, COLORS.outline];
     const bands = colors.map((c, i) => {

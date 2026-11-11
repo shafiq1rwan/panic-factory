@@ -43,6 +43,10 @@ export class PanicScene extends Phaser.Scene {
   get activeEffect(): string {
     return this.director.activeEffect;
   }
+  /** Belts left to right: the same order as their buttons at the bottom of the screen. */
+  get belts(): ConveyorBelt[] {
+    return this.world.machines.filter((m): m is ConveyorBelt => m instanceof ConveyorBelt).sort((a, b) => a.x - b.x);
+  }
 
   create(): void {
     setupCamera(this);
@@ -85,7 +89,8 @@ export class PanicScene extends Phaser.Scene {
     });
   }
 
-  private flip(id: string): void {
+  /** Flip a belt (bottom buttons, taps on the belt and the keyboard all end up here). */
+  flip(id: string): void {
     if (this.ended) return;
     const belt = this.world.machine(id);
     if (!(belt instanceof ConveyorBelt)) return;
@@ -118,9 +123,8 @@ export class PanicScene extends Phaser.Scene {
     if (platform.inBreak) return;
     const k = ev.key.toLowerCase();
     if (k === 'escape' || k === 'p') this.pause();
-    else if (k === 'w' || k === 'arrowup' || k === ' ') this.flip('top');
-    else if (k === 'a' || k === 'arrowleft') this.flip('left');
-    else if (k === 'd' || k === 'arrowright') this.flip('right');
+    else if (k === 'a' || k === 'arrowleft' || k === '1') this.flip('beltL');
+    else if (k === 'd' || k === 'arrowright' || k === '2') this.flip('beltR');
   }
 
   pause(): void {

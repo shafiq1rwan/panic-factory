@@ -1,8 +1,8 @@
 # Tiny Factory Panic
 
-A one-tap physics sorting game for the browser. Toys drop into a little factory and ride the belts; **tap a belt to flip it** so every toy lands in the bin of its own colour.
+A one-button physics sorting game for the browser. Toys drop into a little factory and ride the belts; **press a belt's button to flip it** so every toy lands in the bin of its own colour.
 
-- **20 levels** in 5 chapters, three-star ratings. There is one thing to learn (tap a belt) and nothing to drag, rotate or time.
+- **20 levels** in 5 chapters, three-star ratings. There is one thing to learn (flip a belt) and nothing to drag, rotate or time. A level has one or two belts, so one or two big buttons.
 - **Panic Factory**: an endless mode with malfunctions, unlocked after 5 levels.
 - Portrait layout, built for phones and playable on desktop.
 - Built with TypeScript, Phaser 3, Matter.js (the build bundled with Phaser) and Vite.
@@ -29,12 +29,14 @@ Requires Node 20 or newer.
 
 ## Layout
 
-The game is portrait. The logical screen is 720 x 1280: a top bar, the play field, and a strip at the bottom showing lives. On a phone it fills the screen held upright; on a desktop it shows as a centred column with the workshop wall on both sides. A phone held sideways gets a prompt to turn it upright; there is no landscape mode on mobile.
+The game is portrait. The logical screen is 720 x 1280: a top bar, the play field, and a control strip at the bottom with the lives and one big button per belt, in thumb reach. On a phone it fills the screen held upright; on a desktop it shows as a centred column with the workshop wall on both sides. A phone held sideways gets a prompt to turn it upright; there is no landscape mode on mobile.
+
+The layout respects the device safe area: the top bar starts below a camera cut-out and the buttons stay above the home indicator. Add `?safe=47,34` (top and bottom insets in CSS px) to the URL to check this on a desktop.
 
 ## How to play
 
 1. PLAY drops you straight into your next level. The factory starts by itself; there is no RUN button.
-2. Toys fall from the chute onto a belt. **Tap a belt to flip its direction**, before or while toys are riding it.
+2. Toys fall from the chute onto a belt. **Press the belt's button at the bottom of the screen to flip its direction**, before or while toys are riding it. The button has the same colour as its belt and shows which way the belt is running. Tapping the belt itself works too.
 3. Get every toy into the bin of its own colour. A toy in the wrong bin costs a life; three lives per level (two on the first levels).
 4. When the last toy is sorted the game moves on to the next level by itself. If you run out of lives it shows why and restarts the level.
 
@@ -42,13 +44,13 @@ Stars: 3 for no slips, 2 for one, 1 for two.
 
 | Action | Mouse / touch | Keyboard |
 | --- | --- | --- |
-| Flip a belt | Tap it | `Space` flips the first belt; `1` `2` `3` flip belts top to bottom, left to right |
+| Flip a belt | Press its button (or tap the belt) | First button: `Space`, `A`, `Left` or `1`. Second button: `D`, `Right` or `2` |
 | Restart level | Restart button | `R` |
 | Pause | Pause button | `Esc` or `P` |
 
-**Panic Factory**: toys never stop. Tap a belt to flip it (or `W`/`A`/`D`, or the arrow keys). Blue goes left, pink to the middle, yellow right. Three wrong deliveries end the run. Malfunctions (belt reverse, toy rush, turbo belts, low gravity, belt jam) are announced about two seconds before they start.
+**Panic Factory**: toys never stop. Two belts, two chutes, two buttons. Blue goes left, pink to the middle, yellow right. Three wrong deliveries end the run. Malfunctions (belt reverse, toy rush, turbo belts, low gravity, belt jam) are announced about two seconds before they start.
 
-Springs, ramps and bumpers appear in the levels as fixed scenery: they bounce and slide the toys but are never controlled. The engine also still contains pistons, heavy / bouncy / icy toys, drag / rotate / timer editing and a RUN-button puzzle flow from the earlier design. No current level uses those.
+Springs, ramps, pushers and bumpers appear in the levels as fixed scenery: they bounce, slide and shove the toys but are never controlled. The engine also still contains heavy / bouncy / icy toys, drag / rotate / timer editing and a RUN-button puzzle flow from the earlier design. No current level uses those.
 
 ## Project layout
 
@@ -88,14 +90,14 @@ Two design decisions shape everything else:
 
 ## Adding or changing a level
 
-Levels are data in `src/game/levels/levels.ts`, built from six small layouts (springs, ramps, cross-over springs, pinball bumpers, twin belts, a three-belt junction) plus a toy sequence and a drop interval. The springs, ramps and bumpers are fixed scenery: they add bouncing and sliding without adding anything to learn.
+Levels are data in `src/game/levels/levels.ts`, built from seven small layouts plus a toy sequence and a drop interval. Five layouts have one belt (springs, ramps, pushers, pinball bumpers, cross-over springs) and two have two belts (twin belts, two step). The springs, ramps, pushers and bumpers are fixed scenery: they add bouncing and shoving without adding anything to learn.
 
 1. Add a `sortLevel({...})` entry: pick a layout, give it a sequence (`mixed(seed, count, colours)`) and an interval.
 2. Each layout carries a `routes` table saying which way every belt must run for each colour. The tutorial hand and the test bot both use it.
-3. Run `npm run solve`. A level is accepted when doing nothing fails, the bot clears it with no slips, and the bot still wins when it only reacts every 200 ms and 300 ms.
+3. Run `npm run solve`. A level is accepted when doing nothing fails, the bot clears it with no slips, and the bot still wins when it only reacts every 200, 300, 400 and 500 ms.
 4. `npm test` re-checks all levels.
 
-Keep the bins spanning the whole floor: the tests also check that a toy can never fall out of play.
+Keep the bins spanning the whole floor (the tests check that a toy can never fall out of play), keep to one or two belts per level, and keep at least 2.4 seconds between toys on one belt (the tests check both).
 
 ## Deployment
 
@@ -128,8 +130,8 @@ VITE_PLATFORM=poki npm run build
 
 Run on Windows 11 with Node 26 and headless Microsoft Edge:
 
-- `npm test`: 143 tests pass. They cover the physics and machines, win/lose rules, save/load including corrupted data, scoring, and for each of the 20 levels: structure, that doing nothing fails, that a bot following the routes clears it with no slips and no toy ever leaves play, that the bot still wins with 200 ms and 300 ms reaction delays, and determinism. Panic mode is checked with a greedy bot over three simulated minutes.
-- `npm run smoke`: 39 checks pass against the production build: PLAY straight into level 1, the level starting by itself, one tap flipping the belt, auto-advance after a win, auto-restart after a failure, pause and settings, level 3 won with the keyboard, level 9 won with mouse clicks on three belts, level 10 won with touch taps at phone size, save persistence, a corrupted save, Panic mode, six window shapes and the turn-upright prompt, with no console errors.
+- `npm test`: 146 tests pass. They cover the physics and machines, win/lose rules, save/load including corrupted data, scoring, pacing (toy gaps and how fast the toy count grows), and for each of the 20 levels: structure, that doing nothing fails, that a bot following the routes clears it with no slips and no toy ever leaves play, that the bot still wins with reactions as slow as half a second, and determinism. Panic mode is checked with the same bot over three simulated minutes.
+- `npm run smoke`: 43 checks pass against the production build: PLAY straight into level 1, the level starting by itself, the bottom button flipping the belt, auto-advance after a win, auto-restart after a failure, pause and settings, level 3 won with the keyboard, level 10 won by clicking its two buttons, level 13 won with touch taps on the buttons at phone size, safe-area insets keeping the top bar and buttons clear, save persistence, a corrupted save, Panic mode, six window shapes and the turn-upright prompt, with no console errors.
 
 Not tested, so treat as unverified:
 

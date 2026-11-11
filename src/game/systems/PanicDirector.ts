@@ -1,5 +1,5 @@
 import { msToTicks, STEP_MS, type ObjType } from '../config';
-import { PANIC_SPAWN } from '../levels/panicLevel';
+import { PANIC_CHUTES } from '../levels/panicLevel';
 import { ConveyorBelt } from '../machines/ConveyorBelt';
 import type { FactoryWorld } from '../sim/FactoryWorld';
 import { PanicScore } from './ScoreManager';
@@ -43,7 +43,8 @@ export class PanicDirector {
   private activeEnd = 0;
   private lastKind: PanicEventKind | null = null;
   private jammed: ConveyorBelt | null = null;
-  private lastTypes: ObjType[] = [];
+  private lastBySide: ObjType[][] = [[], []];
+  private nextSide = 0;
 
   constructor(private world: FactoryWorld) {
     world.events.on('deliver', (_obj: unknown, _bin: unknown, correct: boolean) => {
@@ -73,15 +74,15 @@ export class PanicDirector {
     return this.active === 'rush' ? base * 0.7 : base;
   }
 
-  private pickType(): ObjType {
-    let t = this.world.rng.pick(TYPES);
-    // never three of the same colour in a row
-    const n = this.lastTypes.length;
-    if (n >= 2 && this.lastTypes[n - 1] === t && this.lastTypes[n - 2] === t) {
-      t = TYPES[(TYPES.indexOf(t) + 1 + Math.floor(this.world.rng.next() * 2)) % 3];
-    }
-    this.lastTypes.push(t);
-    if (this.lastTypes.length > 4) this.lastTypes.shift();
+  /** Colour for the next toy from chute `side` (never three alike in a row from one chute). */
+  private pickType(side: number): ObjType {
+    const types = PANIC_CHUTES[side].types;
+    const last = this.lastBySide[side];
+    let t: ObjType = types[Math.floor(this.world.rng.next() * types.length)];
+    const n = last.length;
+    if (n >= 2 && last[n - 1] === t && last[n - 2] === t) t = types[(types.indexOf(t as never) + 1) % types.length];
+    last.push(t);
+    if (last.length > 4) last.shift();
     return t;
   }
 
@@ -96,7 +97,7 @@ export class PanicDirector {
     this.activeEnd = world.tick + msToTicks(info.duration);
     if (kind === 'lowgrav') world.engine.gravity.y = 0.42;
     if (kind === 'jam') {
-      this.jammed = world.rng.pick(this.belts.filter((b) => b.id !== 'top'));
+      this.jammed = world.rng.pick(this.belts);
       this.jammed.disabled = true;
       world.events.emit('machineChanged', this.jammed);
     }
@@ -125,10 +126,14 @@ export class PanicDirector {
 
     if (tick >= this.nextSpawn) {
       // hold back if the factory is crowded or the drop point is blocked
-      const blocked = world.objects.some((o) => Math.abs(o.x - PANIC_SPAWN.x) < 80 && o.y < PANIC_SPAWN.y + 90);
+      // the two chutes take turns
+      const side = this.nextSide;
+      const at = PANIC_CHUTES[side];
+      const blocked = world.objects.some((o) => Math.abs(o.x - at.x) < 80 && o.y < at.y + 90);
       if (world.objects.length < 14 && !blocked) {
-        world.spawnObject(this.pickType(), 'standard', PANIC_SPAWN.x, PANIC_SPAWN.y, 0, 0, world.spawners[0] ?? null);
-        if (world.spawners[0]) world.spawners[0].lastSpawnTick = tick;
+        world.spawnObject(this.pickType(side), 'standard', at.x, at.y, 0, 0, world.spawners[side] ?? null);
+        if (world.spawners[side]) world.spawners[side].lastSpawnTick = tick;
+        this.nextSide = side === 0 ? 1 : 0;
         this.nextSpawn = tick + msToTicks(this.spawnInterval);
       } else {
         this.nextSpawn = tick + 10;
