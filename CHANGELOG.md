@@ -2,6 +2,13 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## Belt-style buttons (v1.6.2)
+
+- Each belt button is drawn as a small copy of its belt: navy frame, the belt's colour on the face, cyan top strip, white rollers at both ends and white chevrons, with a darker lip it presses into. The dark console from v1.6.1 is replaced by the light workshop strip.
+- The direction word ("LEFT" / "RIGHT") and its chevrons are centred together on the button, so the padding is even on both sides. The chevrons sit on the side the belt is moving towards.
+- With one belt the button is 480 wide instead of nearly the full width.
+- Poki build zipped: `output/poki/tiny-factory-panic-poki-v1.6.2.zip`.
+
 ## Control console, pause screen and desktop fix (v1.6.1)
 
 - The bottom HUD is a dark control console: lives on the left, and each belt button labelled ("BELT 01", "Left"/"Right") with an arrow showing its direction. A jammed belt in Panic mode shows a lock.

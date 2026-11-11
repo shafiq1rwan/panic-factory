@@ -25,7 +25,14 @@ interface Chip {
 interface BeltButton {
   belt: ConveyorBelt;
   button: Button;
-  direction: Phaser.GameObjects.Graphics;
+  /** button width, needed to place the end rollers */
+  w: number;
+  /** label and chevrons, centred together on the face */
+  content: Phaser.GameObjects.Container;
+  /** chevrons (or the lock when jammed) */
+  marks: Phaser.GameObjects.Graphics;
+  /** end rollers, drawn like the belt's */
+  rollers: Phaser.GameObjects.Graphics;
   label: Phaser.GameObjects.Text;
   shownDir: number;
   shownOff: boolean;
@@ -36,8 +43,7 @@ const BAR_Y = HUD_H / 2;
 /** Rows inside the control strip, measured from its top edge. */
 const LIVES_ROW = 42;
 const BUTTON_ROW = 128;
-const BUTTON_H = 104;
-const CONSOLE = { body: 0x25433f, rim: 0x49665d, muted: '#C6D7D0' };
+const BUTTON_H = 112;
 
 /**
  * Heads-up display for the portrait layout, rendered in its own scene above
@@ -45,7 +51,7 @@ const CONSOLE = { body: 0x25433f, rim: 0x49665d, muted: '#C6D7D0' };
  *
  *   top bar        pause, restart, level name, delivery counters
  *   play field
- *   control strip  inset console with lives and labelled belt controls
+ *   control strip  light workshop surface with lives and labelled belt controls
  *
  * The top bar is pinned to the top of the device's safe area and the controls
  * stay clear of the bottom inset, so nothing sits under a camera cut-out or
@@ -144,17 +150,10 @@ export class UIScene extends Phaser.Scene {
     // controls sit in an inner group, centred in whatever safe space the strip has (tall phones have more)
     this.controls = this.add.container(0, 0);
     this.footer.add(this.controls);
-    const consoleBg = this.add.graphics();
-    roundRect(consoleBg, 16, 16, GAME_W - 32, 180, 28, 0x294d43, 0, undefined, 0.16);
-    roundRect(consoleBg, 16, 12, GAME_W - 32, 180, 28, CONSOLE.body, 0);
-    consoleBg.lineStyle(1, CONSOLE.rim, 1);
-    consoleBg.strokeRoundedRect(16, 12, GAME_W - 32, 180, 28);
-    consoleBg.lineBetween(40, 67, GAME_W - 40, 67);
-    this.controls.add(consoleBg);
-    this.controls.add(txt(this, 40, LIVES_ROW, 'LIVES', 16, CONSOLE.muted).setOrigin(0, 0.5).setLetterSpacing(1.5));
+    this.controls.add(txt(this, 40, LIVES_ROW, 'LIVES', 16, WORKSHOP.muted).setOrigin(0, 0.5).setLetterSpacing(1.5));
     this.heartsG = this.add.graphics();
     this.controls.add(this.heartsG);
-    this.effectT = txt(this, GAME_W - 40, LIVES_ROW, 'TAP TO FLIP', 18, CONSOLE.muted).setOrigin(1, 0.5);
+    this.effectT = txt(this, GAME_W - 40, LIVES_ROW, 'TAP TO FLIP', 18, WORKSHOP.muted).setOrigin(1, 0.5);
     this.controls.add(this.effectT);
 
     this.hand = this.add.image(0, 0, 'hand').setScale(1.5 / TEX_SCALE).setDepth(50).setVisible(false).setAngle(-18);
@@ -167,27 +166,28 @@ export class UIScene extends Phaser.Scene {
 
   /**
    * One button per belt, laid out left to right in the same order as the belts
-   * on screen and in the same colour as its belt. Each shows which way its belt
-   * is running right now.
+   * on screen. Each button is drawn as a small copy of its belt (navy frame,
+   * accent face, rollers at the ends, white chevrons) and shows which way the
+   * belt is running right now: the word and its chevrons, centred together.
    */
   private createBeltButtons(belts: ConveyorBelt[], onFlip: (belt: ConveyorBelt) => void): void {
     const n = belts.length;
     if (n === 0) return;
-    const gap = 16;
-    const w = (GAME_W - 80 - (n - 1) * gap) / n;
+    const gap = 20;
+    const w = n === 1 ? 480 : (GAME_W - 72 - (n - 1) * gap) / n;
     const x0 = CX - ((n - 1) * (w + gap)) / 2;
-    belts.forEach((belt, i) => {
-      const button = new Button(this, x0 + i * (w + gap), BUTTON_ROW, {
-        w, h: BUTTON_H, radius: 22, color: belt.def.accent ?? BELT_A,
+    belts.forEach((belt) => {
+      const button = new Button(this, x0 + belts.indexOf(belt) * (w + gap), BUTTON_ROW, {
+        w, h: BUTTON_H, radius: 30, style: 'belt', color: belt.def.accent ?? BELT_A,
         onClick: () => onFlip(belt),
       });
-      const title = txt(this, -w / 2 + 22, -23, `BELT ${String(i + 1).padStart(2, '0')}`, 18, TEXT.white)
-        .setOrigin(0, 0.5).setLetterSpacing(1.5).setAlpha(0.85);
-      const label = txt(this, -w / 2 + 22, 12, '', 27, TEXT.white).setOrigin(0, 0.5);
-      const direction = this.add.graphics().setPosition(w / 2 - 50, 2);
-      button.addToFace(title, label, direction);
+      const rollers = this.add.graphics();
+      const marks = this.add.graphics();
+      const label = txt(this, 0, 1, '', 32, TEXT.white, { stroke: '#2A1F6B', strokeThickness: 4 }).setLetterSpacing(1);
+      const content = this.add.container(0, 0, [marks, label]);
+      button.addToFace(rollers, content);
       this.controls.add(button);
-      const control = { belt, button, direction, label, shownDir: belt.dir, shownOff: belt.disabled };
+      const control: BeltButton = { belt, button, w, content, marks, rollers, label, shownDir: belt.dir, shownOff: belt.disabled };
       this.beltButtons.push(control);
       this.drawBeltButton(control);
     });
@@ -195,12 +195,54 @@ export class UIScene extends Phaser.Scene {
 
   private drawBeltButton(b: BeltButton): void {
     const off = b.belt.disabled;
-    b.button.setColor(off ? 0x6b7c79 : (b.belt.def.accent ?? BELT_A));
-    b.label.setText(off ? 'Jammed' : b.belt.dir === 1 ? 'Right' : 'Left');
-    b.direction.clear();
-    b.direction.fillStyle(0xffffff, 0.14);
-    b.direction.fillRoundedRect(-36, -33, 72, 66, 17);
-    drawIcon(b.direction, off ? 'lock' : b.belt.dir === 1 ? 'arrowR' : 'arrowL', 24, 0xffffff);
+    const dir = b.belt.dir;
+    b.button.setColor(off ? 0x8f8ab0 : (b.belt.def.accent ?? BELT_A));
+
+    // rollers sit just inside the frame, the same distance from each end
+    const g = b.rollers;
+    g.clear();
+    const spin = dir === 1 ? Math.PI / 4 : -Math.PI / 4;
+    for (const rx of [-b.w / 2 + 34, b.w / 2 - 34]) {
+      g.fillStyle(0xffffff, 1);
+      g.fillCircle(rx, 0, 13);
+      g.lineStyle(3.5, COLORS.lavenderDark, 1);
+      g.lineBetween(rx - Math.cos(spin) * 8, -Math.sin(spin) * 8, rx + Math.cos(spin) * 8, Math.sin(spin) * 8);
+    }
+
+    // word plus chevrons, centred as one group; the chevrons lead in the direction of travel
+    b.label.setText(off ? 'JAMMED' : dir === 1 ? 'RIGHT' : 'LEFT');
+    const m = b.marks;
+    m.clear();
+    const markW = off ? 30 : 50;
+    const space = 14;
+    const total = markW + space + b.label.width;
+    const markOnRight = off || dir === 1;
+    const markX = markOnRight ? total / 2 - markW / 2 : -total / 2 + markW / 2;
+    b.label.x = markOnRight ? -total / 2 + b.label.width / 2 : total / 2 - b.label.width / 2;
+    if (off) {
+      m.setPosition(markX, 0);
+      drawIcon(m, 'lock', 15, COLORS.white);
+      return;
+    }
+    m.setPosition(markX, 0);
+    m.lineStyle(6, COLORS.belt, 0.35);
+    for (let i = -1; i <= 1; i++) {
+      const cx = i * 18;
+      m.beginPath();
+      m.moveTo(cx - 6 * dir, -10 + 2);
+      m.lineTo(cx + 5 * dir, 0 + 2);
+      m.lineTo(cx - 6 * dir, 10 + 2);
+      m.strokePath();
+    }
+    m.lineStyle(6, 0xffffff, 1);
+    for (let i = -1; i <= 1; i++) {
+      const cx = i * 18;
+      m.beginPath();
+      m.moveTo(cx - 6 * dir, -10);
+      m.lineTo(cx + 5 * dir, 0);
+      m.lineTo(cx - 6 * dir, 10);
+      m.strokePath();
+    }
   }
 
   private updateBeltButtons(): void {
@@ -212,9 +254,9 @@ export class UIScene extends Phaser.Scene {
       b.shownOff = off;
       this.drawBeltButton(b);
       if (flipped && !save.settings.reducedMotion) {
-        this.tweens.killTweensOf(b.direction);
-        b.direction.setScale(0.8);
-        this.tweens.add({ targets: b.direction, scale: 1, duration: 200, ease: 'Back.easeOut' });
+        this.tweens.killTweensOf(b.content);
+        b.content.setScale(0.85);
+        this.tweens.add({ targets: b.content, scale: 1, duration: 220, ease: 'Back.easeOut' });
       }
     }
   }
@@ -432,7 +474,7 @@ export class UIScene extends Phaser.Scene {
     this.heartsKey = key;
     const g = this.heartsG;
     g.clear();
-    for (let i = 0; i < total; i++) heart(g, x0 + i * 34, y, 27, i < left ? 0xff8195 : CONSOLE.rim, 0);
+    for (let i = 0; i < total; i++) heart(g, x0 + i * 34, y, 27, i < left ? 0xe2566b : 0xd3dbd2, 0);
     if (wobble) {
       g.setPosition(0, 0);
       this.tweens.add({ targets: g, y: 5, duration: 70, yoyo: true, repeat: 2 });
@@ -482,7 +524,7 @@ export class UIScene extends Phaser.Scene {
     }
     this.drawHearts(p.maxLives, p.lives, 128, LIVES_ROW);
     this.effectT!.setText(p.activeEffect || 'TAP TO FLIP');
-    this.effectT!.setColor(p.activeEffect ? '#FFD88B' : CONSOLE.muted);
+    this.effectT!.setColor(p.activeEffect ? '#9A5C14' : WORKSHOP.muted);
     // the tip only shows for the first few seconds
     this.tip!.setVisible(p.director.seconds < 8);
 

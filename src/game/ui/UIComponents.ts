@@ -32,8 +32,12 @@ export interface ButtonOpts {
   iconSize?: number;
   fontSize?: number;
   radius?: number;
-  /** Low-profile controls for the workshop HUD. */
-  style?: 'panel';
+  /**
+   * `panel`: low-profile controls for the workshop HUD.
+   * `belt`: drawn like a conveyor belt (navy frame, accent face, cyan top strip),
+   * so a belt's button looks like the belt it flips. `color` is the accent.
+   */
+  style?: 'panel' | 'belt';
   onClick: () => void;
 }
 
@@ -104,6 +108,21 @@ export class Button extends Phaser.GameObjects.Container {
       this.bg.fillRoundedRect(-w / 2, -h / 2, w, h, r);
       this.bg.lineStyle(1, 0x375f51, 0.2);
       this.bg.strokeRoundedRect(-w / 2, -h / 2, w, h, r);
+      return;
+    }
+    if (this.opts.style === 'belt') {
+      // same build-up as ConveyorView: navy loop, accent inner frame, bright carrying strip
+      const rim = 9;
+      this.lip.fillStyle(COLORS.beltDark, 1);
+      this.lip.fillRoundedRect(-w / 2, -h / 2 + 6, w, h, r);
+      this.bg.fillStyle(COLORS.belt, 1);
+      this.bg.fillRoundedRect(-w / 2, -h / 2, w, h, r);
+      this.bg.fillStyle(c, 1);
+      this.bg.fillRoundedRect(-w / 2 + rim, -h / 2 + rim, w - rim * 2, h - rim * 2, r - rim);
+      this.bg.fillStyle(this.enabled ? 0x39d5ff : 0xb8b4d0, 1);
+      this.bg.fillRoundedRect(-w / 2 + r - 4, -h / 2, w - (r - 4) * 2, 6, 3);
+      this.bg.fillStyle(0xffffff, 0.18);
+      this.bg.fillRoundedRect(-w / 2 + rim + 8, -h / 2 + rim + 5, w - (rim + 8) * 2, 6, 3);
       return;
     }
     roundRect(this.lip, -w / 2, -h / 2 + 5, w, h, r, darken(c, 0.38), 3);
