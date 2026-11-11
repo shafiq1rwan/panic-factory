@@ -12,8 +12,8 @@ import { computeStars, PanicScore, starsForRuns } from '../game/systems/ScoreMan
 import { allConfigs, planOptions, robust, solvePlan } from '../game/sim/planSolver';
 
 describe('level data', () => {
-  it('has 16 levels (four chapters of four) with unique ids', () => {
-    expect(LEVELS.length).toBe(16);
+  it('has 30 levels (three worlds of ten) with unique ids', () => {
+    expect(LEVELS.length).toBe(30);
     expect(new Set(LEVELS.map((l) => l.id)).size).toBe(LEVELS.length);
   });
 
@@ -33,14 +33,19 @@ describe('level data', () => {
     }
   });
 
-  it('introduces one new kind of toy at a time, and only in the last chapter', () => {
-    const kinds = (i: number): Set<string> => new Set(LEVELS[i].spawners.flatMap((s) => s.sequence.map((spec) => { const p = parseSpawn(spec); return p.material === 'standard' ? p.type : p.material; })));
-    const seen = new Set<string>();
+  it('introduces one new kind of toy at a time, after world 1, always with a NEW TOY card', () => {
+    const kindOf = (spec: string): string => { const p = parseSpawn(spec as never); return p.material === 'standard' ? p.type : p.material; };
+    const kinds = (i: number): Set<string> => new Set(LEVELS[i].spawners.flatMap((s) => s.sequence.map(kindOf)));
+    const seen = new Set<string>(['blue', 'pink', 'yellow']);
     for (let i = 0; i < LEVELS.length; i++) {
+      const level = LEVELS[i];
       const fresh = [...kinds(i)].filter((k) => !seen.has(k));
-      // the first chapters stick to the three plain toys everyone meets in level 1-3
-      if (i < 12) for (const k of kinds(i)) expect(['blue', 'pink', 'yellow'], LEVELS[i].name).toContain(k);
-      else expect(fresh.length, LEVELS[i].name).toBeLessThanOrEqual(1);
+      // world 1 sticks to the three plain toys
+      if (i < 10) expect(fresh, level.name).toEqual([]);
+      expect(fresh.length, level.name).toBeLessThanOrEqual(1);
+      // a new toy is always announced, and only a new toy is
+      if (fresh.length) expect(level.newToy && kindOf(level.newToy.spec), level.name).toBe(fresh[0]);
+      else expect(level.newToy, level.name).toBeUndefined();
       for (const k of kinds(i)) seen.add(k);
     }
   });

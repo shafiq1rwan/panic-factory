@@ -2,7 +2,7 @@
 
 A set-up-then-run physics puzzle for the browser. **Tap the machines to set them up, then press RUN**: the toys drop, bounce and ride through the factory, and every one has to land in the bin of its own colour.
 
-- **16 levels** in 4 chapters (belts, bouncers, timers, new shapes), each chapter in its own room, three-star ratings for solving a level in few runs. One gesture: tap a machine to change it. Nothing to drag.
+- **30 levels** in 3 worlds of ten (Workshop, Toy Room, Night Shift). Each world has its own wall, pipe colour and new toys (green hexagon and heavy toys in the Toy Room, bouncy toys and the purple pill on the Night Shift); a level that brings in a new toy shows a NEW TOY card before the first run; three-star ratings for solving a level in few runs. One gesture: tap a machine to change it. Nothing to drag.
 - **Panic Factory**: an endless mode with malfunctions, unlocked after 5 levels.
 - Portrait layout, built for phones and playable on desktop.
 - Built with TypeScript, Phaser 3, Matter.js (the build bundled with Phaser) and Vite.
@@ -71,7 +71,7 @@ src/
     machines/             BaseMachine, ConveyorBelt, SpringBumper, Piston, Funnel, DeliveryBin
     systems/              PuzzleRules, ScoreManager, PanicDirector, LevelManager, SaveManager,
                           AudioManager, ParticleManager
-    levels/               LevelTypes, the 16 levels, the Panic arena
+    levels/               LevelTypes, the 30 levels, the Panic arena
     rendering/            Vector drawing, texture baking, machine/toy views, WorldView (all the juice)
     scenes/               Boot, Menu, LevelSelect, Game, Panic, UI (HUD), Result, Pause, Settings,
                           Transition (the curtain wipe between screens)
@@ -138,7 +138,7 @@ VITE_PLATFORM=poki npm run build
 
 Run on Windows 11 with Node 26 and headless Microsoft Edge:
 
-- `npm test`: 134 tests pass. They cover the physics and machines, win/lose rules, save/load including corrupted data, scoring, that new toys (green hexagon, heavy, bouncy) arrive one at a time in the last chapter, and for each of the 16 levels: structure, that RUN without changes fails, that the solution wins and survives random spawn offsets, that most setups lose, that every possible run ends within 13 s with no toy leaving play, and determinism. Panic mode is checked with a bot over three simulated minutes.
+- `npm test`: 204 tests pass. They cover the physics and machines, win/lose rules, save/load including corrupted data, scoring, that new toys arrive one at a time after world 1 and always with a NEW TOY card, and for each of the 30 levels: structure, that RUN without changes fails, that the solution wins and survives random spawn offsets, that most setups lose, that every possible run ends within 13 s with no toy leaving play, and determinism. Panic mode is checked with a bot over three simulated minutes.
 - `npm run solve`: tries all setups of every level (2 to 32 per level).
 - `npm run smoke`: 44 checks pass against the production build: PLAY into level 1 waiting in setup, a tap on empty space flashing the badges, tapping the belt, RUN, machines locked during a run, auto-advance after a win, a failed run handing the setup back with fewer stars on offer, pause and settings mid-run, level 3 set up and won with the keyboard, level 12 with the mouse, level 7 with touch taps at phone size, safe-area insets, save persistence, a corrupted save, Panic mode, six window shapes and the turn-upright prompt, with no console errors.
 

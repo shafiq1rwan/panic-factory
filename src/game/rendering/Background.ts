@@ -6,29 +6,48 @@ import { mix } from './VectorFactory';
 
 type G = Phaser.GameObjects.Graphics;
 
-/** A room of the factory: wall colours and the pattern on the wall. Each chapter has its own. */
+/** A world of the factory: its name, wall colours, wall pattern and pipe colour. */
 export interface Theme {
+  name: string;
+  /** colour of the world's label on the level-select screen */
+  tag: number;
   wallTop: number;
   wallBottom: number;
   seam: number;
   frame: number;
   floor: number;
-  pattern: 'sheets' | 'planks' | 'tiles' | 'bricks';
+  pattern: 'sheets' | 'planks' | 'bricks';
+  pipe: number;
+  pipeRim: number;
 }
 
+/** Levels per world. Every world has its own look and brings in new toys. */
+export const WORLD_SIZE = 10;
+
 export const THEMES: Theme[] = [
-  // Belts: the mint workshop
-  { wallTop: WORKSHOP.wallTop, wallBottom: WORKSHOP.wallBottom, seam: WORKSHOP.seam, frame: WORKSHOP.frame, floor: WORKSHOP.floor, pattern: 'sheets' },
-  // Bouncers: a warm wooden toy room
-  { wallTop: 0xf8eee2, wallBottom: 0xecd6c1, seam: 0xdcc0a6, frame: 0xc09a7c, floor: 0x8c6c58, pattern: 'planks' },
-  // Timers: a cool tiled machine hall
-  { wallTop: 0xe8f0f8, wallBottom: 0xcbdaec, seam: 0xb4c7de, frame: 0x8ba3c2, floor: 0x5c7494, pattern: 'tiles' },
-  // New shapes: a lavender night shift
-  { wallTop: 0xefe9f7, wallBottom: 0xd5c9ea, seam: 0xc3b4dd, frame: 0x9c88c2, floor: 0x67578c, pattern: 'bricks' },
+  // levels 1-10: the mint workshop, lavender pipes; plain toys
+  {
+    name: 'Workshop', tag: 0x2bb8ff,
+    wallTop: WORKSHOP.wallTop, wallBottom: WORKSHOP.wallBottom, seam: WORKSHOP.seam, frame: WORKSHOP.frame, floor: WORKSHOP.floor,
+    pattern: 'sheets', pipe: 0x9b7bff, pipeRim: 0xd9ccff,
+  },
+  // levels 11-20: a warm wooden toy room, coral pipes; green hexagons and heavy toys
+  {
+    name: 'Toy Room', tag: 0xff8a5c,
+    wallTop: 0xf8eee2, wallBottom: 0xecd6c1, seam: 0xdcc0a6, frame: 0xc09a7c, floor: 0x8c6c58,
+    pattern: 'planks', pipe: 0xf2675c, pipeRim: 0xffcbc4,
+  },
+  // levels 21-30: a cool blue brick hall on the night shift, teal pipes; bouncy toys and purple pills
+  {
+    name: 'Night Shift', tag: 0x22b5a4,
+    wallTop: 0xe3e8f6, wallBottom: 0xbfc9e8, seam: 0xaab5dc, frame: 0x7f8cc0, floor: 0x4f5b8e,
+    pattern: 'bricks', pipe: 0x1fb3a3, pipeRim: 0xaaeee4,
+  },
 ];
 
-/** The room a level is played in: one theme per chapter of four levels. */
-export const themeForLevel = (levelIndex: number): Theme => THEMES[Math.floor(levelIndex / 4) % THEMES.length];
+/** The world a level belongs to. */
+export const worldOf = (levelIndex: number): number => Math.min(THEMES.length - 1, Math.floor(levelIndex / WORLD_SIZE));
+export const themeForLevel = (levelIndex: number): Theme => THEMES[worldOf(levelIndex)];
 
 /**
  * A softly lit workshop: quiet wall pattern, recessed utility rails and a
@@ -144,15 +163,6 @@ function drawPattern(g: G, t: Theme, x0: number, x1: number, y0: number, y1: num
           g.fillCircle(x + 12, y + h / 2, 2);
         }
       }
-      break;
-    }
-    case 'tiles': {
-      // Big square tiles with a faint bevel.
-      const s = 120;
-      for (let x = Math.floor(x0 / s) * s; x < x1; x += s) seam(x, y0, x, y1, 0.4);
-      for (let y = Math.floor(y0 / s) * s; y < y1; y += s) seam(x0, y, x1, y, 0.4);
-      g.fillStyle(0xffffff, 0.16);
-      for (let x = Math.floor(x0 / s) * s; x < x1; x += s) for (let y = Math.floor(y0 / s) * s; y < y1; y += s) g.fillRect(x + 8, y + 8, s - 16, 6);
       break;
     }
     case 'bricks': {

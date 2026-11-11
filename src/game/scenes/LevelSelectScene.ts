@@ -1,20 +1,23 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_W, TEXT, WORKSHOP } from '../config';
 import { LEVELS } from '../levels/levels';
-import { drawFactoryBackground, setupCamera, keepOverlayBelow } from '../rendering/Background';
+import { drawFactoryBackground, setupCamera, keepOverlayBelow, THEMES, WORLD_SIZE } from '../rendering/Background';
 import { drawIcon } from '../rendering/Icons';
 import { roundRect } from '../rendering/VectorFactory';
 import { LevelManager } from '../systems/LevelManager';
 import { save } from '../systems/SaveManager';
 import { Button, drawStar, fadeIn, gotoScene, txt } from '../ui/UIComponents';
 
-/** One chapter per row of four levels; only as many rows as there are levels. */
-const CHAPTER_NAMES = ['Belts', 'Bouncers', 'Timers', 'New Shapes', 'Factory Panic'];
-const CHAPTERS = CHAPTER_NAMES.slice(0, Math.ceil(LEVELS.length / 4));
-const PER_ROW = 4;
-const CHAPTER_COLORS = [COLORS.blue, COLORS.pink, COLORS.yellow, COLORS.lavender, COLORS.mint];
+const PER_ROW = 5;
+const CARD_W = 122;
+const CARD_H = 112;
+const COL_W = 134;
+const ROW_H = 124;
+/** world panel: label strip + two rows of five */
+const PANEL_H = 56 + Math.ceil(WORLD_SIZE / PER_ROW) * ROW_H + 8;
+const PANEL_GAP = 22;
 
-/** Level grid: one chapter per row of four levels, with stars and locked states. */
+/** Level grid: one panel per world of ten levels, tinted like the world's own wall. */
 export class LevelSelectScene extends Phaser.Scene {
   constructor() {
     super('LevelSelect');
@@ -36,50 +39,64 @@ export class LevelSelectScene extends Phaser.Scene {
     roundRect(tg, -84, -27, 168, 54, 22, 0xffffff, 3);
     total.add([tg, drawStar(this, -50, 0, 16, true), txt(this, 20, 0, `${save.totalStars} / ${LEVELS.length * 3}`, 22)]);
 
-    // portrait: one chapter per row, four levels across
-    const colW = 172;
-    const blockH = 208;
     const next = LevelManager.nextUnfinished;
+    const worlds = Math.ceil(LEVELS.length / WORLD_SIZE);
+    for (let w = 0; w < worlds; w++) {
+      const theme = THEMES[Math.min(w, THEMES.length - 1)];
+      const top = 136 + w * (PANEL_H + PANEL_GAP);
+      const panelW = PER_ROW * COL_W + 20;
+      // panel in the world's wall colours, with its pipe colour as the edge
+      const pg = this.add.graphics();
+      pg.fillStyle(0x294d43, 0.1);
+      pg.fillRoundedRect(GAME_W / 2 - panelW / 2, top + 6, panelW, PANEL_H, 26);
+      pg.fillStyle(theme.wallBottom, 1);
+      pg.fillRoundedRect(GAME_W / 2 - panelW / 2, top, panelW, PANEL_H, 26);
+      pg.lineStyle(3, theme.pipe, 0.9);
+      pg.strokeRoundedRect(GAME_W / 2 - panelW / 2, top, panelW, PANEL_H, 26);
+      // label
+      const first = w * WORLD_SIZE + 1;
+      const last = Math.min(LEVELS.length, (w + 1) * WORLD_SIZE);
+      roundRect(pg, GAME_W / 2 - panelW / 2 + 16, top + 12, 220, 36, 18, theme.tag, 0);
+      txt(this, GAME_W / 2 - panelW / 2 + 126, top + 30, theme.name, 20, TEXT.white);
+      txt(this, GAME_W / 2 + panelW / 2 - 20, top + 30, `LEVELS ${first}-${last}`, 15, WORKSHOP.muted).setOrigin(1, 0.5).setLetterSpacing(1.5);
 
-    CHAPTERS.forEach((name, c) => {
-      const by = 150 + c * blockH;
-      // chapter header
-      const hg = this.add.graphics();
-      roundRect(hg, GAME_W / 2 - 130, by, 260, 38, 19, CHAPTER_COLORS[c], 3);
-      txt(this, GAME_W / 2, by + 19, name, 19);
-
-      for (let r = 0; r < PER_ROW; r++) {
-        const index = c * PER_ROW + r;
+      for (let k = 0; k < WORLD_SIZE; k++) {
+        const index = w * WORLD_SIZE + k;
         const level = LEVELS[index];
         if (!level) continue;
+        const r = Math.floor(k / PER_ROW);
+        const c = k % PER_ROW;
+        const x = GAME_W / 2 + (c - (PER_ROW - 1) / 2) * COL_W;
+        const y = top + 56 + r * ROW_H + CARD_H / 2;
         const unlocked = LevelManager.isUnlocked(index);
         const stars = save.starsFor(level.id);
-        const x = GAME_W / 2 + (r - (PER_ROW - 1) / 2) * colW;
-        const y = by + 118;
         const btn = new Button(this, x, y, {
-          w: 158, h: 132, radius: 26,
+          w: CARD_W, h: CARD_H, radius: 22,
           color: unlocked ? 0xffffff : 0x4a3f8f,
           onClick: () => gotoScene(this, 'Game', { level: index }),
         });
         btn.setEnabled(unlocked);
         if (unlocked) {
-          const num = txt(this, 0, -32, `${index + 1}`, 42, TEXT.dark);
-          const nm = txt(this, 0, 6, level.name, 15, TEXT.soft);
-          if (nm.width > 146) nm.setFontSize((15 * 146) / nm.width);
-          btn.addToFace(num, nm);
-          for (let s = 0; s < 3; s++) btn.addToFace(drawStar(this, (s - 1) * 36, 40, 14, s < stars));
+          btn.addToFace(txt(this, 0, -14, `${index + 1}`, 40, TEXT.dark));
+          for (let s = 0; s < 3; s++) btn.addToFace(drawStar(this, (s - 1) * 30, 30, 12, s < stars));
+          if (level.newToy) {
+            // a dot in the toy's colour marks the level that brings in a new toy
+            const dot = this.add.graphics();
+            roundRect(dot, 18, -48, 38, 20, 10, COLORS.pink, 0);
+            btn.addToFace(dot, txt(this, 37, -38, 'NEW', 11, TEXT.white));
+          }
           if (index === next && stars === 0 && !save.settings.reducedMotion) {
             // gently bounce the next level to play
             this.tweens.add({ targets: btn, y: y - 6, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
           }
         } else {
           const lock = this.add.graphics();
-          drawIcon(lock, 'lock', 24, 0x9d92dc);
-          lock.y = -6;
-          btn.addToFace(lock, txt(this, 0, 38, `Level ${index + 1}`, 18, '#9D92DC'));
+          drawIcon(lock, 'lock', 20, 0x9d92dc);
+          lock.y = -12;
+          btn.addToFace(lock, txt(this, 0, 30, `${index + 1}`, 18, '#9D92DC'));
         }
       }
-    });
+    }
 
     this.input.keyboard?.on('keydown-ESC', () => gotoScene(this, 'Menu'));
   }

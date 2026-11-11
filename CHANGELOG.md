@@ -2,6 +2,20 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## Three worlds, 30 levels (v1.9.0)
+
+After the owner played v1.8.0: players cannot know a heavy toy is coming unless the game says so, and the game should grow to about 30 levels with a new look every 10.
+
+- 30 levels in three worlds of ten, each with its own wall, pipe colour and toys:
+  - **Workshop** (1-10): mint wall sheets, lavender pipes; plain toys; teaches belts, bouncers and timers.
+  - **Toy Room** (11-20): wooden planks, coral pipes; the green hexagon and heavy toys.
+  - **Night Shift** (21-30): blue brick hall, teal pipes; bouncy toys and a new shape, the purple pill.
+- New toy shape: the purple pill, long and flat with round ends.
+- NEW TOY card: a level that brings in a toy shows a card with a big picture of it and one line on how it behaves ("Bouncers throw it only half as far") while the player sets up. It goes at RUN. The level-select card of such a level wears a NEW tag. The tests require every new toy to be announced this way.
+- Poki build zipped: `output/poki/tiny-factory-panic-poki-v1.9.0.zip`.
+- Level select shows the three worlds as panels in their own colours, five levels across.
+- 14 new levels: Hex Kick, Two Weights, Heavy Belt, Crossroads, Full House, Bounce House, Bouncy Kick, Pill Box, Pill Kick, Pill Bounce, Junction, Pill Pong, Bouncy Pills, Last Shift. "Night Shift" (level 17) is renamed Heavy Kick. All 30 pass the solver.
+
 ## New shapes and a room per chapter (v1.8.0)
 
 After the owner played v1.7.0 and asked for new levels with a different background and different shapes.

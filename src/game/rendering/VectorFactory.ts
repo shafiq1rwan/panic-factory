@@ -160,6 +160,18 @@ export function toyOutline(type: ObjType, s: number): V2[] | null {
       const h = (OBJ_SHAPE.pink.size * s) / 2;
       return roundedPoly([{ x: -h, y: -h }, { x: h, y: -h }, { x: h, y: h }, { x: -h, y: h }], OBJ_SHAPE.pink.chamfer * s + 1);
     }
+    case 'purple': {
+      const w = (OBJ_SHAPE.purple.w * s) / 2;
+      const h = (OBJ_SHAPE.purple.h * s) / 2;
+      const pts: V2[] = [];
+      for (const [cx, a0] of [[w - h, -Math.PI / 2], [-(w - h), Math.PI / 2]] as const) {
+        for (let i = 0; i <= 12; i++) {
+          const a = a0 + (i * Math.PI) / 12;
+          pts.push(new Phaser.Math.Vector2(cx + Math.cos(a) * h, Math.sin(a) * h));
+        }
+      }
+      return pts;
+    }
     case 'yellow': {
       const r = OBJ_SHAPE.yellow.radius * s;
       return roundedPoly(
@@ -222,7 +234,7 @@ export function drawToy(g: G, type: ObjType, material: MaterialId): void {
   fillToyShape(g, type, s);
   g.restore();
 
-  const size = (type === 'blue' ? OBJ_SHAPE.blue.radius : type === 'pink' ? OBJ_SHAPE.pink.size / 2 : type === 'yellow' ? OBJ_SHAPE.yellow.radius * 0.6 : OBJ_SHAPE.green.radius * 0.85) * s;
+  const size = (type === 'blue' ? OBJ_SHAPE.blue.radius : type === 'pink' ? OBJ_SHAPE.pink.size / 2 : type === 'yellow' ? OBJ_SHAPE.yellow.radius * 0.6 : type === 'purple' ? OBJ_SHAPE.purple.h * 0.6 : OBJ_SHAPE.green.radius * 0.85) * s;
   const oy = type === 'yellow' ? 6 : 0;
 
   if (material === 'bouncy') {

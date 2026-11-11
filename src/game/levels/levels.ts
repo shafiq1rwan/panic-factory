@@ -7,6 +7,7 @@ import {
   type LevelConfig,
   type LevelDef,
   type MachineDef,
+  type NewToy,
   type PistonDef,
   type SpawnSpec,
   type SpawnerDef,
@@ -38,6 +39,7 @@ const SPEED = 2.2;
 /** Belt accent colours (Panic mode's buttons use the same ones). */
 export const BELT_A = 0x7a56f0;
 export const BELT_B = 0x12a594;
+const BELT_C = 0xe0702a;
 
 type Extra<T> = Partial<Omit<T, 'id' | 'kind' | 'x' | 'y'>>;
 
@@ -87,9 +89,10 @@ interface PlanSpec {
   spawners: SpawnerDef[];
   solution: LevelConfig;
   tutorial?: TutorialStep[];
+  newToy?: NewToy;
 }
 
-function planLevel(spec: PlanSpec): LevelDef {
+export function planLevel(spec: PlanSpec): LevelDef {
   const objective: Partial<Record<ObjType, number>> = {};
   for (const sp of spec.spawners) for (const s of sp.sequence) objective[parseSpawn(s).type] = (objective[parseSpawn(s).type] ?? 0) + 1;
   return {
@@ -108,11 +111,13 @@ function planLevel(spec: PlanSpec): LevelDef {
     plan: true,
     tutorial: spec.tutorial,
     solution: spec.solution,
+    newToy: spec.newToy,
   };
 }
 
 export const LEVELS: LevelDef[] = [
-  // ---------------------------------------------------------------- Belts
+  // ---------------------------------------------------------------- World 1: Workshop (levels 1-10)
+  // Belts
   planLevel({
     id: 'first-flip',
     name: 'First Flip',
@@ -143,7 +148,7 @@ export const LEVELS: LevelDef[] = [
     spawners: [pipe('s1', 400, rep('blue', 3))],
     solution: { top: { dir: -1 }, lower: { dir: -1 } },
   }),
-  // ---------------------------------------------------------------- Bouncers
+  // Bouncers
   planLevel({
     id: 'aim-it',
     name: 'Aim It',
@@ -185,7 +190,7 @@ export const LEVELS: LevelDef[] = [
     spawners: [pipe('s1', 360, rep('pink', 4))],
     solution: { padR: { angle: -15 } },
   }),
-  // ---------------------------------------------------------------- Timers
+  // Timers
   planLevel({
     id: 'take-turns',
     name: 'Take Turns',
@@ -224,11 +229,13 @@ export const LEVELS: LevelDef[] = [
     spawners: [pipe('s1', 300, alt('blue', 'pink', 4), 1500, 350)],
     solution: { ram: { phase: 0.75 }, belt: { dir: -1 }, pad: { angle: -12 } },
   }),
-  // ---------------------------------------------------------------- New shapes
+  // ---------------------------------------------------------------- World 2: Toy Room (levels 11-20)
+  // The two harder plain-toy timer levels open world 2 (kick-and-bounce, full-shift above);
+  // then the green hexagon and heavy toys arrive, one at a time.
   planLevel({
     id: 'hex-nuts',
     name: 'Hex Nuts',
-    hint: 'A new shape: the green hexagon',
+    hint: 'Green hexagons go in the green bin',
     machines: [
       belt('beltL', 200, 600, 200, 1),
       belt('beltR', 520, 600, 200, -1, { accent: BELT_B }),
@@ -236,6 +243,15 @@ export const LEVELS: LevelDef[] = [
     ],
     spawners: [pipe('sL', 200, rep('green', 3)), pipe('sR', 520, rep('pink', 3), 1500, 1250)],
     solution: { beltL: { dir: -1 }, beltR: { dir: 1 } },
+    newToy: { spec: 'green', title: 'Green hexagon', text: 'It rolls a little, then stops on a flat side.' },
+  }),
+  planLevel({
+    id: 'hex-kick',
+    name: 'Hex Kick',
+    hint: 'Kick the pink ones, belt the green ones',
+    machines: [timer('ram', 128, 620, 0, 3000, { stroke: 180, extendTicks: 10 }), belt('belt', 340, 830, 160, 1), ...fourBins('yellow', 'green', 'pink', 'blue')],
+    spawners: [pipe('s1', 300, alt('green', 'pink', 4), 1500, 350)],
+    solution: { ram: { phase: 0.75 }, belt: { dir: -1 } },
   }),
   planLevel({
     id: 'heavy-load',
@@ -244,18 +260,19 @@ export const LEVELS: LevelDef[] = [
     machines: [bouncer('pad', 220, 720, [0, 10, 30, -30]), ...threeBins('yellow', 'blue', 'pink')],
     spawners: [pipe('s1', 220, alt('pink', 'blue:heavy', 4))],
     solution: { pad: { angle: 30 } },
+    newToy: { spec: 'blue:heavy', title: 'Heavy toy', text: 'Dark with rivets. Bouncers throw it only half as far.' },
   }),
   planLevel({
-    id: 'boing',
-    name: 'Boing',
-    hint: 'Bouncy toys fly further',
-    machines: [belt('belt', 360, 450, 300, 1), bouncer('pad', 125, 740, [-20, 15, 30]), ...threeBins('blue', 'pink', 'yellow')],
-    spawners: [pipe('s1', 360, alt('pink', 'yellow:bouncy', 4))],
-    solution: { belt: { dir: -1 }, pad: { angle: 30 } },
+    id: 'two-weights',
+    name: 'Two Weights',
+    hint: 'One side heavy, one side light',
+    machines: [bouncer('padL', 200, 720, [-20, 0, 20]), bouncer('padR', 520, 720, [20, 0, -20]), ...threeBins('yellow', 'blue', 'pink')],
+    spawners: [pipe('sL', 200, rep('blue:heavy', 3)), pipe('sR', 520, rep('pink', 3), 1500, 1250)],
+    solution: { padL: { angle: 20 }, padR: { angle: 20 } },
   }),
   planLevel({
     id: 'night-shift',
-    name: 'Night Shift',
+    name: 'Heavy Kick',
     hint: 'Kick the heavy ones, bounce the green ones',
     machines: [
       timer('ram', 128, 620, 0, 3000, { stroke: 180, extendTicks: 10 }),
@@ -265,4 +282,139 @@ export const LEVELS: LevelDef[] = [
     spawners: [pipe('s1', 300, alt('green', 'blue:heavy', 4), 1500, 350)],
     solution: { ram: { phase: 0.75 }, pad: { angle: -30 } },
   }),
+  planLevel({
+    id: 'heavy-belt',
+    name: 'Heavy Belt',
+    hint: 'Pick a side, then aim',
+    machines: [belt('belt', 360, 450, 300, 1), bouncer('padL', 125, 740, [-20, 15, 40]), bouncer('padR', 595, 740, [20, -15, -40]), ...threeBins('pink', 'blue', 'yellow')],
+    spawners: [pipe('s1', 360, alt('pink', 'blue:heavy', 4))],
+    solution: { padR: { angle: -40 } },
+  }),
+  planLevel({
+    id: 'crossroads',
+    name: 'Crossroads',
+    hint: 'Three belts, two pipes',
+    machines: [
+      belt('top', 360, 420, 260, 1),
+      belt('lowL', 170, 640, 200, 1, { accent: BELT_B }),
+      belt('lowR', 550, 640, 200, -1, { accent: BELT_C }),
+      ...fourBins('green', 'pink', 'yellow', 'blue'),
+    ],
+    spawners: [pipe('s1', 360, rep('green', 3)), pipe('s2', 600, rep('pink', 3), 1500, 1250)],
+    solution: { top: { dir: -1 }, lowL: { dir: -1 } },
+  }),
+  planLevel({
+    id: 'full-house',
+    name: 'Full House',
+    hint: 'Timer, belt and bouncer, heavy and green',
+    machines: [
+      timer('ram', 128, 620, 0, 3000, { stroke: 180, extendTicks: 10 }),
+      belt('belt', 300, 840, 200, 1),
+      bouncer('pad', 640, 860, [-30, 0, 30, 15]),
+      ...threeBins('green', 'pink', 'blue'),
+    ],
+    spawners: [pipe('s1', 300, alt('green', 'blue:heavy', 4), 1500, 350)],
+    solution: { ram: { phase: 0.75 }, belt: { dir: -1 } },
+  }),
+  // ---------------------------------------------------------------- World 3: Night Shift (levels 21-30)
+  // Bouncy toys, then the purple pill.
+  planLevel({
+    id: 'boing',
+    name: 'Boing',
+    hint: 'Bouncy toys fly further',
+    machines: [belt('belt', 360, 450, 300, 1), bouncer('pad', 125, 740, [-20, 15, 30]), ...threeBins('blue', 'pink', 'yellow')],
+    spawners: [pipe('s1', 360, alt('pink', 'yellow:bouncy', 4))],
+    solution: { belt: { dir: -1 }, pad: { angle: 30 } },
+    newToy: { spec: 'yellow:bouncy', title: 'Bouncy toy', text: 'White ring. Flies further off a bouncer.' },
+  }),
+  planLevel({
+    id: 'bounce-house',
+    name: 'Bounce House',
+    hint: 'Bouncy on the left, plain on the right',
+    machines: [bouncer('padL', 200, 720, [-30, 10, 30]), bouncer('padR', 520, 720, [30, -10, -30]), ...threeBins('blue', 'yellow', 'pink')],
+    spawners: [pipe('sL', 200, rep('yellow:bouncy', 3)), pipe('sR', 520, rep('pink', 3), 1500, 1250)],
+    solution: { padL: { angle: 10 } },
+  }),
+  planLevel({
+    id: 'bouncy-kick',
+    name: 'Bouncy Kick',
+    hint: 'Kick one kind, bounce the other',
+    machines: [timer('ram', 128, 620, 0, 3000, { stroke: 180, extendTicks: 10 }), bouncer('pad', 300, 840, [0, -30, 30]), ...threeBins('blue', 'yellow', 'pink')],
+    spawners: [pipe('s1', 300, alt('blue', 'yellow:bouncy', 4), 1500, 350)],
+    solution: { ram: { phase: 0.75 }, pad: { angle: -30 } },
+  }),
+  planLevel({
+    id: 'pill-box',
+    name: 'Pill Box',
+    hint: 'Purple pills go in the purple bin',
+    machines: [
+      belt('beltL', 200, 560, 240, 1),
+      belt('beltR', 520, 680, 160, -1, { accent: BELT_B }),
+      ...fourBins('purple', 'blue', 'yellow', 'pink'),
+    ],
+    spawners: [pipe('sL', 200, rep('purple', 3)), pipe('sR', 520, rep('pink', 3), 1500, 1250)],
+    solution: { beltL: { dir: -1 }, beltR: { dir: 1 } },
+    newToy: { spec: 'purple', title: 'Purple pill', text: 'Long and flat. It slides instead of rolling.' },
+  }),
+  planLevel({
+    id: 'pill-kick',
+    name: 'Pill Kick',
+    hint: 'Watch which ones the pusher hits',
+    machines: [timer('ram', 128, 620, 0, 3000, { stroke: 180, extendTicks: 10 }), belt('belt', 300, 830, 200, 1), ...threeBins('yellow', 'purple', 'blue')],
+    spawners: [pipe('s1', 300, alt('purple', 'blue', 4), 1500, 350)],
+    solution: { ram: { phase: 0.75 } },
+  }),
+  planLevel({
+    id: 'pill-bounce',
+    name: 'Pill Bounce',
+    hint: 'Light pills, heavy balls',
+    machines: [bouncer('pad', 220, 720, [0, 20, 40, -20]), ...threeBins('yellow', 'blue', 'purple')],
+    spawners: [pipe('s1', 220, alt('purple', 'blue:heavy', 4))],
+    solution: { pad: { angle: 40 } },
+  }),
+  planLevel({
+    id: 'junction',
+    name: 'Junction',
+    hint: 'Heavy from the middle, pills from the side',
+    machines: [
+      belt('top', 360, 420, 260, 1),
+      belt('lowL', 170, 640, 200, 1, { accent: BELT_B }),
+      belt('lowR', 550, 640, 200, -1, { accent: BELT_C }),
+      ...fourBins('blue', 'yellow', 'green', 'purple'),
+    ],
+    spawners: [pipe('s1', 360, rep('blue:heavy', 3)), pipe('s2', 600, rep('purple', 3), 1500, 1250)],
+    solution: { top: { dir: -1 }, lowL: { dir: -1 }, lowR: { dir: 1 } },
+  }),
+  planLevel({
+    id: 'pill-pong',
+    name: 'Pill Pong',
+    hint: 'Both toys land in the middle?',
+    machines: [bouncer('padL', 200, 720, [30, -10, 10, -30]), bouncer('padR', 520, 720, [-30, 10, -10, 30]), ...threeBins('blue', 'purple', 'yellow')],
+    spawners: [pipe('sL', 200, rep('purple', 3)), pipe('sR', 520, rep('yellow:bouncy', 3), 1500, 1250)],
+    solution: { padL: { angle: 10 }, padR: { angle: 10 } },
+  }),
+  planLevel({
+    id: 'bouncy-pills',
+    name: 'Bouncy Pills',
+    hint: 'A new time for the pusher',
+    machines: [timer('ram', 128, 620, 0, 3000, { stroke: 180, extendTicks: 10 }), belt('belt', 300, 830, 200, 1), ...threeBins('purple', 'blue', 'yellow')],
+    spawners: [pipe('s1', 300, alt('purple', 'yellow:bouncy', 4), 1500, 350)],
+    solution: { ram: { phase: 0.5 }, belt: { dir: -1 } },
+  }),
+  planLevel({
+    id: 'last-shift',
+    name: 'Last Shift',
+    hint: 'Everything you have learned',
+    machines: [
+      timer('ram', 128, 620, 0, 3000, { stroke: 180, extendTicks: 10 }),
+      belt('belt', 300, 840, 200, 1),
+      bouncer('pad', 640, 860, [-30, 0, 30, 15]),
+      ...threeBins('yellow', 'pink', 'purple'),
+    ],
+    spawners: [pipe('s1', 300, alt('purple', 'yellow:bouncy', 4), 1500, 350)],
+    solution: { ram: { phase: 0.25 }, belt: { dir: -1 }, pad: { angle: 0 } },
+  }),
 ];
+
+/** The building blocks, for the level-design scripts. */
+export const LEVEL_KIT = { belt, fixedBelt, bouncer, spring, timer, bin, wall, pipe, twoBins, threeBins, fourBins, rep, alt, planLevel, BIN_Y };

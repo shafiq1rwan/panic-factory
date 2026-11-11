@@ -18,7 +18,7 @@ const PLAN_OVERTIME_TICKS = msToTicks(6000);
 export class PuzzleRules {
   status: RuleStatus = 'running';
   failReason = '';
-  delivered: Record<ObjType, number> = { blue: 0, pink: 0, yellow: 0, green: 0 };
+  delivered: Record<ObjType, number> = { blue: 0, pink: 0, yellow: 0, green: 0, purple: 0 };
   mistakes = 0;
   lost = 0;
   /** tick at which the run was decided */
@@ -56,7 +56,7 @@ export class PuzzleRules {
   reset(): void {
     this.status = 'running';
     this.failReason = '';
-    this.delivered = { blue: 0, pink: 0, yellow: 0, green: 0 };
+    this.delivered = { blue: 0, pink: 0, yellow: 0, green: 0, purple: 0 };
     this.mistakes = 0;
     this.lost = 0;
     this.endTick = 0;

@@ -161,6 +161,14 @@ export interface LevelDef {
    * move; one wrong toy ends the run and hands the setup back.
    */
   plan?: boolean;
+  /** The level brings in a toy the player has not met yet: shown on a card before the first run. */
+  newToy?: NewToy;
+}
+
+export interface NewToy {
+  spec: SpawnSpec;
+  title: string;
+  text: string;
 }
 
 export function parseSpawn(spec: SpawnSpec): { type: ObjType; material: MaterialId } {

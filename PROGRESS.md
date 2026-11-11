@@ -4,12 +4,12 @@ Where the project stands and what is still open. Update this when work is picked
 
 ## Current state
 
-The game is a set-up-then-run puzzle in portrait: the player taps machines to set them up (a belt flips, a bouncer turns, a timer moves on a step), presses RUN, and every toy has to land in the bin of its own colour. A wrong toy stops the run and hands the setup back. Panic mode keeps the earlier live play (two belts, two buttons). v1.8.0 adds a fourth chapter with new toys (green hexagon, heavy, bouncy) and gives each chapter its own background. v1.7.0 is on `main` and GitHub Pages; the live one-button game it replaced is v1.6.5 in the history.
+The game is a set-up-then-run puzzle in portrait: the player taps machines to set them up (a belt flips, a bouncer turns, a timer moves on a step), presses RUN, and every toy has to land in the bin of its own colour. A wrong toy stops the run and hands the setup back. Panic mode keeps the earlier live play (two belts, two buttons). v1.9.0 has 30 levels in three worlds of ten, each with its own wall, pipe colour and new toys, and a NEW TOY card wherever a toy first appears. v1.7.0 is on `main` and GitHub Pages; the live one-button game it replaced is v1.6.5 in the history.
 
 | Area | Status |
 | --- | --- |
 | Core engine (fixed-step Matter.js physics, belts, springs, bumpers, pushers, funnels, bins, chutes) | Done |
-| 16 set-up levels in 4 chapters (belts, bouncers, timers, new shapes), one background per chapter | Done, every setup of every level tried by the solver |
+| 30 set-up levels in 3 worlds of ten (Workshop, Toy Room, Night Shift), each with its own wall, pipe colour and toys | Done, every setup of every level tried by the solver |
 | Tap-to-set machines, RUN / STOP, free retries that keep the setup, stars by runs | Done |
 | Panic Factory (endless live mode with announced malfunctions) | Done |
 | Title screen, level select, pause, settings, Panic game-over screen | Done |
@@ -24,10 +24,10 @@ The game is a set-up-then-run puzzle in portrait: the player taps machines to se
 
 ## Verified
 
-- `npm test`: 134 tests pass.
-- `npm run solve`: all 16 levels pass. Pressing RUN without changes fails every level; each solution wins and survives random spawn offsets; in the harder levels only 1 of 8, 12 or 32 setups wins; every possible run ends within 11 s.
+- `npm test`: 204 tests pass.
+- `npm run solve`: all 30 levels pass. Pressing RUN without changes fails every level; each solution wins and survives random spawn offsets; in the harder levels only 1 of 8, 12 or 32 setups wins; every possible run ends within 11 s.
 - `npm run smoke`: 44 checks pass against the production build in headless Edge, including a level set up and won with the keyboard, one with the mouse, one with touch taps at phone size, and the safe-area insets.
-- One winning run of every level adds up to 116 s of toys moving. Real play time depends on thinking and failed runs, which no one has measured.
+- One winning run of every level adds up to 218 s of toys moving. Real play time depends on thinking and failed runs, which no one has measured.
 
 ## Not verified
 
@@ -40,7 +40,8 @@ The game is a set-up-then-run puzzle in portrait: the player taps machines to se
 ## Open items
 
 - [x] Owner played v1.7.0 on a phone: "looks interesting", asked for new levels with a different background and shape (v1.8.0).
-- [ ] Owner to play chapter 4 and the new backgrounds on a phone.
+- [x] Owner played v1.8.0: the new toys need introducing; asked for up to 30 levels with a new look every 10 (v1.9.0).
+- [ ] Owner to play worlds 2 and 3 on a phone. Several world 2 and 3 levels reuse a layout from world 1 with the new toys; check that they still feel fresh.
 - [ ] More levels: 16 is still a small set. The solver makes adding levels quick (`scripts/plan-lab.ts`).
 - [ ] Play-test on a real phone, cold, with two or three people; note where they stop. The Poki build sends level start / complete / fail events, so a fit test shows where players drop.
 - [ ] Panic mode still uses the live flip mechanic. Decide whether it stays as a separate mode.

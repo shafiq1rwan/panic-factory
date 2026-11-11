@@ -19,6 +19,8 @@ export interface WorldViewOptions {
   queues?: boolean;
   /** y where spawner pipes start (default: just under the HUD bar). */
   pipeTop?: number;
+  /** pipe body and rim colours (each world has its own) */
+  pipe?: { body: number; rim: number };
 }
 
 /**
@@ -47,7 +49,7 @@ export class WorldView {
     this.particles = new ParticleManager(scene, DEPTH.fx);
     this.drawWalls();
     for (const m of world.machines) this.machineViews.set(m, createMachineView(scene, world, m));
-    for (const s of world.spawners) this.spawnerViews.push(new SpawnerView(scene, world, s, opts.queues ?? true, opts.pipeTop));
+    for (const s of world.spawners) this.spawnerViews.push(new SpawnerView(scene, world, s, opts.queues ?? true, opts.pipeTop, opts.pipe));
     this.bind();
   }
 

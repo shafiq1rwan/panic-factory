@@ -9,6 +9,8 @@ export const OBJ_SHAPE = {
   pink: { size: 54, chamfer: 12 },
   yellow: { radius: 39, chamfer: 10 },
   green: { radius: 33, chamfer: 7 },
+  /** a pill: long and flat with fully rounded ends */
+  purple: { w: 78, h: 42 },
 } as const;
 
 export type ObjectState = 'active' | 'delivered' | 'lost';
@@ -45,6 +47,12 @@ function createBody(type: ObjType, material: MaterialId, x: number, y: number): 
       M.Body.setAngle(body, Math.PI / 2);
       body.angle = 0;
       body.anglePrev = 0;
+      break;
+    case 'purple':
+      body = M.Bodies.rectangle(x, y, OBJ_SHAPE.purple.w * s, OBJ_SHAPE.purple.h * s, {
+        ...opts,
+        chamfer: { radius: (OBJ_SHAPE.purple.h / 2) * s - 0.5 },
+      });
       break;
     default:
       body = M.Bodies.polygon(x, y, 6, OBJ_SHAPE.green.radius * s, {

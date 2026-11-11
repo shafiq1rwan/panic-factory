@@ -99,7 +99,8 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     setupCamera(this);
-    drawFactoryBackground(this, true, true, themeForLevel(this.levelIndex));
+    const theme = themeForLevel(this.levelIndex);
+    drawFactoryBackground(this, true, true, theme);
     fadeIn(this);
 
     this.world = new FactoryWorld(this.level);
@@ -107,7 +108,7 @@ export class GameScene extends Phaser.Scene {
     // Classic puzzle levels remember the player's layout; sorting levels always start fresh.
     const stored = this.level.sortAll && !this.level.plan ? undefined : sessionConfigs.get(this.level.id);
     if (stored) this.world.applyConfig(stored);
-    this.view = new WorldView(this, this.world);
+    this.view = new WorldView(this, this.world, { pipe: { body: theme.pipe, rim: theme.pipeRim } });
 
     this.haloG = this.add.graphics().setDepth(DEPTH.zone + 1);
     this.selG = this.add.graphics().setDepth(DEPTH.select - 1);

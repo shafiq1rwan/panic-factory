@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, FOOTER_H, GAME_H, GAME_W, HUD_H, OBJ_TYPES, PLAY_H, TEX_SCALE, TEXT, TYPE_COLORS, WORKSHOP, type ObjType } from '../config';
+import { parseSpawn } from '../levels/LevelTypes';
 import { BELT_A } from '../levels/levels';
 import type { ConveyorBelt } from '../machines/ConveyorBelt';
 import { keepOverlayBelow, safeBottom, safeTop, setupCamera } from '../rendering/Background';
@@ -92,6 +93,8 @@ export class UIScene extends Phaser.Scene {
   private hintText!: Phaser.GameObjects.Text;
   private hintBg!: Phaser.GameObjects.Graphics;
   private hintShown = '';
+  /** introduces a toy the player has not met yet; up until the first RUN */
+  private newToyCard: Phaser.GameObjects.Container | null = null;
   private hand!: Phaser.GameObjects.Image;
   private clock = 0;
   private resultCard: Phaser.GameObjects.Container | null = null;
@@ -125,6 +128,7 @@ export class UIScene extends Phaser.Scene {
     this.heartsKey = '';
     this.lastState = '';
     this.hintShown = '';
+    this.newToyCard = null;
     this.lastScore = -1;
     this.lastMult = 0;
     this.bannerShown = '';
@@ -423,6 +427,57 @@ export class UIScene extends Phaser.Scene {
       this.tweens.add({ targets: card, scale: 1, alpha: 1, duration: 260, ease: 'Back.easeOut' });
       this.tweens.add({ targets: card, alpha: 0, y: 330, duration: 260, delay: 1150, onComplete: () => card.destroy() });
     }
+    if (g.level.newToy) this.createNewToyCard(save.settings.reducedMotion ? 0 : 1350);
+  }
+
+  /**
+   * "NEW TOY" card: a big picture of the toy with one line on how it behaves, so a heavy or
+   * bouncy toy never surprises the player. It stays up while they set up and goes at RUN.
+   */
+  private createNewToyCard(delay: number): void {
+    const g = this.game_;
+    const info = g.level.newToy!;
+    const { type, material } = parseSpawn(info.spec);
+    const W = 620;
+    const H = 132;
+    const card = this.add.container(CX, this.freeBand(H)).setDepth(55);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x294d43, 0.14);
+    bg.fillRoundedRect(-W / 2, -H / 2 + 6, W, H, 24);
+    roundRect(bg, -W / 2, -H / 2, W, H, 24, WORKSHOP.panel, 0);
+    bg.lineStyle(3, TYPE_COLORS[type].fill, 1);
+    bg.strokeRoundedRect(-W / 2, -H / 2, W, H, 24);
+    bg.fillStyle(TYPE_COLORS[type].fill, 0.16);
+    bg.fillCircle(-W / 2 + 72, 0, 50);
+    const toy = this.add.image(-W / 2 + 72, 0, toyKey(type, material)).setScale(1 / TEX_SCALE);
+    const tagBg = this.add.graphics();
+    roundRect(tagBg, -W / 2 + 144, -H / 2 + 16, 104, 28, 14, COLORS.pink, 0);
+    const tag = txt(this, -W / 2 + 196, -H / 2 + 30, 'NEW TOY', 15, TEXT.white).setLetterSpacing(1.5);
+    const title = txt(this, -W / 2 + 144, -2, info.title, 30, WORKSHOP.text).setOrigin(0, 0.5);
+    const body = txt(this, -W / 2 + 144, 36, info.text, 19, WORKSHOP.muted).setOrigin(0, 0.5);
+    const room = W - 144 - 22;
+    if (body.width > room) body.setFontSize((19 * room) / body.width);
+    card.add([bg, toy, tagBg, tag, title, body]);
+    card.setAlpha(0).setScale(0.85);
+    this.tweens.add({ targets: card, alpha: 1, scale: 1, duration: 280, delay, ease: 'Back.easeOut' });
+    if (!save.settings.reducedMotion) this.tweens.add({ targets: toy, angle: { from: -8, to: 8 }, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay });
+    this.newToyCard = card;
+  }
+
+  /** A y for a full-width card of height h in the upper play field that covers no machine. */
+  private freeBand(h: number): number {
+    const world = this.game_.world;
+    const candidates = [310, 350, 270, 390, 440];
+    for (const y of candidates) {
+      const clear = world.machines.every((m) => {
+        if (m.kind === 'bin') return true;
+        const e = m.extents();
+        const ry = Math.abs(Math.sin(m.rad)) * e.hw + Math.abs(Math.cos(m.rad)) * e.hh;
+        return m.y + ry < y - h / 2 - 6 || m.y - ry > y + h / 2 + 6;
+      });
+      if (clear) return y;
+    }
+    return candidates[0];
   }
 
   private updatePuzzle(dt: number): void {
@@ -460,10 +515,18 @@ export class UIScene extends Phaser.Scene {
       this.showResultCard(g.state);
     }
 
+    if (this.newToyCard && !(g.state === 'prep' && g.runs === 0)) {
+      const card = this.newToyCard;
+      this.newToyCard = null;
+      this.tweens.killTweensOf(card);
+      this.tweens.add({ targets: card, alpha: 0, scale: 0.9, duration: 200, onComplete: () => card.destroy(true) });
+    }
+
     // hint + tutorial hand
     const tut = g.tutorialHint();
     // the one-line hint stays up for the first few seconds of play
-    const showHint = g.state === 'prep' || (!g.level.plan && g.state === 'running' && (!!tut || g.world.tick < 420));
+    // (the new-toy card, while it is up, takes the hint's place)
+    const showHint = (g.state === 'prep' && !this.newToyCard) || (!g.level.plan && g.state === 'running' && (!!tut || g.world.tick < 420));
     const text = showHint ? (tut?.text ?? g.level.hint ?? '') : '';
     if (text !== this.hintShown) {
       this.hintShown = text;

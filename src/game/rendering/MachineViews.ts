@@ -467,6 +467,7 @@ export class SpawnerView {
     readonly spawner: ObjectSpawner,
     private showQueue = true,
     private pipeTop = -1400,
+    private colors = { body: COLORS.lavender as number, rim: COLORS.lavenderLight as number },
   ) {
     this.g = scene.add.graphics().setDepth(DEPTH.machineFront);
     // just behind the pipe, so it emerges from inside it
@@ -485,14 +486,14 @@ export class SpawnerView {
     g.clear();
     g.fillStyle(COLORS.shadow, SHADOW_ALPHA);
     g.fillRect(x - 40 + 4, top, 80, bottom - top + 6);
-    g.fillStyle(COLORS.lavender, 1);
+    g.fillStyle(this.colors.body, 1);
     g.fillRect(x - 40, top, 80, bottom - top);
     g.fillStyle(0xffffff, 0.25);
     g.fillRect(x - 30, top, 10, bottom - top - 4);
     // rim (squishes when a toy pops out)
     const rw = 102 + k * 14;
     const rh = 20 - k * 5;
-    roundRect(g, x - rw / 2, bottom - 6 + k * 4, rw, rh, 9, COLORS.lavenderLight, 0);
+    roundRect(g, x - rw / 2, bottom - 6 + k * 4, rw, rh, 9, this.colors.rim, 0);
   }
 
   /** Small preview of what will drop next, so players can plan. */

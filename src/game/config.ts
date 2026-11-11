@@ -41,6 +41,8 @@ export const COLORS = {
   lavender: 0x9b7bff,
   lavenderDark: 0x7a56f0,
   lavenderLight: 0xd9ccff,
+  grape: 0xb45cff,
+  grapeDark: 0x8b35dc,
   outline: 0x1e1650,
   outlineSoft: 0x8f82d6,
   white: 0xffffff,
@@ -78,14 +80,15 @@ export const WORKSHOP = {
 export const FONT =
   '"Arial Rounded MT Bold","Varela Round","Nunito","Fredoka","Baloo 2","Trebuchet MS","Segoe UI",system-ui,sans-serif';
 
-export type ObjType = 'blue' | 'pink' | 'yellow' | 'green';
-export const OBJ_TYPES: ObjType[] = ['blue', 'pink', 'yellow', 'green'];
+export type ObjType = 'blue' | 'pink' | 'yellow' | 'green' | 'purple';
+export const OBJ_TYPES: ObjType[] = ['blue', 'pink', 'yellow', 'green', 'purple'];
 
 export const TYPE_COLORS: Record<ObjType, { fill: number; dark: number; name: string }> = {
   blue: { fill: COLORS.blue, dark: COLORS.blueDark, name: 'Blue' },
   pink: { fill: COLORS.pink, dark: COLORS.pinkDark, name: 'Pink' },
   yellow: { fill: COLORS.yellow, dark: COLORS.yellowDark, name: 'Yellow' },
   green: { fill: COLORS.mint, dark: COLORS.mintDark, name: 'Green' },
+  purple: { fill: COLORS.grape, dark: COLORS.grapeDark, name: 'Purple' },
 };
 
 /** Mutable view settings resolved at boot (render resolution multiplier). */
