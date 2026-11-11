@@ -1,8 +1,8 @@
 # Tiny Factory Panic
 
-A one-button physics sorting game for the browser. Toys drop into a little factory and ride the belts; **press a belt's button to flip it** so every toy lands in the bin of its own colour.
+A set-up-then-run physics puzzle for the browser. **Tap the machines to set them up, then press RUN**: the toys drop, bounce and ride through the factory, and every one has to land in the bin of its own colour.
 
-- **20 levels** in 5 chapters, three-star ratings. There is one thing to learn (flip a belt) and nothing to drag, rotate or time. A level has one or two belts, so one or two big buttons.
+- **12 levels** in 3 chapters (belts, bouncers, timers), three-star ratings for solving a level in few runs. One gesture: tap a machine to change it. Nothing to drag.
 - **Panic Factory**: an endless mode with malfunctions, unlocked after 5 levels.
 - Portrait layout, built for phones and playable on desktop.
 - Built with TypeScript, Phaser 3, Matter.js (the build bundled with Phaser) and Vite.
@@ -29,28 +29,33 @@ Requires Node 20 or newer.
 
 ## Layout
 
-The game is portrait. The logical screen is 720 x 1280: a top bar, the play field, and a control strip at the bottom with the lives and one big button per belt, in thumb reach. On a phone it fills the screen held upright; on a desktop it shows as a centred column with the workshop wall on both sides. A phone held sideways gets a prompt to turn it upright; there is no landscape mode on mobile.
+The game is portrait. The logical screen is 720 x 1280: a top bar, the play field, and a control strip at the bottom with the stars still on offer and one big RUN button, in thumb reach. On a phone it fills the screen held upright; on a desktop it shows as a centred column with the workshop wall on both sides. A phone held sideways gets a prompt to turn it upright; there is no landscape mode on mobile.
 
-The layout respects the device safe area: the top bar starts below a camera cut-out and the buttons stay above the home indicator. Add `?safe=47,34` (top and bottom insets in CSS px) to the URL to check this on a desktop.
+The layout respects the device safe area: the top bar starts below a camera cut-out and the RUN button stays above the home indicator. Inside an iframe (as on Poki) the browser reports no inset, so on an upright touch screen the game assumes a 44 px camera area. Add `?safe=47,34` (top and bottom insets in CSS px) to the URL to check this on a desktop.
 
 ## How to play
 
-1. PLAY drops you straight into your next level. The factory starts by itself; there is no RUN button.
-2. Toys fall from the chute onto a belt. **Press the belt's button at the bottom of the screen to flip its direction**, before or while toys are riding it. The button has the same colour as its belt and shows which way the belt is running. Tapping the belt itself works too.
-3. Get every toy into the bin of its own colour. A toy in the wrong bin costs a life; three lives per level (two on the first levels).
-4. When the last toy is sorted the game moves on to the next level by itself. If you run out of lives it shows why and restarts the level.
+1. PLAY drops you straight into your next level. Nothing moves until you press RUN.
+2. **Set up the factory by tapping the machines that wear a badge:**
+   - a **belt** flips direction,
+   - a **bouncer** turns to its next angle,
+   - a **timer** moves its pusher's timing on one step (the clock on the pusher shows it).
+3. **Press RUN.** The toys drop from the pipes. While they move nothing can be changed; STOP ends the run early.
+4. Every toy must land in the bin of its own colour. One wrong toy stops the run, says which toy went where, and hands your setup back exactly as you left it.
+5. When every toy is sorted the game moves on to the next level by itself.
 
-Stars: 3 for no slips, 2 for one, 1 for two.
+Stars count runs: solved on the first run 3, within three runs 2, otherwise 1. The row above RUN shows the stars still on offer.
 
 | Action | Mouse / touch | Keyboard |
 | --- | --- | --- |
-| Flip a belt | Press its button (or tap the belt) | First button: `Space`, `A`, `Left` or `1`. Second button: `D`, `Right` or `2` |
-| Restart level | Restart button | `R` |
+| Change a machine | Tap it | `1`–`9` tap the adjustable machines, left to right |
+| Run / stop | RUN / STOP button | `Space` or `Enter` |
+| Back to setup | Restart button | `R` |
 | Pause | Pause button | `Esc` or `P` |
 
-**Panic Factory**: toys never stop. Two belts, two chutes, two buttons. Blue goes left, pink to the middle, yellow right. Three wrong deliveries end the run. Malfunctions (belt reverse, toy rush, turbo belts, low gravity, belt jam) are announced about two seconds before they start.
+A tap on empty space before RUN makes the badges flash, so it is clear what can be tapped.
 
-Springs, ramps, pushers and bumpers appear in the levels as fixed scenery: they bounce, slide and shove the toys but are never controlled. The engine also still contains heavy / bouncy / icy toys, drag / rotate / timer editing and a RUN-button puzzle flow from the earlier design. No current level uses those.
+**Panic Factory** (unlocked after 5 levels) is the live mode: toys never stop, two belts, two chutes and two buttons to flip them. Blue goes left, pink to the middle, yellow right. Three wrong deliveries end the run. Malfunctions (belt reverse, toy rush, turbo belts, low gravity, belt jam) are announced about two seconds before they start.
 
 ## Project layout
 
@@ -60,13 +65,13 @@ src/
   game/
     config.ts             Constants and palette (no Phaser imports)
     sim/                  FactoryWorld (Matter engine + fixed-step loop), headless simulateLevel(),
-                          routeBot (the stand-in player used by the tests)
+                          planSolver (tries every setup of a level), routeBot (Panic mode's test player)
     physics/              Matter access layer, collision categories, material presets
     entities/             FactoryObject (toy), ObjectSpawner
     machines/             BaseMachine, ConveyorBelt, SpringBumper, Piston, Funnel, DeliveryBin
     systems/              PuzzleRules, ScoreManager, PanicDirector, LevelManager, SaveManager,
                           AudioManager, ParticleManager
-    levels/               LevelTypes, the 20 levels, the Panic arena
+    levels/               LevelTypes, the 12 levels, the Panic arena
     rendering/            Vector drawing, texture baking, machine/toy views, WorldView (all the juice)
     scenes/               Boot, Menu, LevelSelect, Game, Panic, UI (HUD), Result, Pause, Settings,
                           Transition (the curtain wipe between screens)
@@ -74,7 +79,10 @@ src/
     platform/             PlatformAdapter interface, StandaloneAdapter, PokiAdapter
   tests/                  Vitest suites
 scripts/
-  solve.ts, labkit.ts              Level verification with the route bot; physics trace helper
+  solve.ts, labkit.ts              Level verification (every setup of every level); Node physics bootstrap
+  plan-lab.ts, plan-trace.ts,      Level design: which setups win, where every toy lands,
+  plan-watch.ts                    toy positions tick by tick
+  iframe-check.mjs                 The build inside a cross-origin iframe on an emulated phone (as on Poki)
   smoke.mjs                        End-to-end browser test of the production build
   shot.mjs, phone.mjs              Screenshot helpers (desktop viewport, emulated phones)
   boot-check.mjs                   Confirms the current dist/ boots and starts level 1 on an emulated phone
@@ -90,14 +98,14 @@ Two design decisions shape everything else:
 
 ## Adding or changing a level
 
-Levels are data in `src/game/levels/levels.ts`, built from seven small layouts plus a toy sequence and a drop interval. Five layouts have one belt (springs, ramps, pushers, pinball bumpers, cross-over springs) and two have two belts (twin belts, two step). The springs, ramps, pushers and bumpers are fixed scenery: they add bouncing and shoving without adding anything to learn.
+Levels are data in `src/game/levels/levels.ts`, each built with `planLevel({...})` from machines (adjustable: `belt`, `bouncer` with its list of `angles`, `timer` with its period; fixed: `fixedBelt`, `spring`), pipes (`pipe(id, x, toys, interval, delay)`), bins covering the floor, and a verified `solution`.
 
-1. Add a `sortLevel({...})` entry: pick a layout, give it a sequence (`mixed(seed, count, colours)`) and an interval.
-2. Each layout carries a `routes` table saying which way every belt must run for each colour. The tutorial hand and the test bot both use it.
-3. Run `npm run solve`. A level is accepted when doing nothing fails, the bot clears it with no slips, and the bot still wins when it only reacts every 200, 300, 400 and 500 ms.
-4. `npm test` re-checks all levels.
+1. Sketch the level, then run `npx tsx scripts/plan-lab.ts <n>`. It tries every setup and lists the ones that win, the fewest taps needed, whether the win survives small random spawn offsets, and the longest run.
+2. If toys do not go where you expect, `npx tsx scripts/plan-trace.ts <n>` shows where every toy lands under every setup, and `plan-watch.ts` prints positions tick by tick.
+3. Make sure the starting setup fails, the solution is robust, and (with four or more setups) no more than half of them win.
+4. `npm run solve` and `npm test` check all of that for every level, plus: one new kind of machine at a time, at most three adjustable machines, and every run over within 13 s.
 
-Keep the bins spanning the whole floor (the tests check that a toy can never fall out of play), keep to one or two belts per level, and keep at least 2.4 seconds between toys on one belt (the tests check both).
+Timer levels need care: the pusher only hits a toy if the toy reaches it as the pusher fires. Tune the pipe's `delay` in 50 ms steps until the solution is robust.
 
 ## Deployment
 
@@ -130,13 +138,14 @@ VITE_PLATFORM=poki npm run build
 
 Run on Windows 11 with Node 26 and headless Microsoft Edge:
 
-- `npm test`: 146 tests pass. They cover the physics and machines, win/lose rules, save/load including corrupted data, scoring, pacing (toy gaps and how fast the toy count grows), and for each of the 20 levels: structure, that doing nothing fails, that a bot following the routes clears it with no slips and no toy ever leaves play, that the bot still wins with reactions as slow as half a second, and determinism. Panic mode is checked with the same bot over three simulated minutes.
-- `npm run smoke`: 43 checks pass against the production build: PLAY straight into level 1, the level starting by itself, the bottom button flipping the belt, auto-advance after a win, auto-restart after a failure, pause and settings, level 3 won with the keyboard, level 10 won by clicking its two buttons, level 13 won with touch taps on the buttons at phone size, safe-area insets keeping the top bar and buttons clear, save persistence, a corrupted save, Panic mode, six window shapes and the turn-upright prompt, with no console errors.
+- `npm test`: 113 tests pass. They cover the physics and machines, win/lose rules, save/load including corrupted data, scoring, and for each of the 12 levels: structure, that RUN without changes fails, that the solution wins and survives random spawn offsets, that most setups lose, that every possible run ends within 13 s with no toy leaving play, and determinism. Panic mode is checked with a bot over three simulated minutes.
+- `npm run solve`: tries all setups of every level (2 to 32 per level).
+- `npm run smoke`: 44 checks pass against the production build: PLAY into level 1 waiting in setup, a tap on empty space flashing the badges, tapping the belt, RUN, machines locked during a run, auto-advance after a win, a failed run handing the setup back with fewer stars on offer, pause and settings mid-run, level 3 set up and won with the keyboard, level 12 with the mouse, level 7 with touch taps at phone size, safe-area insets, save persistence, a corrupted save, Panic mode, six window shapes and the turn-upright prompt, with no console errors.
 
 Not tested, so treat as unverified:
 
 - Real phones and tablets, Safari and Firefox. Touch was exercised only through Chromium's touch emulation.
-- How the levels feel to a person. They have been cleared by a bot and by scripted taps, never by a human playing cold.
+- How the levels feel to a person. They have been solved by the solver and by scripted taps, never by a human playing cold; difficulty is judged only from how many setups win.
 - Behaviour on non-Chromium engines. The physics should not depend on the browser, but that has not been measured.
 - Frame rate on low-end mobile hardware.
 - Audio was not listened to by a person; the headless runs only confirm it produces no errors.

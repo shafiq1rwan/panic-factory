@@ -1,6 +1,6 @@
 {
   "name": "tiny-factory-panic",
-  "version": "1.6.5",
+  "version": "1.7.0",
   "description": "Tiny Factory Panic - a one-tap physics toy-sorting game",
   "scripts": {
     "dev": "vite",

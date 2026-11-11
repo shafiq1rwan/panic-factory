@@ -11,18 +11,18 @@ Listing copy to paste into the submission form, and a checklist of what to do be
 **Secondary tags:** Physics, Casual, Sorting
 
 **One-line description:**
-Flip the belts and get every toy into the bin of its own colour.
+Set up the factory, press RUN, and get every toy into the bin of its own colour.
 
 **Description:**
-The toy factory is running and the toys are coming. Each one rides a conveyor belt and drops into a bin, and it is your job to make sure it is the right bin. Press the big button to flip the belt. That is the only thing you need to learn.
+The toys are about to come down the pipes, and every one has to end up in the bin of its own colour. Tap the machines to set the factory up: flip the belts, turn the bouncers, set the pushers' timers. Then press RUN and watch it go. Got one wrong? Change the setup and run it again.
 
-It starts with one belt and two bins. Then the springs arrive and fling toys clean across the room, the pushers shove them off their ledges, the bumpers send them pinballing, and two belts are feeding three bins at once. Sort every toy without a slip to earn three stars on each of the 20 levels, then see how long you can last in Panic mode, where the toys never stop and the machines start to misbehave.
+It starts with a single belt. Then come bouncers that fling toys across the room, timed pushers that kick only the right toys, and factories where all of them have to work together. Solve a level on your first run for three stars, then see how long you can last in Panic mode, where the toys never stop and the machines start to misbehave.
 
 **How to play:**
-- Press the big button at the bottom to flip its belt. Two belts means two buttons, each in the colour of its belt.
+- Tap a machine with a badge to change it: belts flip, bouncers turn, timers change when their pusher fires.
+- Press RUN to drop the toys. One wrong toy stops the run and gives you your setup back to try again.
 - Blue toys go in the blue bin, pink in the pink bin, yellow in the yellow bin.
-- A toy in the wrong bin costs a life.
-- Keyboard: Space, A or Left for the first button; D or Right for the second.
+- Keyboard: number keys tap the machines left to right, Space runs.
 
 **Orientation:** Portrait on mobile. Desktop shows the same portrait play field in the centre of the window.
 
@@ -50,7 +50,7 @@ Audio is muted and keyboard input is ignored for the length of a commercial brea
 - [ ] Load that build in Poki's inspector (https://inspector.poki.dev) and confirm the SDK events appear in the order in the table above.
 - [ ] Play the whole game on a real phone held upright. This has only been done in a desktop browser's phone emulation so far.
 - [ ] Listen to the sound and music. Nobody has yet.
-- [ ] Check play time. A flawless run of all 20 levels is about 8 minutes of play plus transitions, measured with a bot. The owner's earlier submission needed roughly 9 minutes of average play to pass Poki's fit test; that figure is from experience, not from Poki's documentation, and average play time across real players is not known for this game.
+- [ ] Check play time. One winning run of each of the 12 levels is 86 s of toys moving; real play time depends on thinking and retries and has not been measured. The owner's earlier submission needed roughly 9 minutes of average play to pass Poki's fit test; that figure is from experience, not from Poki's documentation, and average play time across real players is not known for this game.
 - [ ] Re-read Poki's current requirements for game size, thumbnail and mobile support. They were not all checked while building this.
 
 ## Known gaps to mention or fix first

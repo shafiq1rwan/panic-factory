@@ -8,11 +8,13 @@ import { LevelManager } from '../systems/LevelManager';
 import { save } from '../systems/SaveManager';
 import { Button, drawStar, fadeIn, gotoScene, txt } from '../ui/UIComponents';
 
-const CHAPTERS = ['Warm Up', 'Speed Up', 'Three Ways', 'Overtime', 'Factory Panic'];
+/** One chapter per row of four levels; only as many rows as there are levels. */
+const CHAPTER_NAMES = ['Belts', 'Bouncers', 'Timers', 'Overtime', 'Factory Panic'];
+const CHAPTERS = CHAPTER_NAMES.slice(0, Math.ceil(LEVELS.length / 4));
 const PER_ROW = 4;
 const CHAPTER_COLORS = [COLORS.blue, COLORS.pink, COLORS.yellow, COLORS.mint, COLORS.lavender];
 
-/** Level grid: 5 chapters of 3 levels, with stars and locked states. */
+/** Level grid: one chapter per row of four levels, with stars and locked states. */
 export class LevelSelectScene extends Phaser.Scene {
   constructor() {
     super('LevelSelect');

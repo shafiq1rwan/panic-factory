@@ -81,6 +81,9 @@ try {
     await page.waitForTimeout(2500);
     await page.screenshot({ path: `${out}/iframe-${name}.png` });
   }
+  // press RUN so the level-start analytics event fires
+  await f.evaluate(() => window.__TFP.game.scene.getScene('Game').toggleRun());
+  await page.waitForTimeout(300);
   console.log('measure events:', JSON.stringify(await f.evaluate(() => window.__measured ?? null)));
   ok = info.framed && info.safeTopCss > 0;
 } finally {

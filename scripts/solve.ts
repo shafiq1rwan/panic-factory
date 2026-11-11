@@ -1,39 +1,38 @@
 /**
- * Level verification.   npx tsx scripts/solve.ts [level number]
+ * Level verification for set-up-then-run levels.   npx tsx scripts/solve.ts [level number]
  *
- * For every sorting level it checks that:
- *   - doing nothing does NOT win,
- *   - a bot that follows the level's routes instantly wins with no slips,
- *   - the same bot with reaction delays of 200, 300, 400 and 500 ms still wins within the allowed slips.
+ * For every level it tries every possible setup and checks that:
+ *   - pressing RUN without changing anything does NOT win,
+ *   - the level's solution wins, also with small random spawn offsets,
+ *   - at least one setup wins, and how many do (fewer = harder),
+ *   - every run, won or lost, is over within 13 seconds.
  */
 import './labkit';
 import { LEVELS } from '../src/game/levels/levels';
-import { makeRouteBot } from '../src/game/sim/routeBot';
+import { allConfigs, robust, solvePlan } from '../src/game/sim/planSolver';
 import { simulateLevel } from '../src/game/sim/simulate';
 
 const only = process.argv[2] ? parseInt(process.argv[2], 10) : 0;
 let bad = 0;
+let totalSolved = 0;
 LEVELS.forEach((level, i) => {
   if (only && only !== i + 1) return;
-  const idle = simulateLevel(level, {});
-  const perfect = simulateLevel(level, {}, {}, 60 * 240, makeRouteBot(level, 1));
-  const slow: string[] = [];
-  let slowOk = true;
-  for (const reaction of [12, 18, 24, 30]) {
-    const r = simulateLevel(level, {}, { seed: reaction, jitter: 0.6 }, 60 * 240, makeRouteBot(level, reaction));
-    slow.push(`${Math.round((reaction * 1000) / 60)}ms:${r.status === 'won' ? r.mistakes + ' slips' : 'FAILED'}`);
-    if (r.status !== 'won') slowOk = false; // must be winnable even with half-second reactions
-  }
-  const ok = idle.status !== 'won' && perfect.status === 'won' && perfect.mistakes === 0 && perfect.lost === 0 && slowOk;
+  const rep = solvePlan(level);
+  const sol = simulateLevel(level, level.solution);
+  const solid = robust(level, level.solution);
+  let longest = 0;
+  for (const c of allConfigs(level)) longest = Math.max(longest, simulateLevel(level, c).seconds);
+  const ok = rep.idle.status !== 'won' && sol.status === 'won' && solid && rep.wins.length > 0 && longest < 13;
   if (!ok) bad++;
+  totalSolved += sol.seconds;
   const toys = level.spawners.reduce((n, s) => n + s.sequence.length, 0);
   console.log(
-    `${ok ? 'OK  ' : 'FAIL'} L${String(i + 1).padStart(2)} ${level.name.padEnd(14)} toys=${String(toys).padStart(2)} ` +
-      `idle:${idle.status} perfect:${perfect.status}/${perfect.mistakes}+${perfect.lost} in ${perfect.seconds.toFixed(0)}s  delayed ${slow.join('  ')}`,
+    `${ok ? 'OK  ' : 'FAIL'} L${String(i + 1).padStart(2)} ${level.name.padEnd(19)} toys=${String(toys).padStart(2)} ` +
+      `wins ${rep.wins.length}/${rep.total}  min taps ${rep.minTaps}  idle:${rep.idle.status}  solution:${sol.status}${solid ? '' : ' (FRAGILE)'} in ${sol.seconds.toFixed(1)}s  longest run ${longest.toFixed(1)}s`,
   );
 });
 if (bad) {
   console.log(`\n${bad} level(s) need attention`);
   process.exit(1);
 }
-console.log('\nAll levels verified.');
+console.log(`\nAll levels verified. One winning run of every level: ${totalSolved.toFixed(0)} s.`);

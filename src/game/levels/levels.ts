@@ -4,6 +4,7 @@ import {
   type BinDef,
   type BumperDef,
   type ConveyorDef,
+  type LevelConfig,
   type LevelDef,
   type MachineDef,
   type PistonDef,
@@ -14,23 +15,19 @@ import {
 } from './LevelTypes';
 
 /**
- * The 20 sorting levels (portrait, 720 wide).
+ * Set-up-then-run levels (portrait, 720 wide).
  *
- * One thing to learn: FLIP A BELT. Each belt has its own big button at the
- * bottom of the screen (tapping the belt works too). Toys drop in, ride the
- * belts and end up in the bins; the player flips belts so every toy reaches
- * the bin of its own colour. A level never has more than two belts, so there
- * are never more than two buttons.
+ * Before pressing RUN the player taps the machines that wear a badge:
+ *   - a belt flips direction,
+ *   - a bouncer turns to its next angle,
+ *   - a timer moves its pusher's timing on one step.
+ * Then RUN drops the toys. Nothing can be changed while they move. Every toy must
+ * land in the bin of its own colour; one wrong toy stops the run and hands the
+ * setup back, as the player left it, to try again.
  *
- * Variety comes from fixed scenery between the belts and the bins, which needs
- * no controls: springs that pop toys up, ramps they slide down, pushers that
- * shove them off a ledge, bumpers they ricochet off, springs that throw them
- * across to the other side.
- *
- * The pace rises slowly: more toys per level and a slightly shorter gap between
- * them, never a sudden jump. Every level carries a `routes` table (which way
- * each belt must run for each colour); the tests play every level with a bot
- * that follows it, instantly and with human-like reaction delays up to half a second.
+ * Each level has a `solution`. The tests try EVERY possible setup of every level
+ * (see sim/planSolver.ts): the starting setup must fail, the solution must win
+ * (also with small random spawn offsets), and only a few setups may win.
  */
 
 // --- pieces ---------------------------------------------------------------------
@@ -38,136 +35,58 @@ import {
 /** Centre y for a bin standing on the floor. */
 const BIN_Y = PLAY_H - 78;
 const SPEED = 2.2;
-/** Belt accent colours: the matching button at the bottom uses the same colour. */
+/** Belt accent colours (Panic mode's buttons use the same ones). */
 export const BELT_A = 0x7a56f0;
 export const BELT_B = 0x12a594;
 
-const belt = (id: string, x: number, y: number, length: number, dir: 1 | -1, accent = BELT_A): ConveyorDef => ({
-  id, kind: 'conveyor', x, y, length, speed: SPEED, dir, flippable: true, accent,
+type Extra<T> = Partial<Omit<T, 'id' | 'kind' | 'x' | 'y'>>;
+
+/** A belt the player can flip. */
+const belt = (id: string, x: number, y: number, length: number, dir: 1 | -1, o: Extra<ConveyorDef> = {}): ConveyorDef => ({
+  id, kind: 'conveyor', x, y, length, speed: SPEED, dir, flippable: true, accent: BELT_A, ...o,
+});
+/** A belt that cannot be changed. */
+const fixedBelt = (id: string, x: number, y: number, length: number, dir: 1 | -1, o: Extra<ConveyorDef> = {}): ConveyorDef => ({
+  id, kind: 'conveyor', x, y, length, speed: SPEED, dir, accent: 0x8f8ab0, ...o,
+});
+/** A bouncer the player can turn: a tap moves it to the next of `angles`. */
+const bouncer = (id: string, x: number, y: number, angles: number[], o: Extra<BumperDef> = {}): BumperDef => ({
+  id, kind: 'bumper', shape: 'pad', x, y, angle: angles[0], angles, rotatable: true, power: 9, ...o,
+});
+/** A bouncer fixed in place. */
+const spring = (id: string, x: number, y: number, angle: number, power = 8): BumperDef => ({ id, kind: 'bumper', shape: 'pad', x, y, angle, power });
+/** A pusher on a timer the player can set (angle 0 pushes right, 180 pushes left). */
+const timer = (id: string, x: number, y: number, angle: number, period: number, o: Extra<PistonDef> = {}): PistonDef => ({
+  id, kind: 'piston', x, y, angle, stroke: 150, period, extendTicks: 14, timing: true, timingSteps: 4, phase: 0, ...o,
 });
 const bin = (id: string, x: number, accepts: ObjType, width: number): BinDef => ({ id, kind: 'bin', x, y: BIN_Y, accepts, width });
-const spring = (id: string, x: number, y: number, angle: number, power: number): BumperDef => ({ id, kind: 'bumper', shape: 'pad', x, y, angle, power });
-const bumper = (id: string, x: number, y: number, power = 6): BumperDef => ({ id, kind: 'bumper', shape: 'round', x, y, power });
-/** A pusher that shoves on its own, on a steady beat. `angle` 0 pushes right, 180 pushes left. */
-const pusher = (id: string, x: number, y: number, angle: number): PistonDef => ({
-  id, kind: 'piston', x, y, angle, stroke: 90, period: 1800, extendTicks: 22,
-});
 const wall = (x: number, y: number, w: number, h: number, angle = 0): WallDef => ({ x, y, w, h, angle });
-const spawner = (id: string, x: number, sequence: SpawnSpec[], interval: number, delay = 1800): SpawnerDef => ({
-  id, x, y: 210, sequence, interval, delay,
-});
+const pipe = (id: string, x: number, sequence: SpawnSpec[], interval = 1500, delay = 500): SpawnerDef => ({ id, x, y: 210, sequence, interval, delay });
 
 /** Two bins covering the whole floor. */
 const twoBins = (left: ObjType, right: ObjType): MachineDef[] => [bin('binL', 180, left, 350), bin('binR', 540, right, 350)];
 /** Three bins covering the whole floor. */
 const threeBins = (a: ObjType, b: ObjType, c: ObjType): MachineDef[] => [bin('binL', 121, a, 232), bin('binM', 360, b, 232), bin('binR', 599, c, 232)];
 
-type Routes = NonNullable<LevelDef['routes']>;
-interface Layout {
-  machines: MachineDef[];
-  routes: Routes;
-  walls?: WallDef[];
-}
-
-// --- layouts (one belt) ---------------------------------------------------------
-
-/** Springs: toys drop off the belt onto a spring that pops them up before they land in the bin. */
-const layoutSprings = (dir: 1 | -1): Layout => ({
-  machines: [belt('belt', 360, 500, 300, dir), spring('springL', 100, 780, 20, 7), spring('springR', 620, 780, -20, 7), ...twoBins('blue', 'pink')],
-  routes: { belt: { blue: -1, pink: 1 } },
-});
-
-/** Ramps: toys land on a slope and slide down to their bin. */
-const layoutRamps = (dir: 1 | -1): Layout => ({
-  machines: [belt('belt', 360, 460, 260, dir), ...twoBins('blue', 'pink')],
-  walls: [wall(200, 690, 240, 22, -28), wall(520, 690, 240, 22, 28)],
-  routes: { belt: { blue: -1, pink: 1 } },
-});
-
-/** Pushers: toys land on a ledge and a pusher shoves them off into the bin. */
-const layoutPushers = (dir: 1 | -1): Layout => ({
-  machines: [belt('belt', 360, 450, 200, dir), pusher('pushL', 285, 691, 180), pusher('pushR', 435, 691, 0), ...twoBins('blue', 'pink')],
-  walls: [wall(170, 740, 160, 22), wall(550, 740, 160, 22)],
-  routes: { belt: { blue: -1, pink: 1 } },
-});
-
-/** Pinball: toys ricochet through bumpers on their side of a divider. */
-const layoutPinball = (dir: 1 | -1): Layout => ({
-  machines: [
-    belt('belt', 360, 430, 260, dir),
-    // gaps beside each bumper are either wide (100+) or closed, so a toy can never get wedged
-    bumper('b1', 150, 640), bumper('b2', 200, 790),
-    bumper('b3', 570, 640), bumper('b4', 520, 790),
-    ...twoBins('blue', 'pink'),
-  ],
-  walls: [wall(360, 720, 24, 400)],
-  routes: { belt: { blue: -1, pink: 1 } },
-});
-
-/** Cross over: big springs throw toys clean across, so each belt end feeds the OPPOSITE bin. */
-const layoutCross = (dir: 1 | -1): Layout => ({
-  machines: [belt('belt', 360, 490, 280, dir), spring('springL', 95, 810, 30, 10), spring('springR', 625, 810, -30, 10), ...twoBins('blue', 'pink')],
-  routes: { belt: { blue: 1, pink: -1 } },
-});
-
-// --- layouts (two belts, two buttons) -------------------------------------------
-
-/** Twin: two belts side by side, each under its own chute, over three bins. */
-const layoutTwin = (): Layout => ({
-  machines: [belt('beltL', 190, 600, 180, 1, BELT_A), belt('beltR', 530, 600, 180, -1, BELT_B), ...threeBins('blue', 'pink', 'yellow')],
-  // posts between the bins keep every toy over the bin it was sent to
-  walls: [wall(240, BIN_Y - 200, 20, 260), wall(480, BIN_Y - 200, 20, 260)],
-  routes: { beltL: { blue: -1, pink: 1 }, beltR: { pink: -1, yellow: 1 } },
-});
-
-/** Two step: the top belt sends toys right into the yellow bin, or left onto a second belt that picks blue or pink. */
-const layoutTwoStep = (): Layout => ({
-  machines: [belt('lower', 190, 660, 200, 1, BELT_A), belt('top', 400, 450, 240, 1, BELT_B), ...threeBins('blue', 'pink', 'yellow')],
-  routes: { top: { blue: -1, pink: -1, yellow: 1 }, lower: { blue: -1, pink: 1 } },
-});
-
-// --- toy sequences --------------------------------------------------------------
-
-/** Deterministic shuffled sequence of `n` toys from `types`, never three alike in a row. */
-function mixed(seed: number, n: number, types: ObjType[]): SpawnSpec[] {
-  let s = seed >>> 0;
-  const rnd = (): number => {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-    return s / 4294967296;
-  };
-  const out: SpawnSpec[] = [];
-  for (let i = 0; i < n; i++) {
-    let t = types[Math.floor(rnd() * types.length)];
-    if (i >= 2 && out[i - 1] === t && out[i - 2] === t) t = types[(types.indexOf(t) + 1) % types.length];
-    out.push(t);
-  }
-  return out;
-}
-const BP: ObjType[] = ['blue', 'pink'];
-const PY: ObjType[] = ['pink', 'yellow'];
-const BPY: ObjType[] = ['blue', 'pink', 'yellow'];
+const rep = (t: SpawnSpec, n: number): SpawnSpec[] => Array.from({ length: n }, () => t);
+const alt = (a: SpawnSpec, b: SpawnSpec, n: number): SpawnSpec[] => Array.from({ length: n }, (_, i) => (i % 2 === 0 ? a : b));
 
 // --- level builder --------------------------------------------------------------
 
-interface SortSpec {
+interface PlanSpec {
   id: string;
   name: string;
   hint: string;
-  layout: Layout;
+  machines: MachineDef[];
+  walls?: WallDef[];
   spawners: SpawnerDef[];
+  solution: LevelConfig;
   tutorial?: TutorialStep[];
 }
 
-function sortLevel(spec: SortSpec): LevelDef {
+function planLevel(spec: PlanSpec): LevelDef {
   const objective: Partial<Record<ObjType, number>> = {};
   for (const sp of spec.spawners) for (const s of sp.sequence) objective[parseSpawn(s).type] = (objective[parseSpawn(s).type] ?? 0) + 1;
-  // the tutorial hand needs the "right" resting direction of each belt it points at
-  const solution: LevelDef['solution'] = {};
-  for (const step of spec.tutorial ?? []) {
-    const first = spec.spawners.flatMap((sp) => sp.sequence).map((s) => parseSpawn(s).type).find((t) => spec.layout.routes[step.machine]?.[t]);
-    const dir = first ? spec.layout.routes[step.machine]?.[first] : undefined;
-    if (dir) solution[step.machine] = { dir };
-  }
   return {
     id: spec.id,
     name: spec.name,
@@ -176,179 +95,128 @@ function sortLevel(spec: SortSpec): LevelDef {
     height: PLAY_H,
     objective,
     spawners: spec.spawners,
-    machines: spec.layout.machines,
-    walls: spec.layout.walls ?? [],
-    mistakesAllowed: 2,
+    machines: spec.machines,
+    walls: spec.walls ?? [],
+    mistakesAllowed: 0,
     par: 999,
     sortAll: true,
-    routes: spec.layout.routes,
+    plan: true,
     tutorial: spec.tutorial,
-    solution,
+    solution: spec.solution,
   };
 }
 
-/** One chute over the middle. */
-const chute = (sequence: SpawnSpec[], interval: number): SpawnerDef[] => [spawner('s1', 360, sequence, interval)];
-/** Two chutes for the twin layout: the right one runs half a beat behind the left one. */
-const twoChutes = (left: SpawnSpec[], right: SpawnSpec[], interval: number): SpawnerDef[] => [
-  spawner('sL', 190, left, interval),
-  spawner('sR', 530, right, interval, 1800 + interval / 2),
-];
-/** One chute over the top belt of the two-step layout. */
-const stepChute = (sequence: SpawnSpec[], interval: number): SpawnerDef[] => [spawner('s1', 400, sequence, interval)];
-
 export const LEVELS: LevelDef[] = [
-  // ---------------------------------------------------------------- Warm Up
-  sortLevel({
+  // ---------------------------------------------------------------- Belts
+  planLevel({
     id: 'first-flip',
     name: 'First Flip',
-    hint: 'Press the button to flip the belt',
-    layout: layoutSprings(1),
-    // the first toy shows up quickly and waits at the pipe until the player presses the button
-    // (or 7 s pass, so doing nothing still fails), then the rest follow at the usual pace
-    spawners: [{ ...spawner('s1', 360, ['blue', 'blue', 'blue'], 3200, 1500), holdFirstForFlip: 7000 }],
-    tutorial: [{ machine: 'belt', op: 'flip', text: 'Press the button to flip the belt!' }],
+    hint: 'Tap the belt, then press RUN',
+    machines: [belt('belt', 360, 500, 300, 1), spring('springL', 100, 780, 20, 7), spring('springR', 620, 780, -20, 7), ...twoBins('blue', 'pink')],
+    spawners: [pipe('s1', 360, rep('blue', 3))],
+    solution: { belt: { dir: -1 } },
+    tutorial: [{ machine: 'belt', op: 'flip', text: 'Tap the belt to flip it' }],
   }),
-  sortLevel({
-    id: 'two-colours',
-    name: 'Two Colours',
-    hint: 'Blue goes left, pink goes right',
-    layout: layoutSprings(-1),
-    spawners: chute(['blue', 'pink', 'blue', 'pink', 'blue', 'pink'], 3200),
-  }),
-  sortLevel({
-    id: 'slide-down',
-    name: 'Slide Down',
-    hint: 'Look at the queue to see what is next',
-    layout: layoutRamps(1),
-    spawners: chute(mixed(3, 5, BP), 3100),
-  }),
-  sortLevel({
-    id: 'push-it',
-    name: 'Push It',
-    hint: 'The pushers shove toys into the bins',
-    layout: layoutPushers(-1),
-    spawners: chute(mixed(11, 6, BP), 3100),
-  }),
-  // ---------------------------------------------------------------- Bounce
-  sortLevel({
-    id: 'pinball',
-    name: 'Pinball',
-    hint: 'Watch them bounce',
-    layout: layoutPinball(1),
-    spawners: chute(mixed(23, 6, BP), 3000),
-  }),
-  sortLevel({
+  planLevel({
     id: 'two-belts',
     name: 'Two Belts',
-    hint: 'Two belts, two buttons',
-    layout: layoutTwin(),
-    // extra time before the first toys: this is where the second button is introduced
-    spawners: [spawner('sL', 190, ['blue', 'blue', 'blue'], 3600, 4200), spawner('sR', 530, ['yellow', 'yellow', 'yellow'], 3600, 6000)],
-    tutorial: [
-      { machine: 'beltL', op: 'flip', text: 'The left button flips the left belt' },
-      { machine: 'beltR', op: 'flip', text: 'The right button flips the right belt' },
+    hint: 'Every belt with a badge can be flipped',
+    machines: [
+      belt('beltL', 190, 600, 180, 1),
+      belt('beltR', 530, 600, 180, -1, { accent: BELT_B }),
+      ...threeBins('blue', 'pink', 'yellow'),
     ],
+    walls: [wall(240, BIN_Y - 200, 20, 260), wall(480, BIN_Y - 200, 20, 260)],
+    spawners: [pipe('sL', 190, rep('blue', 3)), pipe('sR', 530, rep('yellow', 3), 1500, 1250)],
+    solution: { beltL: { dir: -1 }, beltR: { dir: 1 } },
   }),
-  sortLevel({
-    id: 'cross-over',
-    name: 'Cross Over',
-    hint: 'These springs throw toys to the other side!',
-    layout: layoutCross(-1),
-    spawners: chute(mixed(31, 6, BP), 3100),
+  planLevel({
+    id: 'flip-stack',
+    name: 'Flip Stack',
+    hint: 'The top belt feeds the lower one',
+    machines: [belt('lower', 190, 660, 200, 1), belt('top', 400, 450, 240, 1, { accent: BELT_B }), ...threeBins('blue', 'pink', 'yellow')],
+    spawners: [pipe('s1', 400, rep('blue', 3))],
+    solution: { top: { dir: -1 }, lower: { dir: -1 } },
   }),
-  sortLevel({
-    id: 'side-by-side',
-    name: 'Side by Side',
-    hint: 'Pink goes to the middle',
-    layout: layoutTwin(),
-    spawners: twoChutes(mixed(5, 4, BP), mixed(9, 4, PY), 3800),
+  // ---------------------------------------------------------------- Bouncers
+  planLevel({
+    id: 'aim-it',
+    name: 'Aim It',
+    hint: 'Tap the bouncer to turn it',
+    machines: [bouncer('pad', 360, 720, [0, -30, 30]), ...twoBins('blue', 'pink')],
+    spawners: [pipe('s1', 360, rep('pink', 3))],
+    solution: { pad: { angle: 30 } },
+    tutorial: [{ machine: 'pad', op: 'rotate', text: 'Tap the bouncer to turn it' }],
   }),
-  // ---------------------------------------------------------------- Three Bins
-  sortLevel({
-    id: 'spring-time',
-    name: 'Spring Time',
-    hint: 'A longer run',
-    layout: layoutSprings(1),
-    spawners: chute(mixed(37, 8, BP), 2900),
+  planLevel({
+    id: 'bank-shot',
+    name: 'Bank Shot',
+    hint: 'Pink goes in the middle',
+    machines: [bouncer('pad', 250, 720, [-30, -10, 10, 30]), ...threeBins('blue', 'pink', 'yellow')],
+    spawners: [pipe('s1', 250, rep('pink', 3))],
+    solution: { pad: { angle: 10 } },
   }),
-  sortLevel({
-    id: 'two-step',
-    name: 'Two Step',
-    hint: 'Yellow goes right. Blue and pink take the lower belt.',
-    layout: layoutTwoStep(),
-    spawners: stepChute(['yellow', 'yellow', 'blue', 'blue', 'pink', 'pink'], 3400),
+  planLevel({
+    id: 'belt-bounce',
+    name: 'Belt Bounce',
+    hint: 'Belt first, then the bouncer',
+    machines: [belt('belt', 360, 450, 300, 1), bouncer('pad', 125, 740, [-20, 15, 30]), ...threeBins('blue', 'pink', 'yellow')],
+    spawners: [pipe('s1', 360, rep('pink', 3))],
+    solution: { belt: { dir: -1 }, pad: { angle: 15 } },
   }),
-  sortLevel({
-    id: 'slip-stream',
-    name: 'Slip Stream',
-    hint: 'Slides and steady flips',
-    layout: layoutRamps(-1),
-    spawners: chute(mixed(63, 8, BP), 2800),
+  planLevel({
+    id: 'meet-in-the-middle',
+    name: 'Meet in the Middle',
+    hint: 'Two pipes, one bin',
+    machines: [bouncer('padL', 200, 700, [-30, 10, 30]), bouncer('padR', 520, 700, [30, -10, -30]), ...threeBins('blue', 'pink', 'yellow')],
+    spawners: [pipe('sL', 200, rep('pink', 3)), pipe('sR', 520, rep('pink', 3), 1500, 1250)],
+    solution: { padL: { angle: 10 }, padR: { angle: -10 } },
   }),
-  sortLevel({
-    id: 'shove-off',
-    name: 'Shove Off',
-    hint: 'Eight toys for the pushers',
-    layout: layoutPushers(1),
-    spawners: chute(mixed(71, 8, BP), 2900),
+  planLevel({
+    id: 'either-way',
+    name: 'Either Way',
+    hint: 'There is more than one way',
+    machines: [belt('belt', 360, 450, 300, 1), bouncer('padL', 125, 740, [-20, 15, 30]), bouncer('padR', 595, 740, [20, -15, -30]), ...threeBins('blue', 'pink', 'yellow')],
+    spawners: [pipe('s1', 360, rep('pink', 4))],
+    solution: { padR: { angle: -15 } },
   }),
-  // ---------------------------------------------------------------- Overtime
-  sortLevel({
-    id: 'step-by-step',
-    name: 'Step by Step',
-    hint: 'Three colours, two belts',
-    layout: layoutTwoStep(),
-    spawners: stepChute(mixed(77, 8, BPY), 3200),
+  // ---------------------------------------------------------------- Timers
+  planLevel({
+    id: 'take-turns',
+    name: 'Take Turns',
+    hint: 'Tap the pusher to set its timer',
+    machines: [timer('ram', 128, 620, 0, 3000, { stroke: 180, extendTicks: 10 }), ...twoBins('blue', 'pink')],
+    spawners: [pipe('s1', 300, alt('blue', 'pink', 4), 1500, 350)],
+    solution: { ram: { phase: 0.75 } },
+    tutorial: [{ machine: 'ram', op: 'timing', text: 'Tap the pusher to set its timer' }],
   }),
-  sortLevel({
-    id: 'bumper-storm',
-    name: 'Bumper Storm',
-    hint: 'Nine toys through the bumpers',
-    layout: layoutPinball(-1),
-    spawners: chute(mixed(101, 9, BP), 2700),
+  planLevel({
+    id: 'sort-line',
+    name: 'Sort Line',
+    hint: 'Kick the pink ones, belt the blue ones',
+    machines: [timer('ram', 128, 620, 0, 3000, { stroke: 180, extendTicks: 10 }), belt('belt', 240, 830, 200, 1), ...threeBins('blue', 'yellow', 'pink')],
+    spawners: [pipe('s1', 300, alt('blue', 'pink', 4), 1500, 350)],
+    solution: { ram: { phase: 0.75 }, belt: { dir: -1 } },
   }),
-  sortLevel({
-    id: 'twin-shift',
-    name: 'Twin Shift',
-    hint: 'Both chutes are busy',
-    layout: layoutTwin(),
-    spawners: twoChutes(mixed(81, 5, BP), mixed(83, 5, PY), 3500),
+  planLevel({
+    id: 'kick-and-bounce',
+    name: 'Kick and Bounce',
+    hint: 'Only the yellow ones get kicked',
+    machines: [timer('ram', 128, 620, 0, 3000, { stroke: 180, extendTicks: 10 }), bouncer('pad', 300, 840, [0, -30, 30]), ...threeBins('blue', 'pink', 'yellow')],
+    spawners: [pipe('s1', 300, alt('blue', 'yellow', 4), 1500, 350)],
+    solution: { ram: { phase: 0.75 }, pad: { angle: -30 } },
   }),
-  sortLevel({
-    id: 'crossfire',
-    name: 'Crossfire',
-    hint: 'Left end of the belt, right bin',
-    layout: layoutCross(1),
-    spawners: chute(mixed(91, 9, BP), 2700),
-  }),
-  // ---------------------------------------------------------------- Factory Panic
-  sortLevel({
-    id: 'triple-sort',
-    name: 'Triple Sort',
-    hint: 'Ten toys, three bins',
-    layout: layoutTwoStep(),
-    spawners: stepChute(mixed(113, 10, BPY), 3000),
-  }),
-  sortLevel({
-    id: 'spring-rush',
-    name: 'Spring Rush',
-    hint: 'Ten toys, a little quicker',
-    layout: layoutSprings(-1),
-    spawners: chute(mixed(121, 10, BP), 2500),
-  }),
-  sortLevel({
-    id: 'double-time',
-    name: 'Double Time',
-    hint: 'Six toys from each chute',
-    layout: layoutTwin(),
-    spawners: twoChutes(mixed(131, 6, BP), mixed(133, 6, PY), 3200),
-  }),
-  sortLevel({
-    id: 'factory-panic',
-    name: 'Factory Panic',
-    hint: 'The final shift!',
-    layout: layoutTwoStep(),
-    spawners: stepChute(mixed(151, 12, BPY), 2800),
+  planLevel({
+    id: 'full-shift',
+    name: 'Full Shift',
+    hint: 'Timer, belt and bouncer',
+    machines: [
+      timer('ram', 128, 620, 0, 3000, { stroke: 180, extendTicks: 10 }),
+      belt('belt', 300, 840, 200, 1),
+      bouncer('pad', 640, 860, [0, 30, -12, -30]),
+      ...threeBins('blue', 'pink', 'yellow'),
+    ],
+    spawners: [pipe('s1', 300, alt('blue', 'pink', 4), 1500, 350)],
+    solution: { ram: { phase: 0.75 }, belt: { dir: -1 }, pad: { angle: -12 } },
   }),
 ];

@@ -13,6 +13,11 @@ export interface RunSummary {
  *  2 stars: at most one slip (wrong bin or lost toy)
  *  3 stars: no slips at all, finished within the level's par time
  */
+/** Set-up-then-run levels are rated on how many runs it took: first run 3 stars, up to 3 runs 2. */
+export function starsForRuns(runs: number): 1 | 2 | 3 {
+  return runs <= 1 ? 3 : runs <= 3 ? 2 : 1;
+}
+
 export function computeStars(level: LevelDef, run: RunSummary): 1 | 2 | 3 {
   const slips = run.mistakes + run.lost;
   // sorting levels are rated purely on accuracy

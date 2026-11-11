@@ -1,4 +1,4 @@
-// Serve dist/ and confirm the build boots to the title screen and into level 1 on an emulated phone.
+// Serve dist/ and confirm the build boots to the title screen, into level 1 and through RUN on an emulated phone.
 //   node scripts/boot-check.mjs
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -38,8 +38,11 @@ try {
   const v = await page.evaluate(() => ({ w: window.__TFP.view.w, h: window.__TFP.view.h }));
   const s = box.width / v.w;
   await page.touchscreen.tap(box.x + (360 - (360 - v.w / 2)) * s, box.y + (680 - (640 - v.h / 2)) * s);
-  await page.waitForFunction(() => window.__TFP.game.scene.getScene('Game')?.state === 'running', null, { timeout: 20000 });
-  console.log('level 1 running after tapping PLAY');
+  await page.waitForFunction(() => window.__TFP.game.scene.isActive('Game') && !!window.__TFP.game.scene.getScene('Game').world && window.__TFP.game.scene.getScene('Game').state === 'prep', null, { timeout: 20000 });
+  console.log('level 1 open in setup after tapping PLAY');
+  await page.evaluate(() => window.__TFP.game.scene.getScene('Game').toggleRun());
+  await page.waitForFunction(() => window.__TFP.game.scene.getScene('Game').state === 'running', null, { timeout: 5000 });
+  console.log('level 1 running after RUN');
   console.log('external requests:', requests.length ? [...new Set(requests)].join(', ') : 'none');
   console.log('errors:', problems.length ? problems.join(' | ') : 'none');
   ok = problems.every((p) => p.includes('poki')); // SDK complaints outside Poki's site are expected

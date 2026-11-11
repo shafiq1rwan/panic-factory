@@ -49,6 +49,8 @@ interface MachineCommon {
   movable?: boolean;
   zone?: Rect;
   rotatable?: boolean;
+  /** For rotatable machines: the angles a tap cycles through, in order (overrides step/min/max). */
+  angles?: number[];
   angleStep?: number;
   angleMin?: number;
   angleMax?: number;
@@ -83,8 +85,10 @@ export interface PistonDef extends MachineCommon {
   period?: number;
   /** 0..1 fraction of the period before the first push */
   phase?: number;
-  /** Player may cycle the phase in quarter steps. */
+  /** Player may cycle the phase (a tap moves it on one step). */
   timing?: boolean;
+  /** How many timer settings a tap cycles through (default 4: quarter periods). */
+  timingSteps?: number;
   /** ticks spent extending (smaller = harder kick) */
   extendTicks?: number;
 }
@@ -152,6 +156,11 @@ export interface LevelDef {
    * (1 = towards +x). Drives the tutorial hand and the automated play-through bot.
    */
   routes?: Record<string, Partial<Record<ObjType, 1 | -1>>>;
+  /**
+   * Set-up-then-run level: machines are adjusted before RUN and stay fixed while the toys
+   * move; one wrong toy ends the run and hands the setup back.
+   */
+  plan?: boolean;
 }
 
 export function parseSpawn(spec: SpawnSpec): { type: ObjType; material: MaterialId } {

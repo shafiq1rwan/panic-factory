@@ -2,6 +2,18 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## Set up, then run (v1.7.0)
+
+The live one-button version kept players under a minute in playtests and the first fit test result was weak, so the owner asked to go back to setting up the factory before pressing RUN, as in the first design, without the problems that sank it then (too many controls, levels too hard).
+
+- One gesture: tap a machine wearing a badge to change it. A belt flips, a bouncer turns to its next angle, a timer moves its pusher on one step. No dragging, no toolbars.
+- RUN drops the toys; nothing can be changed while they move; STOP ends a run early. One wrong toy stops the run, says which toy went in which bin, and hands the setup back exactly as it was. Retries are free; stars count runs (first run 3, up to three runs 2).
+- 12 new levels in three chapters, one new kind of machine at a time: belts, then bouncers, then timers, then combinations. A brute-force solver (`sim/planSolver.ts`) tries every setup of every level: the starting setup always fails, each solution wins and survives random spawn offsets, the harder levels are won by only 1 of 8, 12 or 32 setups, and every run ends within 11 s.
+- New bottom HUD: the stars still on offer, a status line, and one big RUN / STOP button the full width of the screen. A tap on empty space flashes the badges.
+- Panic mode is unchanged and keeps the live belt buttons.
+- Level design tools: `scripts/plan-lab.ts`, `plan-trace.ts`, `plan-watch.ts`.
+- Fixed "Framebuffer status: Incomplete Attachment": in a very wide, short window (a desktop browser with the inspector docked at the bottom) the canvas grew to over 12,000 px, past the GPU texture limit. The visible area now stops at 2,560 logical px on each axis and the render size at 4,096 px per side; beyond that the page shows plain margins. The canvas was also being centred twice (by the page and by Phaser), which only showed once it no longer filled the window.
+
 ## Toys announce themselves (v1.6.5)
 
 Changes after playtesters were left waiting and wondering when the first toy suddenly dropped in level 1.

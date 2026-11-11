@@ -70,6 +70,15 @@ function safeInsets(): { top: number; bottom: number } {
   return { top, bottom };
 }
 
+/**
+ * Limits on the canvas. In a very wide, short window (a desktop browser with its inspector docked
+ * at the bottom) the visible area would otherwise grow to many thousands of pixels, beyond the GPU's
+ * texture limit, and WebGL fails with "Framebuffer status: Incomplete Attachment". Past these sizes
+ * the canvas stops growing and the page shows plain margins instead.
+ */
+const MAX_VIEW = 2560; // logical units on either axis
+const MAX_CANVAS_PX = 4096; // render pixels on either side, safe on phones and integrated GPUs
+
 function computeView(): void {
   const ww = Math.max(window.innerWidth, 1);
   const wh = Math.max(window.innerHeight, 1);
@@ -77,12 +86,13 @@ function computeView(): void {
   const safeH = Math.max(wh - inset.top - inset.bottom, 1);
   // CSS px per logical unit: the whole 720x1280 screen must fit inside the safe rectangle
   const fit = Math.min(ww / GAME_W, safeH / GAME_H);
-  view.w = Math.round(ww / fit);
-  view.h = Math.round(wh / fit);
+  view.w = Math.round(Math.min(ww / fit, MAX_VIEW));
+  view.h = Math.round(Math.min(wh / fit, MAX_VIEW));
   view.safeTop = inset.top / fit;
   view.safeBottom = inset.bottom / fit;
   view.cy = GAME_H / 2 + (view.safeBottom - view.safeTop) / 2;
-  view.res = Phaser.Math.Clamp(Math.round(fit * (window.devicePixelRatio || 1) * 4) / 4, 1, 2);
+  const sharp = Phaser.Math.Clamp(Math.round(fit * (window.devicePixelRatio || 1) * 4) / 4, 1, 2);
+  view.res = Math.min(sharp, Math.floor((MAX_CANVAS_PX / Math.max(view.w, view.h)) * 4) / 4);
   // the portal's own overlay button (Poki Pill) stays below the current screen's top controls
   placeOverlay();
 }
@@ -107,7 +117,8 @@ const game = new Phaser.Game({
   },
   scale: {
     mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    // #game is a centring flexbox; Phaser's own centring would add a second offset
+    autoCenter: Phaser.Scale.NO_CENTER,
     width: Math.round(view.w * view.res),
     height: Math.round(view.h * view.res),
   },

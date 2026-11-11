@@ -79,9 +79,21 @@ export class Piston extends BaseMachine<PistonDef> {
     return !!this.def.timing;
   }
 
-  /** Cycle the start delay by a quarter period. */
+  /** Number of timer settings a tap cycles through. */
+  get timingSteps(): number {
+    return Math.max(2, this.def.timingSteps ?? 4);
+  }
+
+  /** Every timer setting (fraction of the period before the first push). */
+  phaseOptions(): number[] {
+    const n = this.timingSteps;
+    return Array.from({ length: n }, (_, i) => i / n);
+  }
+
+  /** Move the timer on one step (wraps). */
   cycleTiming(): void {
-    this.phase = (Math.round(this.phase * 4) + 1) % 4 / 4;
+    const n = this.timingSteps;
+    this.phase = ((Math.round(this.phase * n) + 1) % n) / n;
     this.world.events.emit('machineChanged', this);
   }
 

@@ -50,6 +50,14 @@ export abstract class MachineView<M extends BaseMachine = BaseMachine> {
 
   abstract redraw(): void;
 
+  /** A quick squash-and-grow when the player changes this machine. */
+  pop(): void {
+    if (save.settings.reducedMotion) return;
+    this.scene.tweens.killTweensOf(this.g);
+    this.g.setScale(1.14);
+    this.scene.tweens.add({ targets: this.g, scale: 1, duration: 260, ease: 'Back.easeOut' });
+  }
+
   /** Per-frame animation. `prep` is true while the player is still arranging machines. */
   update(_dt: number, _prep: boolean): void {}
 

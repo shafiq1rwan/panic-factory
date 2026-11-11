@@ -8,29 +8,42 @@ import { FactoryWorld } from '../game/sim/FactoryWorld';
 import { makeRouteBot } from '../game/sim/routeBot';
 import { simulateLevel } from '../game/sim/simulate';
 import { PanicDirector } from '../game/systems/PanicDirector';
-import { computeStars, PanicScore } from '../game/systems/ScoreManager';
+import { computeStars, PanicScore, starsForRuns } from '../game/systems/ScoreManager';
+import { allConfigs, planOptions, robust, solvePlan } from '../game/sim/planSolver';
 
 describe('level data', () => {
-  it('has 20 levels with unique ids', () => {
-    expect(LEVELS.length).toBe(20);
-    expect(new Set(LEVELS.map((l) => l.id)).size).toBe(20);
+  it('has 12 levels with unique ids', () => {
+    expect(LEVELS.length).toBe(12);
+    expect(new Set(LEVELS.map((l) => l.id)).size).toBe(LEVELS.length);
   });
 
-  it('asks the player to learn exactly one thing: flipping belts', () => {
+  it('is set up, then run: only belts flip, bouncers turn and timers change, all by tapping', () => {
     for (const level of LEVELS) {
+      expect(level.plan).toBe(true);
       expect(level.sortAll).toBe(true);
+      expect(level.mistakesAllowed).toBe(0);
       for (const m of level.machines) {
-        // nothing is dragged, rotated or timed
-        expect(m.movable ?? false).toBe(false);
-        expect(m.rotatable ?? false).toBe(false);
-        if (m.kind === 'piston') expect(m.timing ?? false).toBe(false);
+        expect(m.movable ?? false).toBe(false); // nothing is dragged
+        if (m.rotatable) expect(m.kind === 'bumper' && (m.angles?.length ?? 0) >= 2).toBe(true);
       }
-      // one or two belts, so never more than two buttons at the bottom of the screen
-      const belts = level.machines.filter((m) => m.kind === 'conveyor' && m.flippable).length;
-      expect(belts).toBeGreaterThanOrEqual(1);
-      expect(belts).toBeLessThanOrEqual(2);
+      // a handful of things to set, never a wall of options
+      const adjustable = planOptions(level);
+      expect(adjustable.length).toBeGreaterThanOrEqual(1);
+      expect(adjustable.length).toBeLessThanOrEqual(3);
       // plain toys only: no special materials to learn
       for (const s of level.spawners) for (const spec of s.sequence) expect(parseSpawn(spec).material).toBe('standard');
+    }
+  });
+
+  it('introduces one new kind of machine at a time', () => {
+    const kindsOf = (i: number): Set<string> => new Set(planOptions(LEVELS[i]).map((o) => LEVELS[i].machines.find((m) => m.id === o.id)!.kind));
+    const seen = new Set<string>();
+    for (let i = 0; i < LEVELS.length; i++) {
+      const fresh = [...kindsOf(i)].filter((k) => !seen.has(k));
+      expect(fresh.length, LEVELS[i].name).toBeLessThanOrEqual(1);
+      // a level that introduces something new has nothing else to set
+      if (fresh.length && i > 0) expect(kindsOf(i).size, LEVELS[i].name).toBe(1);
+      for (const k of kindsOf(i)) seen.add(k);
     }
   });
 
@@ -44,11 +57,10 @@ describe('level data', () => {
           const drops = level.spawners.flatMap((s) => s.sequence).some((s) => parseSpawn(s).type === type);
           if (drops) expect(level.machines.some((m) => m.kind === 'bin' && m.accepts === type)).toBe(true);
         }
-        // the routes table only names flippable belts
-        for (const id of Object.keys(level.routes ?? {})) {
-          expect(level.machines.some((m) => m.id === id && m.kind === 'conveyor' && m.flippable)).toBe(true);
-        }
-        for (const step of level.tutorial ?? []) expect(ids).toContain(step.machine);
+        // the solution and the tutorial only name machines the player can change
+        const adjustable = planOptions(level).map((o) => o.id);
+        for (const id of Object.keys(level.solution)) expect(adjustable).toContain(id);
+        for (const step of level.tutorial ?? []) expect(adjustable).toContain(step.machine);
         // everything sits inside the portrait play field
         for (const m of level.machines) {
           expect(m.x).toBeGreaterThan(0);
@@ -62,33 +74,34 @@ describe('level data', () => {
         }
       });
 
-      it('is not won by doing nothing', () => {
+      it('is not won by pressing RUN without setting anything up', () => {
         const r = simulateLevel(level, {});
         expect(r.status).toBe('failed');
-        expect(r.seconds).toBeLessThan(60);
       });
 
-      it('can be cleared perfectly, and no toy can ever fall out of play', () => {
-        const r = simulateLevel(level, {}, {}, 60 * 240, makeRouteBot(level, 1));
-        expect(r.status).toBe('won');
-        expect(r.mistakes).toBe(0);
+      it('is won by its solution, also with small random spawn offsets', () => {
+        const r = simulateLevel(level, level.solution);
+        expect(r.status, r.reason).toBe('won');
         expect(r.lost).toBe(0);
-        expect(r.stars).toBe(3);
-        // even with every belt left alone, toys only ever end up in bins
-        const idle = simulateLevel(level, {});
-        expect(idle.lost).toBe(0);
+        expect(robust(level, level.solution)).toBe(true);
       });
 
-      it('is unhurried: still won with reactions as slow as half a second', () => {
-        for (const reaction of [12, 18, 24, 30]) {
-          const r = simulateLevel(level, {}, { seed: reaction, jitter: 0.6 }, 60 * 240, makeRouteBot(level, reaction));
-          expect(r.status, `reaction ${reaction} ticks: ${r.reason}`).toBe('won');
+      it('is a puzzle, not a coin toss: most setups lose, every run ends quickly and no toy falls out', () => {
+        const rep = solvePlan(level);
+        expect(rep.wins.length).toBeGreaterThan(0);
+        // a level with several things to set must not be won by most of them
+        if (rep.total >= 4 && i !== LEVELS.findIndex((l) => l.id === 'either-way')) expect(rep.wins.length / rep.total).toBeLessThanOrEqual(0.5);
+        for (const c of allConfigs(level)) {
+          const r = simulateLevel(level, c);
+          expect(r.status).not.toBe('timeout');
+          expect(r.seconds, JSON.stringify(c)).toBeLessThan(13);
+          expect(r.lost, JSON.stringify(c)).toBe(0);
         }
       });
 
       it('is deterministic', () => {
-        const a = simulateLevel(level, {}, {}, 60 * 240, makeRouteBot(level, 1));
-        const b = simulateLevel(level, {}, {}, 60 * 240, makeRouteBot(level, 1));
+        const a = simulateLevel(level, level.solution);
+        const b = simulateLevel(level, level.solution);
         expect(a.ticks).toBe(b.ticks);
       });
     });
@@ -96,30 +109,36 @@ describe('level data', () => {
 });
 
 describe('pacing', () => {
-  it('never rushes: toys on one belt are always at least 2.4 s apart', () => {
-    for (const level of LEVELS) {
-      for (const sp of level.spawners) expect(sp.interval, level.name).toBeGreaterThanOrEqual(2400);
-    }
+  it('starts easy: the first levels need two taps at most', () => {
+    for (let i = 0; i < 4; i++) expect(solvePlan(LEVELS[i]).minTaps, LEVELS[i].name).toBeLessThanOrEqual(2);
   });
 
-  it('ramps up gently: no level has many more toys than the one before it', () => {
-    const toys = LEVELS.map((l) => l.spawners.reduce((n, sp) => n + sp.sequence.length, 0));
-    expect(toys[0]).toBeLessThanOrEqual(3);
-    for (let i = 1; i < toys.length; i++) expect(toys[i] - toys[i - 1], LEVELS[i].name).toBeLessThanOrEqual(4);
-    expect(Math.max(...toys)).toBeLessThanOrEqual(12);
+  it('keeps runs short: a handful of toys per level', () => {
+    for (const level of LEVELS) {
+      const toys = level.spawners.reduce((n, sp) => n + sp.sequence.length, 0);
+      expect(toys, level.name).toBeLessThanOrEqual(8);
+    }
   });
 });
 
 describe('scoring', () => {
-  it('rates sorting levels on accuracy alone', () => {
-    const level = LEVELS[0];
+  it('rates set-up levels on how many runs it took', () => {
+    expect(starsForRuns(1)).toBe(3);
+    expect(starsForRuns(2)).toBe(2);
+    expect(starsForRuns(3)).toBe(2);
+    expect(starsForRuns(4)).toBe(1);
+    expect(starsForRuns(12)).toBe(1);
+  });
+
+  it('rates live sorting levels on accuracy alone', () => {
+    const level = { ...LEVELS[0], plan: false };
     expect(computeStars(level, { mistakes: 0, lost: 0, seconds: 500 })).toBe(3);
     expect(computeStars(level, { mistakes: 1, lost: 0, seconds: 1 })).toBe(2);
     expect(computeStars(level, { mistakes: 2, lost: 0, seconds: 1 })).toBe(1);
   });
 
   it('rates classic puzzle levels on slips and par time', () => {
-    const level = { ...LEVELS[0], sortAll: false, par: 10 };
+    const level = { ...LEVELS[0], sortAll: false, plan: false, par: 10 };
     expect(computeStars(level, { mistakes: 0, lost: 0, seconds: 9 })).toBe(3);
     expect(computeStars(level, { mistakes: 0, lost: 0, seconds: 15 })).toBe(2);
     expect(computeStars(level, { mistakes: 1, lost: 0, seconds: 1 })).toBe(2);

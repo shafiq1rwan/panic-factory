@@ -5,10 +5,11 @@ import type { ConveyorBelt } from '../machines/ConveyorBelt';
 import { keepOverlayBelow, safeBottom, safeTop, setupCamera } from '../rendering/Background';
 import { drawIcon } from '../rendering/Icons';
 import { toyKey } from '../rendering/Textures';
-import { heart, roundRect } from '../rendering/VectorFactory';
+import { heart, roundRect, star } from '../rendering/VectorFactory';
 import { audio } from '../systems/AudioManager';
 import { LevelManager } from '../systems/LevelManager';
 import { save } from '../systems/SaveManager';
+import { starsForRuns } from '../systems/ScoreManager';
 import { Button, drawStar, txt } from '../ui/UIComponents';
 import type { GameScene, GameState } from './GameScene';
 import type { PanicScene } from './PanicScene';
@@ -48,6 +49,15 @@ const BUTTON_ROW = 122;
 const BUTTON_H = 112;
 /** Shown when the player taps the play field instead of a button. */
 const NUDGE_TEXT = 'TAP A BUTTON TO FLIP ITS BELT';
+/** Set-up levels: what the status line says in each state. */
+const PLAN_TEXT = {
+  first: 'TAP THE MACHINES, THEN RUN',
+  again: 'CHANGE THE SETUP, THEN RUN',
+  missPrep: 'TAP A MACHINE WITH A BADGE',
+  missRun: 'PRESS STOP TO CHANGE THE SETUP',
+  won: 'ALL SORTED!',
+  failed: 'NOT QUITE...',
+};
 const NUDGE_MS = 2600;
 /** Centre of the first heart, just after the LIVES label. */
 const HEARTS_X = SIDE + 86;
@@ -97,6 +107,11 @@ export class UIScene extends Phaser.Scene {
   private effectT: Phaser.GameObjects.Text | null = null;
   /** time (scene clock) until which the "use the buttons" nudge is showing */
   private nudgeUntil = 0;
+  // set-up levels
+  private runBtn: Button | null = null;
+  private starsG: Phaser.GameObjects.Graphics | null = null;
+  private starsShown = -1;
+  private runShown = '';
   private tip: Phaser.GameObjects.Text | null = null;
 
   constructor() {
@@ -116,6 +131,10 @@ export class UIScene extends Phaser.Scene {
     this.scoreT = this.multT = this.bannerT = this.effectT = this.tip = null;
     this.nudgeUntil = 0;
     this.resultCard = null;
+    this.runBtn = null;
+    this.starsG = null;
+    this.starsShown = -1;
+    this.runShown = '';
     this.banner = null;
     this.bannerBg = null;
   }
@@ -162,10 +181,11 @@ export class UIScene extends Phaser.Scene {
     // controls sit in an inner group, centred in whatever safe space the strip has (tall phones have more)
     this.controls = this.add.container(0, 0);
     this.footer.add(this.controls);
-    this.controls.add(txt(this, SIDE + 4, LIVES_ROW, 'LIVES', 16, WORKSHOP.muted).setOrigin(0, 0.5).setLetterSpacing(1.5));
+    const plan = this.mode === 'puzzle' && !!this.game_.level.plan;
+    this.controls.add(txt(this, SIDE + 4, LIVES_ROW, plan ? 'STARS' : 'LIVES', 16, WORKSHOP.muted).setOrigin(0, 0.5).setLetterSpacing(1.5));
     this.heartsG = this.add.graphics();
     this.controls.add(this.heartsG);
-    this.effectT = txt(this, GAME_W - SIDE - 4, LIVES_ROW, 'TAP TO FLIP', 18, WORKSHOP.muted).setOrigin(1, 0.5);
+    this.effectT = txt(this, GAME_W - SIDE - 4, LIVES_ROW, plan ? PLAN_TEXT.first : 'TAP TO FLIP', 18, WORKSHOP.muted).setOrigin(1, 0.5);
     this.controls.add(this.effectT);
 
     this.hand = this.add.image(0, 0, 'hand').setScale(1.5 / TEX_SCALE).setDepth(50).setVisible(false).setAngle(-18);
@@ -265,11 +285,16 @@ export class UIScene extends Phaser.Scene {
     this.nudgeUntil = now + NUDGE_MS;
     audio.click();
     if (save.settings.reducedMotion) return;
-    this.beltButtons.forEach((b, i) => {
-      this.tweens.killTweensOf(b.button);
-      b.button.setScale(1);
-      this.tweens.add({ targets: b.button, scale: 1.04, duration: 140, delay: i * 90, yoyo: true, repeat: 1, ease: 'Sine.easeInOut' });
+    const targets: Button[] = this.beltButtons.map((b) => b.button);
+    if (this.runBtn && this.game_.state === 'running') targets.push(this.runBtn);
+    targets.forEach((btn, i) => {
+      this.tweens.killTweensOf(btn);
+      btn.setScale(1);
+      this.tweens.add({ targets: btn, scale: 1.04, duration: 140, delay: i * 90, yoyo: true, repeat: 1, ease: 'Sine.easeInOut' });
     });
+  }
+  private get plan(): boolean {
+    return this.mode === 'puzzle' && !!this.game_.level.plan;
   }
   private get nudging(): boolean {
     return this.time.now < this.nudgeUntil;
@@ -278,15 +303,68 @@ export class UIScene extends Phaser.Scene {
   private updateNudge(): void {
     if (!this.effectT) return;
     if (this.nudging) {
-      this.effectT.setText(NUDGE_TEXT).setColor('#39796B');
-      const target = this.beltButtons[0] ? this.beltButtonPos(this.beltButtons[0].belt.id) : null;
+      const running = this.game_?.state === 'running';
+      this.effectT.setText(this.plan ? (running ? PLAN_TEXT.missRun : PLAN_TEXT.missPrep) : NUDGE_TEXT).setColor('#39796B');
+      // set-up levels: the badges flash in the factory; while running, point at STOP
+      const target = this.plan
+        ? running && this.runBtn ? this.objectPos(this.runBtn) : null
+        : this.beltButtons[0] ? this.beltButtonPos(this.beltButtons[0].belt.id) : null;
       if (target && !this.hand.visible) {
         const bob = Math.abs(Math.sin(this.time.now / 230));
         this.hand.setVisible(true).setScale(1.5 / TEX_SCALE).setAlpha(1);
         this.hand.setPosition(target.x + 70 + bob * 7, target.y + 14 + bob * 18);
       }
-    } else if (this.mode === 'puzzle') {
+    } else if (this.mode === 'puzzle' && !this.plan) {
       this.effectT.setText('TAP TO FLIP').setColor(WORKSHOP.muted);
+    }
+  }
+
+  private objectPos(o: Phaser.GameObjects.Container): { x: number; y: number } {
+    const m = o.getWorldTransformMatrix();
+    return { x: m.tx, y: m.ty };
+  }
+
+  // --- set-up-then-run controls ----------------------------------------------------
+
+  /** The control strip of a set-up level: the stars still on offer, a status line and one big RUN / STOP. */
+  private createRunControls(): void {
+    const g = this.game_;
+    this.starsG = this.add.graphics();
+    this.controls.add(this.starsG);
+    this.runBtn = new Button(this, CX, BUTTON_ROW, {
+      w: GAME_W - SIDE * 2, h: BUTTON_H, radius: 30, label: 'RUN', icon: 'play', iconSize: 24, fontSize: 48, color: COLORS.yellow,
+      onClick: () => g.toggleRun(),
+    });
+    this.controls.add(this.runBtn);
+  }
+
+  private updateRunControls(): void {
+    const g = this.game_;
+    const btn = this.runBtn;
+    if (!btn) return;
+    const st = g.state;
+    const key = `${st}|${g.runs}`;
+    if (key !== this.runShown) {
+      this.runShown = key;
+      if (st === 'prep') btn.setContent('RUN', 'play').setColor(COLORS.yellow).setEnabled(true);
+      else if (st === 'running') btn.setContent('STOP', 'stop').setColor(0xffb3c9).setEnabled(true);
+      else btn.setEnabled(false);
+      if (!this.nudging) {
+        const text = st === 'prep' ? (g.runs === 0 ? PLAN_TEXT.first : PLAN_TEXT.again) : st === 'running' ? `RUN ${g.runs}` : st === 'won' ? PLAN_TEXT.won : PLAN_TEXT.failed;
+        this.effectT?.setText(text).setColor(st === 'won' ? '#39796B' : WORKSHOP.muted);
+      }
+    }
+    if (this.nudging) this.runShown = ''; // restore the status line when the nudge ends
+    // the stars this level is still worth: a win on the coming (or current) run earns them
+    const n = starsForRuns(st === 'prep' ? g.runs + 1 : g.runs);
+    if (n !== this.starsShown && this.starsG) {
+      const lost = this.starsShown > n && this.starsShown > 0;
+      this.starsShown = n;
+      this.starsG.clear();
+      for (let i = 0; i < 3; i++) star(this.starsG, HEARTS_X + i * 36, LIVES_ROW, 14, i < n ? COLORS.yellow : 0xd3dbd2, 0);
+      if (lost && !save.settings.reducedMotion) {
+        this.tweens.add({ targets: this.starsG, y: 4, duration: 70, yoyo: true, repeat: 2 });
+      }
     }
   }
 
@@ -324,7 +402,8 @@ export class UIScene extends Phaser.Scene {
       this.chips.push({ type, bg: cbg, label, box, shown: -1 });
     });
 
-    this.createBeltButtons(g.belts, (belt) => g.flipBelt(belt.id));
+    if (g.level.plan) this.createRunControls();
+    else this.createBeltButtons(g.belts, (belt) => g.flipBelt(belt.id));
 
     // hint pill
     this.hintBg = this.add.graphics();
@@ -368,10 +447,13 @@ export class UIScene extends Phaser.Scene {
       c.shown = have;
     }
 
-    // lives = allowed slips + 1
-    const total = g.level.mistakesAllowed + 1;
-    const left = Math.max(0, total - g.rules.mistakes - g.rules.lost);
-    this.drawHearts(total, left, HEARTS_X, LIVES_ROW);
+    if (g.level.plan) this.updateRunControls();
+    else {
+      // lives = allowed slips + 1
+      const total = g.level.mistakesAllowed + 1;
+      const left = Math.max(0, total - g.rules.mistakes - g.rules.lost);
+      this.drawHearts(total, left, HEARTS_X, LIVES_ROW);
+    }
 
     if (g.state !== this.lastState) {
       this.lastState = g.state;
@@ -381,7 +463,7 @@ export class UIScene extends Phaser.Scene {
     // hint + tutorial hand
     const tut = g.tutorialHint();
     // the one-line hint stays up for the first few seconds of play
-    const showHint = g.state === 'prep' || (g.state === 'running' && (!!tut || g.world.tick < 420));
+    const showHint = g.state === 'prep' || (!g.level.plan && g.state === 'running' && (!!tut || g.world.tick < 420));
     const text = showHint ? (tut?.text ?? g.level.hint ?? '') : '';
     if (text !== this.hintShown) {
       this.hintShown = text;
@@ -407,9 +489,13 @@ export class UIScene extends Phaser.Scene {
       }
     }
 
-    // the tutorial hand taps the button of the belt that needs flipping
+    // the tutorial hand taps the machine to change (set-up levels), RUN, or the belt's button
     this.clock += dt;
-    const target = tut?.machine ? this.beltButtonPos(tut.machine) : null;
+    let target: { x: number; y: number } | null = null;
+    if (tut && g.level.plan) {
+      if (tut.kind === 'run' && this.runBtn) target = this.objectPos(this.runBtn);
+      else if (tut.kind === 'tap') target = { x: tut.x - 50, y: tut.y - 6 };
+    } else if (tut?.machine) target = this.beltButtonPos(tut.machine);
     if (!tut || !target) {
       this.hand.setVisible(false);
       return;

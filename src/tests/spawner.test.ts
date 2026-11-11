@@ -5,9 +5,12 @@ import { LEVELS } from '../game/levels/levels';
 import { ConveyorBelt } from '../game/machines/ConveyorBelt';
 import { FactoryWorld } from '../game/sim/FactoryWorld';
 
+/** Level 1 with its first toy held at the pipe until the first flip (the engine feature this file tests). */
+const HOLD = { ...LEVELS[0], spawners: [{ ...LEVELS[0].spawners[0], delay: 1500, holdFirstForFlip: 7000 }] };
+
 /** Ticks until the first toy appears, optionally flipping the belt at `flipAt`. */
 function firstSpawnTick(flipAt = -1, limit = 900): number {
-  const world = new FactoryWorld(LEVELS[0]);
+  const world = new FactoryWorld(HOLD);
   world.start();
   const belt = world.machine('belt') as ConveyorBelt;
   for (let t = 0; t < limit; t++) {
@@ -18,12 +21,12 @@ function firstSpawnTick(flipAt = -1, limit = 900): number {
   return -1;
 }
 
-describe('level 1: the first toy waits for the first press', () => {
-  const def = LEVELS[0].spawners[0];
+describe('a spawner can hold its first toy until the first press', () => {
+  const def = HOLD.spawners[0];
   const due = msToTicks(def.delay ?? 0);
 
   it('holds the first toy at the pipe until the belt is flipped', () => {
-    const world = new FactoryWorld(LEVELS[0]);
+    const world = new FactoryWorld(HOLD);
     world.start();
     for (let t = 0; t < due + 60; t++) world.step();
     expect(world.objects.length).toBe(0);
@@ -48,7 +51,7 @@ describe('level 1: the first toy waits for the first press', () => {
   });
 
   it('holds again after a reset', () => {
-    const world = new FactoryWorld(LEVELS[0]);
+    const world = new FactoryWorld(HOLD);
     world.start();
     (world.machine('belt') as ConveyorBelt).flip();
     world.reset();

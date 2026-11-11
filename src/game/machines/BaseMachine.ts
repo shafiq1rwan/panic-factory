@@ -147,6 +147,25 @@ export abstract class BaseMachine<D extends MachineDef = MachineDef> {
     if (x !== this.x || y !== this.y || a !== this.angle) this.setTransform(x, y, a);
   }
 
+  /** Every angle the player can choose, in tap order. */
+  angleOptions(): number[] {
+    if (this.def.angles?.length) return [...this.def.angles];
+    const step = this.def.angleStep ?? 15;
+    const min = this.def.angleMin ?? -45;
+    const max = this.def.angleMax ?? 45;
+    const out: number[] = [];
+    for (let a = min; a <= max + 1e-6; a += step) out.push(a);
+    return out;
+  }
+
+  /** The angle a tap turns this machine to: the next option, wrapping round to the first. */
+  nextAngle(): number {
+    const opts = this.angleOptions();
+    let i = opts.findIndex((a) => Math.abs(a - this.angle) < 0.5);
+    if (i < 0) i = -1;
+    return opts[(i + 1) % opts.length];
+  }
+
   /** Next allowed angle when rotating by one step in `dir` (wraps inside min/max). */
   steppedAngle(dir: 1 | -1): number {
     const step = this.def.angleStep ?? 15;

@@ -8,6 +8,8 @@ export type RuleStatus = 'running' | 'won' | 'failed';
 const STUCK_TICKS = msToTicks(2500);
 /** Hard cap after the final spawn so a run can never hang forever. */
 const OVERTIME_TICKS = msToTicks(40000);
+/** Set-up levels: a toy that has not found a bin this long after the last drop is bouncing about for ever. */
+const PLAN_OVERTIME_TICKS = msToTicks(6000);
 
 /**
  * Win / lose rules for a puzzle level. Pure logic driven by world events, so
@@ -24,17 +26,20 @@ export class PuzzleRules {
   private lastSpawnTick = 0;
   /** how the most recent toy of each type was wasted, for a helpful failure message */
   private lastSlip: Partial<Record<ObjType, 'wrong' | 'lost'>> = {};
+  /** the most recent wrong delivery: which toy, into which bin */
+  private lastWrong: { type: ObjType; bin: ObjType } | null = null;
 
   constructor(
     readonly world: FactoryWorld,
     readonly level: LevelDef,
   ) {
-    world.events.on('deliver', (obj: { type: ObjType }, _bin: unknown, correct: boolean) => {
+    world.events.on('deliver', (obj: { type: ObjType }, bin: { accepts?: ObjType }, correct: boolean) => {
       if (this.status !== 'running') return;
       if (correct) this.delivered[obj.type]++;
       else {
         this.mistakes++;
         this.lastSlip[obj.type] = 'wrong';
+        if (bin?.accepts) this.lastWrong = { type: obj.type, bin: bin.accepts };
       }
     });
     world.events.on('lost', (obj: { type: ObjType }) => {
@@ -57,6 +62,7 @@ export class PuzzleRules {
     this.endTick = 0;
     this.lastSpawnTick = 0;
     this.lastSlip = {};
+    this.lastWrong = null;
   }
 
   needed(type: ObjType): number {
@@ -101,7 +107,10 @@ export class PuzzleRules {
     if (this.level.sortAll) {
       // Sorting levels: a toy that leaves play any other way than its own bin is a slip.
       if (this.mistakes + this.lost > this.level.mistakesAllowed) {
-        this.fail('Too many mix-ups!');
+        const w = this.lastWrong;
+        if (this.level.plan && w) this.fail(`A ${TYPE_COLORS[w.type].name.toLowerCase()} toy went in the ${TYPE_COLORS[w.bin].name.toLowerCase()} bin`);
+        else if (this.level.plan) this.fail('A toy fell out of the factory');
+        else this.fail('Too many mix-ups!');
       } else if (world.allSpawned && world.objects.length === 0) {
         this.status = 'won';
         this.endTick = world.tick;
@@ -109,7 +118,7 @@ export class PuzzleRules {
         let stuck = true;
         for (const o of world.objects) if (o.restTicks < STUCK_TICKS) stuck = false;
         if (stuck) this.fail('The toys got stuck!');
-        else if (world.tick - this.lastSpawnTick > OVERTIME_TICKS) this.fail('That took too long!');
+        else if (world.tick - this.lastSpawnTick > (this.level.plan ? PLAN_OVERTIME_TICKS : OVERTIME_TICKS)) this.fail(this.level.plan ? 'A toy never found a bin' : 'That took too long!');
       }
       return this.status;
     }

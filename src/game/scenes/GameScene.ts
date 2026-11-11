@@ -16,7 +16,7 @@ import { audio } from '../systems/AudioManager';
 import { LevelManager } from '../systems/LevelManager';
 import { PuzzleRules } from '../systems/PuzzleRules';
 import { save } from '../systems/SaveManager';
-import { computeStars } from '../systems/ScoreManager';
+import { computeStars, starsForRuns } from '../systems/ScoreManager';
 import { Button, fadeIn, gotoScene } from '../ui/UIComponents';
 import type { UIScene } from './UIScene';
 
@@ -62,6 +62,10 @@ export class GameScene extends Phaser.Scene {
   /** result of the most recent win, shown by the HUD banner */
   lastStars = 0;
   lastNewBest = false;
+  /** RUN presses on this level so far (set-up-then-run levels are rated on it) */
+  runs = 0;
+  /** set-up levels: until when the machines' badges flash after a tap that missed them */
+  badgeFlashUntil = 0;
   /** bumps on every prep reset so delayed callbacks from an old run are ignored */
   private runToken = 0;
   private acc = 0;
@@ -89,6 +93,8 @@ export class GameScene extends Phaser.Scene {
     this.selected = null;
     this.press = null;
     this.opPos = {};
+    this.runs = 0;
+    this.badgeFlashUntil = 0;
   }
 
   create(): void {
@@ -99,7 +105,7 @@ export class GameScene extends Phaser.Scene {
     this.world = new FactoryWorld(this.level);
     this.rules = new PuzzleRules(this.world, this.level);
     // Classic puzzle levels remember the player's layout; sorting levels always start fresh.
-    const stored = this.level.sortAll ? undefined : sessionConfigs.get(this.level.id);
+    const stored = this.level.sortAll && !this.level.plan ? undefined : sessionConfigs.get(this.level.id);
     if (stored) this.world.applyConfig(stored);
     this.view = new WorldView(this, this.world);
 
@@ -128,7 +134,7 @@ export class GameScene extends Phaser.Scene {
     platform.gameplayStart();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
     // Sorting levels have no RUN button: the factory starts by itself after the intro card.
-    if (this.level.sortAll) this.scheduleStart(1000);
+    if (this.level.sortAll && !this.level.plan) this.scheduleStart(1000);
   }
 
   private scheduleStart(ms: number): void {
@@ -178,6 +184,7 @@ export class GameScene extends Phaser.Scene {
     this.select(null);
     sessionConfigs.set(this.level.id, this.world.getConfig());
     this.state = 'running';
+    this.runs++;
     this.acc = 0;
     this.world.start();
     platform.measure('level', String(this.levelIndex + 1), 'start');
@@ -197,7 +204,7 @@ export class GameScene extends Phaser.Scene {
     this.acc = 0;
     if (wasRunning) audio.powerDown();
     platform.gameplayStart();
-    if (this.level.sortAll) {
+    if (this.level.sortAll && !this.level.plan) {
       // put every belt back the way the level starts, then go again
       for (const b of this.liveBelts) {
         if (b.dir !== (b.def.dir ?? 1)) {
@@ -238,7 +245,7 @@ export class GameScene extends Phaser.Scene {
     platform.gameplayStop();
     if (result === 'won') {
       const summary = { mistakes: this.rules.mistakes, lost: this.rules.lost, seconds: this.rules.elapsedSeconds };
-      const stars = computeStars(this.level, summary);
+      const stars = this.level.plan ? starsForRuns(this.runs) : computeStars(this.level, summary);
       const newBest = save.recordLevel(this.level.id, this.levelIndex, stars);
       save.markTutorial(this.level.id);
       this.time.delayedCall(350, () => {
@@ -266,7 +273,7 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.time.delayedCall(250, () => token === this.runToken && audio.fail());
       // No dialog either: show why it failed for a moment, then hand the layout straight back.
-      this.time.delayedCall(1900, () => {
+      this.time.delayedCall(this.level.plan ? 1700 : 1900, () => {
         if (token !== this.runToken) return;
         this.retry();
       });
@@ -301,11 +308,11 @@ export class GameScene extends Phaser.Scene {
     return p.positionToCamera(this.cameras.main) as Phaser.Math.Vector2;
   }
 
-  private pick(x: number, y: number): BaseMachine | null {
+  private pick(x: number, y: number, pad = 14): BaseMachine | null {
     let best: BaseMachine | null = null;
     let bestD = Infinity;
     for (const m of this.world.machines) {
-      if (!m.configurable || !m.hitTest(x, y, 14)) continue;
+      if (!m.configurable || !m.hitTest(x, y, pad)) continue;
       const d = (m.x - x) ** 2 + (m.y - y) ** 2;
       if (d < bestD) {
         bestD = d;
@@ -319,6 +326,20 @@ export class GameScene extends Phaser.Scene {
     audio.unlock();
     if (over.length > 0) return;
     const p = this.worldPoint(pointer);
+    if (this.level.plan) {
+      // Set up, then run: before RUN a tap changes the machine under the finger; while the toys
+      // move nothing can be changed. A tap that hits nothing points the player at the right thing.
+      const inField = p.y > safeTop() + HUD_H && p.y < PLAY_H;
+      if (this.state === 'prep') {
+        const m = this.pick(p.x, p.y, 34);
+        if (m) this.tapMachine(m);
+        else if (inField) {
+          this.badgeFlashUntil = this.time.now + 1300;
+          (this.scene.get('UI') as UIScene).nudgeControls();
+        }
+      } else if (this.state === 'running' && inField) (this.scene.get('UI') as UIScene).nudgeControls();
+      return;
+    }
     if (this.level.sortAll) {
       // The one verb of the game: tap a belt to flip it, before or while toys are moving.
       if (this.state !== 'prep' && this.state !== 'running') return;
@@ -347,6 +368,36 @@ export class GameScene extends Phaser.Scene {
     this.select(m);
     this.press = { m, sx: p.x, sy: p.y, ox: m.x, oy: m.y, moved: false, lastValid: { x: m.x, y: m.y } };
     if (!already) audio.click();
+  }
+
+  /**
+   * One tap = one change: a belt flips, a bouncer turns to its next angle, a timer moves on one
+   * step. Public so the tests can drive it.
+   */
+  tapMachine(m: BaseMachine): void {
+    if (this.state !== 'prep' || !m.configurable) return;
+    if (m instanceof ConveyorBelt && m.canFlip) {
+      m.flip();
+    } else if (m.canRotate) {
+      const prev = m.angle;
+      m.setTransform(m.x, m.y, m.nextAngle());
+      if (!this.world.isPlacementValid(m)) {
+        m.setTransform(m.x, m.y, prev);
+        audio.buzz();
+        return;
+      }
+      audio.boing(1.2);
+    } else if (m instanceof Piston && m.canTime) {
+      m.cycleTiming();
+      audio.flip();
+    }
+    this.view.popMachine(m);
+  }
+
+  /** Tap a machine by id (tests, keyboard). */
+  tapMachineId(id: string): void {
+    const m = this.world.machine(id);
+    if (m) this.tapMachine(m);
   }
 
   private onMove(pointer: Phaser.Input.Pointer): void {
@@ -489,6 +540,18 @@ export class GameScene extends Phaser.Scene {
       this.pause();
       return;
     }
+    if (this.level.plan) {
+      audio.unlock();
+      if (k === ' ' || k === 'enter') this.toggleRun();
+      else if (k === 'r') this.retry();
+      else if (this.state === 'prep' && /^[1-9]$/.test(k)) {
+        // number keys tap the adjustable machines, left to right
+        const list = this.world.machines.filter((m) => m.configurable).sort((a, b) => a.x - b.x || a.y - b.y);
+        const m = list[parseInt(k, 10) - 1];
+        if (m) this.tapMachine(m);
+      }
+      return;
+    }
     if (this.level.sortAll) {
       // keyboard mirrors the bottom buttons: Space / A / Left / 1 = first button, D / Right / 2 = second
       audio.unlock();
@@ -544,9 +607,10 @@ export class GameScene extends Phaser.Scene {
     sel.clear();
     this.ops.setVisible(this.state === 'prep');
     // sorting levels keep their belts highlighted while toys are moving: they stay tappable
-    const live = !!this.level.sortAll && this.state === 'running';
+    const live = !!this.level.sortAll && !this.level.plan && this.state === 'running';
     if (this.state !== 'prep' && !live) return;
-    const wave = 0.5 + 0.5 * Math.sin(this.pulse / 260);
+    const flashing = this.time.now < this.badgeFlashUntil;
+    const wave = flashing ? 0.5 + 0.5 * Math.sin(this.pulse / 70) : 0.5 + 0.5 * Math.sin(this.pulse / 260);
 
     for (const m of this.world.machines) {
       if (!m.configurable) continue;
@@ -587,8 +651,9 @@ export class GameScene extends Phaser.Scene {
         const by = m.y - reach - 16 - wave * 3;
         halo.save();
         halo.translateCanvas(bx, by);
-        circle(halo, 0, 0, 18, WORKSHOP.panel, 0);
-        drawIcon(halo, icon, 10, accent);
+        const r = flashing ? 18 + wave * 6 : 18;
+        circle(halo, 0, 0, r, WORKSHOP.panel, 0);
+        drawIcon(halo, icon, r * 0.56, accent);
         halo.restore();
       }
     }
@@ -631,7 +696,7 @@ export class GameScene extends Phaser.Scene {
 
   /** What the tutorial hand should point at right now (null = no tutorial). */
   tutorialHint(): TutorialHint | null {
-    const live = !!this.level.sortAll && this.state === 'running';
+    const live = !!this.level.sortAll && !this.level.plan && this.state === 'running';
     if ((this.state !== 'prep' && !live) || !this.level.tutorial || save.data.tutorialsDone[this.level.id]) return null;
     for (const step of this.level.tutorial) {
       const m = this.world.machine(step.machine);
@@ -648,7 +713,7 @@ export class GameScene extends Phaser.Scene {
       }
       return { kind: 'tap', machine: m.id, x: target.x, y: target.y, text: step.text };
     }
-    if (this.level.sortAll) return null; // nothing to press: the factory runs by itself
+    if (this.level.sortAll && !this.level.plan) return null; // nothing to press: the factory runs by itself
     return { kind: 'run', x: 0, y: 0, text: 'Now press RUN!' };
   }
 

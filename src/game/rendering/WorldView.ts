@@ -189,6 +189,11 @@ export class WorldView {
     this.scene.tweens.add({ targets: t, y: y - 42, alpha: 0, duration: 650, delay: 220, ease: 'Quad.easeIn', onComplete: () => t.destroy() });
   }
 
+  /** Play the little pop on a machine the player just changed. */
+  popMachine(m: BaseMachine): void {
+    this.machineViews.get(m)?.pop();
+  }
+
   viewOf(m: BaseMachine): MachineView | undefined {
     return this.machineViews.get(m);
   }
