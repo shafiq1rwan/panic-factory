@@ -2,6 +2,16 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## Clearer belt buttons (v1.6.4)
+
+Changes after playtesters did not realise the buttons flip the belts, and some tried to drag the springs.
+
+- Belt buttons read "⇄ FLIP" (an action) instead of "RIGHT >>>" (which looked like a status). The ⇄ badge is the one the belt wears.
+- Each belt's outline and ⇄ badge use the belt's accent colour, the same colour as its button.
+- Tapping the play field anywhere but a belt bounces the buttons, points the hand at them and shows "TAP A BUTTON TO FLIP ITS BELT" for a moment. It never moves anything. Works in Panic mode too.
+- The control strip uses the same 16 px side margin as the top bar; one belt gets a full-width button.
+- Poki build zipped: `output/poki/tiny-factory-panic-poki-v1.6.4.zip`.
+
 ## Poki iframe fixes (v1.6.3)
 
 - Inside an iframe (as on Poki) the browser always reports a camera inset of 0. On an upright touch screen in an iframe the game now assumes a 44 px camera area at the top, so the top bar no longer sits under the camera.

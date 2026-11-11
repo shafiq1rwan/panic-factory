@@ -29,7 +29,7 @@ interface BeltButton {
   w: number;
   /** label and chevrons, centred together on the face */
   content: Phaser.GameObjects.Container;
-  /** chevrons (or the lock when jammed) */
+  /** flip icon (or the lock when jammed) */
   marks: Phaser.GameObjects.Graphics;
   /** end rollers, drawn like the belt's */
   rollers: Phaser.GameObjects.Graphics;
@@ -40,10 +40,17 @@ interface BeltButton {
 
 const CX = GAME_W / 2;
 const BAR_Y = HUD_H / 2;
+/** Side margin shared by the top bar and the control strip (the pause button's left edge). */
+const SIDE = 16;
 /** Rows inside the control strip, measured from its top edge. */
-const LIVES_ROW = 42;
-const BUTTON_ROW = 128;
+const LIVES_ROW = 34;
+const BUTTON_ROW = 122;
 const BUTTON_H = 112;
+/** Shown when the player taps the play field instead of a button. */
+const NUDGE_TEXT = 'TAP A BUTTON TO FLIP ITS BELT';
+const NUDGE_MS = 2600;
+/** Centre of the first heart, just after the LIVES label. */
+const HEARTS_X = SIDE + 86;
 
 /**
  * Heads-up display for the portrait layout, rendered in its own scene above
@@ -88,6 +95,8 @@ export class UIScene extends Phaser.Scene {
   private bannerBg: Phaser.GameObjects.Graphics | null = null;
   private bannerShown = '';
   private effectT: Phaser.GameObjects.Text | null = null;
+  /** time (scene clock) until which the "use the buttons" nudge is showing */
+  private nudgeUntil = 0;
   private tip: Phaser.GameObjects.Text | null = null;
 
   constructor() {
@@ -105,6 +114,7 @@ export class UIScene extends Phaser.Scene {
     this.lastMult = 0;
     this.bannerShown = '';
     this.scoreT = this.multT = this.bannerT = this.effectT = this.tip = null;
+    this.nudgeUntil = 0;
     this.resultCard = null;
     this.banner = null;
     this.bannerBg = null;
@@ -152,10 +162,10 @@ export class UIScene extends Phaser.Scene {
     // controls sit in an inner group, centred in whatever safe space the strip has (tall phones have more)
     this.controls = this.add.container(0, 0);
     this.footer.add(this.controls);
-    this.controls.add(txt(this, 40, LIVES_ROW, 'LIVES', 16, WORKSHOP.muted).setOrigin(0, 0.5).setLetterSpacing(1.5));
+    this.controls.add(txt(this, SIDE + 4, LIVES_ROW, 'LIVES', 16, WORKSHOP.muted).setOrigin(0, 0.5).setLetterSpacing(1.5));
     this.heartsG = this.add.graphics();
     this.controls.add(this.heartsG);
-    this.effectT = txt(this, GAME_W - 40, LIVES_ROW, 'TAP TO FLIP', 18, WORKSHOP.muted).setOrigin(1, 0.5);
+    this.effectT = txt(this, GAME_W - SIDE - 4, LIVES_ROW, 'TAP TO FLIP', 18, WORKSHOP.muted).setOrigin(1, 0.5);
     this.controls.add(this.effectT);
 
     this.hand = this.add.image(0, 0, 'hand').setScale(1.5 / TEX_SCALE).setDepth(50).setVisible(false).setAngle(-18);
@@ -175,8 +185,9 @@ export class UIScene extends Phaser.Scene {
   private createBeltButtons(belts: ConveyorBelt[], onFlip: (belt: ConveyorBelt) => void): void {
     const n = belts.length;
     if (n === 0) return;
-    const gap = 20;
-    const w = n === 1 ? 480 : (GAME_W - 72 - (n - 1) * gap) / n;
+    // full width between the same side margins as the top bar
+    const gap = 16;
+    const w = (GAME_W - SIDE * 2 - (n - 1) * gap) / n;
     const x0 = CX - ((n - 1) * (w + gap)) / 2;
     belts.forEach((belt) => {
       const button = new Button(this, x0 + belts.indexOf(belt) * (w + gap), BUTTON_ROW, {
@@ -185,7 +196,7 @@ export class UIScene extends Phaser.Scene {
       });
       const rollers = this.add.graphics();
       const marks = this.add.graphics();
-      const label = txt(this, 0, 1, '', 32, TEXT.white, { stroke: '#2A1F6B', strokeThickness: 4 }).setLetterSpacing(1);
+      const label = txt(this, 0, 1, '', 34, TEXT.white, { stroke: '#2A1F6B', strokeThickness: 4 }).setLetterSpacing(1.5);
       const content = this.add.container(0, 0, [marks, label]);
       button.addToFace(rollers, content);
       this.controls.add(button);
@@ -211,40 +222,21 @@ export class UIScene extends Phaser.Scene {
       g.lineBetween(rx - Math.cos(spin) * 8, -Math.sin(spin) * 8, rx + Math.cos(spin) * 8, Math.sin(spin) * 8);
     }
 
-    // word plus chevrons, centred as one group; the chevrons lead in the direction of travel
-    b.label.setText(off ? 'JAMMED' : dir === 1 ? 'RIGHT' : 'LEFT');
+    // an action, not a status: the flip icon (the same badge the belt wears) and the word FLIP,
+    // centred as one group. The belt itself shows which way it runs.
+    b.label.setText(off ? 'JAMMED' : 'FLIP');
     const m = b.marks;
     m.clear();
-    const markW = off ? 30 : 50;
+    const iconW = 40;
     const space = 14;
-    const total = markW + space + b.label.width;
-    const markOnRight = off || dir === 1;
-    const markX = markOnRight ? total / 2 - markW / 2 : -total / 2 + markW / 2;
-    b.label.x = markOnRight ? -total / 2 + b.label.width / 2 : total / 2 - b.label.width / 2;
-    if (off) {
-      m.setPosition(markX, 0);
-      drawIcon(m, 'lock', 15, COLORS.white);
-      return;
-    }
-    m.setPosition(markX, 0);
-    m.lineStyle(6, COLORS.belt, 0.35);
-    for (let i = -1; i <= 1; i++) {
-      const cx = i * 18;
-      m.beginPath();
-      m.moveTo(cx - 6 * dir, -10 + 2);
-      m.lineTo(cx + 5 * dir, 0 + 2);
-      m.lineTo(cx - 6 * dir, 10 + 2);
-      m.strokePath();
-    }
-    m.lineStyle(6, 0xffffff, 1);
-    for (let i = -1; i <= 1; i++) {
-      const cx = i * 18;
-      m.beginPath();
-      m.moveTo(cx - 6 * dir, -10);
-      m.lineTo(cx + 5 * dir, 0);
-      m.lineTo(cx - 6 * dir, 10);
-      m.strokePath();
-    }
+    const total = iconW + space + b.label.width;
+    m.setPosition(-total / 2 + iconW / 2, 0);
+    b.label.x = total / 2 - b.label.width / 2;
+    m.fillStyle(COLORS.belt, 0.35);
+    m.fillCircle(0, 2, iconW / 2);
+    m.fillStyle(0xffffff, 1);
+    m.fillCircle(0, 0, iconW / 2);
+    drawIcon(m, off ? 'lock' : 'flip', 11, off ? 0x8f8ab0 : (b.belt.def.accent ?? BELT_A));
   }
 
   private updateBeltButtons(): void {
@@ -260,6 +252,41 @@ export class UIScene extends Phaser.Scene {
         b.content.setScale(0.85);
         this.tweens.add({ targets: b.content, scale: 1, duration: 220, ease: 'Back.easeOut' });
       }
+    }
+  }
+
+  /**
+   * The player tapped the play field instead of a button (people try to drag the springs, or
+   * expect to touch the belts): bounce the buttons, point at them and say what they do.
+   */
+  nudgeControls(): void {
+    const now = this.time.now;
+    if (now < this.nudgeUntil - NUDGE_MS + 700) return; // not on every tap of a burst
+    this.nudgeUntil = now + NUDGE_MS;
+    audio.click();
+    if (save.settings.reducedMotion) return;
+    this.beltButtons.forEach((b, i) => {
+      this.tweens.killTweensOf(b.button);
+      b.button.setScale(1);
+      this.tweens.add({ targets: b.button, scale: 1.04, duration: 140, delay: i * 90, yoyo: true, repeat: 1, ease: 'Sine.easeInOut' });
+    });
+  }
+  private get nudging(): boolean {
+    return this.time.now < this.nudgeUntil;
+  }
+  /** Shows the nudge text and hand while a nudge is active. Call after the mode's own update. */
+  private updateNudge(): void {
+    if (!this.effectT) return;
+    if (this.nudging) {
+      this.effectT.setText(NUDGE_TEXT).setColor('#39796B');
+      const target = this.beltButtons[0] ? this.beltButtonPos(this.beltButtons[0].belt.id) : null;
+      if (target && !this.hand.visible) {
+        const bob = Math.abs(Math.sin(this.time.now / 230));
+        this.hand.setVisible(true).setScale(1.5 / TEX_SCALE).setAlpha(1);
+        this.hand.setPosition(target.x + 70 + bob * 7, target.y + 14 + bob * 18);
+      }
+    } else if (this.mode === 'puzzle') {
+      this.effectT.setText('TAP TO FLIP').setColor(WORKSHOP.muted);
     }
   }
 
@@ -344,7 +371,7 @@ export class UIScene extends Phaser.Scene {
     // lives = allowed slips + 1
     const total = g.level.mistakesAllowed + 1;
     const left = Math.max(0, total - g.rules.mistakes - g.rules.lost);
-    this.drawHearts(total, left, 128, LIVES_ROW);
+    this.drawHearts(total, left, HEARTS_X, LIVES_ROW);
 
     if (g.state !== this.lastState) {
       this.lastState = g.state;
@@ -524,9 +551,10 @@ export class UIScene extends Phaser.Scene {
         this.tweens.add({ targets: this.multT, scale: 1, duration: 320, ease: 'Back.easeOut' });
       }
     }
-    this.drawHearts(p.maxLives, p.lives, 128, LIVES_ROW);
+    this.drawHearts(p.maxLives, p.lives, HEARTS_X, LIVES_ROW);
     this.effectT!.setText(p.activeEffect || 'TAP TO FLIP');
     this.effectT!.setColor(p.activeEffect ? '#9A5C14' : WORKSHOP.muted);
+    if (!this.nudging || p.activeEffect) this.hand.setVisible(false);
     // the tip only shows for the first few seconds
     this.tip!.setVisible(p.director.seconds < 8);
 
@@ -551,5 +579,6 @@ export class UIScene extends Phaser.Scene {
     this.updateBeltButtons();
     if (this.mode === 'puzzle') this.updatePuzzle(delta);
     else this.updatePanic();
+    if (this.mode === 'puzzle' || !this.panic.activeEffect) this.updateNudge();
   }
 }

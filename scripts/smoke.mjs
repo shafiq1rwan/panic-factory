@@ -184,6 +184,13 @@ try {
   await click(page, bb.x, bb.y); // press the big button: the one thing the player has to learn
   check('pressing the button flips the belt', (await ev(page, () => window.__TFP.game.scene.getScene('Game').world.machine('belt').dir)) === -1);
   check('tutorial hand goes away once the belt is right', (await ev(page, () => window.__TFP.game.scene.getScene('Game').tutorialHint())) === null);
+  await click(page, 60, 400); // empty wall: playtesters tried to drag the springs
+  await page.waitForTimeout(150); // the label updates on the next frame
+  const nudge = await ev(page, () => {
+    const ui = window.__TFP.game.scene.getScene('UI');
+    return { on: ui.nudgeUntil > ui.time.now, text: ui.effectT.text, belt: window.__TFP.game.scene.getScene('Game').world.machine('belt').dir };
+  });
+  check('tapping the play field points at the buttons and changes nothing', nudge.on && nudge.text.includes('BUTTON') && nudge.belt === -1, JSON.stringify(nudge));
   await page.waitForTimeout(1800);
   await page.screenshot({ path: `${OUT}/smoke-level1-running.png` });
   await gameState(page, 'won');

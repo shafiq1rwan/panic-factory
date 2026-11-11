@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
-import { GAME_W, HUD_H, STEP_MS } from '../config';
+import { GAME_W, HUD_H, PLAY_H, STEP_MS } from '../config';
 import { PANIC_LEVEL } from '../levels/panicLevel';
 import { ConveyorBelt } from '../machines/ConveyorBelt';
 import { platform } from '../platform';
-import { drawFactoryBackground, setupCamera } from '../rendering/Background';
+import { drawFactoryBackground, safeTop, setupCamera } from '../rendering/Background';
 import { WorldView } from '../rendering/WorldView';
 import { FactoryWorld } from '../sim/FactoryWorld';
 import { audio } from '../systems/AudioManager';
@@ -11,6 +11,7 @@ import { PanicDirector } from '../systems/PanicDirector';
 import { save } from '../systems/SaveManager';
 import type { PanicScore } from '../systems/ScoreManager';
 import { fadeIn } from '../ui/UIComponents';
+import type { UIScene } from './UIScene';
 
 /**
  * Panic Factory: the endless arcade mode. Toys keep coming, belts are flipped
@@ -117,6 +118,8 @@ export class PanicScene extends Phaser.Scene {
       }
     }
     if (best) this.flip(best.id);
+    // a tap that hit no belt: point at the buttons
+    else if (!this.ended && p.y > safeTop() + HUD_H && p.y < PLAY_H) (this.scene.get('UI') as UIScene).nudgeControls();
   }
 
   private onKey(ev: KeyboardEvent): void {

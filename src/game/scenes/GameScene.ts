@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
-import { COLORS, GAME_W, HUD_H, STEP_MS, view, WORKSHOP } from '../config';
+import { COLORS, GAME_W, HUD_H, PLAY_H, STEP_MS, view, WORKSHOP } from '../config';
 import type { LevelDef, TutorialStep } from '../levels/LevelTypes';
 import type { BaseMachine } from '../machines/BaseMachine';
 import { ConveyorBelt } from '../machines/ConveyorBelt';
 import { Piston } from '../machines/Piston';
 import { SpringBumper } from '../machines/SpringBumper';
 import { platform } from '../platform';
-import { drawFactoryBackground, setupCamera } from '../rendering/Background';
+import { drawFactoryBackground, safeTop, setupCamera } from '../rendering/Background';
 import { drawIcon, type IconName } from '../rendering/Icons';
 import { DEPTH } from '../rendering/MachineViews';
 import { circle } from '../rendering/VectorFactory';
@@ -18,6 +18,7 @@ import { PuzzleRules } from '../systems/PuzzleRules';
 import { save } from '../systems/SaveManager';
 import { computeStars } from '../systems/ScoreManager';
 import { Button, fadeIn, gotoScene } from '../ui/UIComponents';
+import type { UIScene } from './UIScene';
 
 export type GameState = 'prep' | 'running' | 'won' | 'failed';
 type OpName = 'rotL' | 'rotR' | 'flip' | 'clock';
@@ -329,7 +330,9 @@ export class GameScene extends Phaser.Scene {
           best = b;
         }
       }
-      best?.flip();
+      if (best) best.flip();
+      // a tap that hit no belt (often an attempt to drag a spring): point at the buttons
+      else if (p.y > safeTop() + HUD_H && p.y < PLAY_H) (this.scene.get('UI') as UIScene).nudgeControls();
       return;
     }
     if (this.state !== 'prep') return;
@@ -564,7 +567,9 @@ export class GameScene extends Phaser.Scene {
       g.translateCanvas(m.x, m.y);
       g.rotateCanvas(m.rad);
       const bad = isSel && !this.placementOk;
-      g.lineStyle(isSel ? 4 : 3, bad ? COLORS.red : WORKSHOP.accent, isSel ? 1 : 0.35 + wave * 0.45);
+      // a belt's outline and badge use its accent colour: the same colour as its button below
+      const accent = m instanceof ConveyorBelt && m.def.accent !== undefined ? m.def.accent : WORKSHOP.accent;
+      g.lineStyle(isSel ? 4 : 3, bad ? COLORS.red : accent, isSel ? 1 : 0.35 + wave * 0.45);
       g.strokeRoundedRect(-e.hw - pad, -e.hh - pad, (e.hw + pad) * 2, (e.hh + pad) * 2, 16);
       if (bad) {
         g.fillStyle(COLORS.red, 0.22);
@@ -581,7 +586,7 @@ export class GameScene extends Phaser.Scene {
         halo.save();
         halo.translateCanvas(bx, by);
         circle(halo, 0, 0, 18, WORKSHOP.panel, 0);
-        drawIcon(halo, icon, 10, WORKSHOP.accent);
+        drawIcon(halo, icon, 10, accent);
         halo.restore();
       }
     }
