@@ -105,6 +105,8 @@ export class GameScene extends Phaser.Scene {
 
     this.world = new FactoryWorld(this.level);
     this.rules = new PuzzleRules(this.world, this.level);
+    // analytics: shows where players give up even if they never press RUN
+    platform.measure('level', String(this.levelIndex + 1), 'open');
     // Classic puzzle levels remember the player's layout; sorting levels always start fresh.
     const stored = this.level.sortAll && !this.level.plan ? undefined : sessionConfigs.get(this.level.id);
     if (stored) this.world.applyConfig(stored);
@@ -163,6 +165,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private shutdown(): void {
+    if (this.state === 'running') this.measureStop();
     sessionConfigs.set(this.level.id, this.world.getConfig());
     this.input.off('pointerdown', this.onDown, this);
     this.input.off('pointermove', this.onMove, this);
@@ -194,6 +197,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Instant retry: back to the preparation phase with the layout intact. */
   retry(): void {
+    if (this.state === 'running') this.measureStop();
     this.runToken++;
     if (this.scene.isActive('Result')) this.scene.stop('Result');
     const wasRunning = this.state !== 'prep';
@@ -215,6 +219,14 @@ export class GameScene extends Phaser.Scene {
       }
       this.scheduleStart(800);
     }
+  }
+
+  /**
+   * A run the player ended before it won or failed (STOP, restart, leaving). Poki's guide asks
+   * for complete or fail only when an attempt really ends that way, so this gets its own action.
+   */
+  private measureStop(): void {
+    platform.measure('level', String(this.levelIndex + 1), 'stop');
   }
 
   toggleRun(): void {

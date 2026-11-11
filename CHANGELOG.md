@@ -2,6 +2,11 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## Where players stop (v1.9.2)
+
+- New Poki analytics events: `level N open` when a level is opened, so a player who gives up during setup without pressing RUN still shows up, and `level N stop` when a run is ended early (STOP, restart, or leaving mid-run). With start / complete / fail, every run now ends in exactly one of complete, fail or stop.
+- Poki build zipped: `output/poki/tiny-factory-panic-poki-v1.9.2.zip`.
+
 ## Preview and button fixes (v1.9.1)
 
 - Next-toy previews are placed for all pipes together, so they never cover another pipe or each other. In Crossroads (19) and Junction (27) the two previews overlapped between the pipes. Tested for every level.

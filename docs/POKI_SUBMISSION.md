@@ -40,12 +40,19 @@ The calls below are the ones in Poki's HTML5 guide (https://developers.poki.com/
 | `PokiSDK.gameplayStop()` | On pause, on a win, on a failure, and when leaving a level. |
 | `PokiSDK.commercialBreak()` | After a level is won, just before the wipe to the next level, and from the Panic game-over screen when the player moves on. Never while toys are moving. |
 | `PokiSDK.rewardedBreak()` | Implemented in the adapter, not used by the game. |
+| `PokiSDK.measure('level', N, 'open')` | When level N is opened (before any RUN). |
+| `PokiSDK.measure('level', N, 'start')` | Every press of RUN, so one level can send several. |
+| `PokiSDK.measure('level', N, 'complete' / 'fail')` | When a run is won / lost. One attempt never sends both. |
+| `PokiSDK.measure('level', N, 'stop')` | When the player ends a run early: STOP, restart, or leaving the level mid-run. |
+| `PokiSDK.measure('panic', 'endless', 'start' / 'complete')`, `('panic-score', S, 'reached')` | Panic mode start and end, and the score reached rounded down to 100. |
+
+Poki measures play time itself from `gameplayStart` / `gameplayStop`. Its guide (https://developers.poki.com/guide/game-events) treats start, complete and fail as special and accepts any other action; it does not say where `measure` events appear in the dashboard.
 
 Audio is muted and keyboard input is ignored for the length of a commercial break, and both are restored afterwards even if the SDK never calls back. Arrow keys, Space and the mouse wheel do not scroll the page.
 
 ## Before submitting
 
-- [x] Build with the Poki adapter and zip it. Done for v1.9.1: `output/poki/tiny-factory-panic-poki-v1.9.1.zip` (`index.html` at the root of the zip, about 350 kB). It was checked to boot to the title screen and into level 1 on an emulated phone, with the Poki SDK loading.
+- [x] Build with the Poki adapter and zip it. Done for v1.9.2: `output/poki/tiny-factory-panic-poki-v1.9.2.zip` (`index.html` at the root of the zip, about 350 kB). It was checked to boot to the title screen and into level 1 on an emulated phone, with the Poki SDK loading.
 - [ ] To rebuild after a change: bump `version` in `package.json` and the label in `MenuScene.ts`, run `$env:VITE_PLATFORM = 'poki'; npm run build` (PowerShell) or `VITE_PLATFORM=poki npm run build` (bash), check it with `node scripts/boot-check.mjs`, then zip the contents of `dist/` (not the folder itself) under a new versioned name.
 - [ ] Load that build in Poki's inspector (https://inspector.poki.dev) and confirm the SDK events appear in the order in the table above.
 - [ ] Play the whole game on a real phone held upright. This has only been done in a desktop browser's phone emulation so far.

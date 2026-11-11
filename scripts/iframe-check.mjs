@@ -81,9 +81,14 @@ try {
     await page.waitForTimeout(2500);
     await page.screenshot({ path: `${out}/iframe-${name}.png` });
   }
-  // press RUN so the level-start analytics event fires
-  await f.evaluate(() => window.__TFP.game.scene.getScene('Game').toggleRun());
-  await page.waitForTimeout(300);
+  // press RUN (level start), STOP (level stop), RUN again and wait for the run to end (complete or fail)
+  const game = (fn) => f.evaluate(fn);
+  await game(() => window.__TFP.game.scene.getScene('Game').toggleRun());
+  await page.waitForTimeout(400);
+  await game(() => window.__TFP.game.scene.getScene('Game').toggleRun());
+  await page.waitForTimeout(400);
+  await game(() => window.__TFP.game.scene.getScene('Game').toggleRun());
+  await f.waitForFunction(() => ['won', 'failed'].includes(window.__TFP.game.scene.getScene('Game').state), null, { timeout: 30000 });
   console.log('measure events:', JSON.stringify(await f.evaluate(() => window.__measured ?? null)));
   ok = info.framed && info.safeTopCss > 0;
 } finally {

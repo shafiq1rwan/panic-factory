@@ -92,7 +92,7 @@ export class MenuScene extends Phaser.Scene {
     // progress, top right
     const prog = this.add.container(cx, 1060).setDepth(91);
     prog.add([drawStar(this, -46, 0, 18, true), txt(this, 22, 1, `${save.totalStars}/${LevelManager.count * 3}`, 26, WORKSHOP.text)]);
-    txt(this, 40, GAME_H - 44, 'v1.9.1', 16, WORKSHOP.muted).setDepth(91);
+    txt(this, 40, GAME_H - 44, 'v1.9.2', 16, WORKSHOP.muted).setDepth(91);
 
     // keyboard: Space / Enter starts too
     this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {
