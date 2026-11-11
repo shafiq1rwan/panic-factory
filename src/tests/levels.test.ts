@@ -68,6 +68,8 @@ describe('level data', () => {
       it('is structurally valid', () => {
         const ids = level.machines.map((m) => m.id);
         expect(new Set(ids).size).toBe(ids.length);
+        // only bins for the colours that drop: the bare floor between them is a miss
+        for (const m of level.machines) if (m.kind === 'bin') expect((level.objective[m.accepts] ?? 0) > 0, `empty ${m.accepts} bin`).toBe(true);
         // every toy type that drops has a bin
         for (const type of OBJ_TYPES) {
           const drops = level.spawners.flatMap((s) => s.sequence).some((s) => parseSpawn(s).type === type);
@@ -129,7 +131,6 @@ describe('level data', () => {
           const r = simulateLevel(level, c);
           expect(r.status).not.toBe('timeout');
           expect(r.seconds, JSON.stringify(c)).toBeLessThan(13);
-          expect(r.lost, JSON.stringify(c)).toBe(0);
         }
       });
 

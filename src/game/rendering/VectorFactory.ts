@@ -252,8 +252,8 @@ export function drawToy(g: G, type: ObjType, material: MaterialId): void {
   if (material === 'slippery') g.fillCircle(size * 0.5, size * 0.34 + oy * 0.4, 3);
 }
 
-export type Expression = 'happy' | 'blink' | 'surprised' | 'dizzy' | 'worried' | 'joy';
-export const EXPRESSIONS: Expression[] = ['happy', 'blink', 'surprised', 'dizzy', 'worried', 'joy'];
+export type Expression = 'happy' | 'blink' | 'surprised' | 'dizzy' | 'worried' | 'joy' | 'ouch';
+export const EXPRESSIONS: Expression[] = ['happy', 'blink', 'surprised', 'dizzy', 'worried', 'joy', 'ouch'];
 
 /** Big googly-eyed face, centred on 0,0 and about 26 x 20 px. */
 export function drawFace(g: G, expr: Expression): void {
@@ -317,6 +317,16 @@ export function drawFace(g: G, expr: Expression): void {
       g.beginPath();
       g.arc(0, 10, 3, 1.2 * Math.PI, 1.8 * Math.PI, false);
       g.strokePath();
+      break;
+    case 'ouch':
+      // big bold X eyes and a small open mouth: the toy missed the bins
+      g.lineStyle(3, ink, 1);
+      for (const x of [-ex, ex]) {
+        g.lineBetween(x - 3.6, ey - 3.6, x + 3.6, ey + 3.6);
+        g.lineBetween(x - 3.6, ey + 3.6, x + 3.6, ey - 3.6);
+      }
+      g.fillStyle(ink, 1);
+      g.fillEllipse(0, 8.4, 5, 4.2);
       break;
     case 'joy':
       g.lineStyle(2.6, ink, 1);

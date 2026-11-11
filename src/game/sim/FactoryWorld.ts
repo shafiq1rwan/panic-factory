@@ -35,6 +35,13 @@ function createMachine(world: FactoryWorld, def: MachineDef): BaseMachine {
 }
 
 /**
+ * Set-up levels have bins only for the colours that drop, with bare floor between them.
+ * A toy whose centre gets this close to the bottom of the play field outside every bin has
+ * hit the floor: it is out (and pops on screen).
+ */
+const MISS_ABOVE_FLOOR = 56;
+
+/**
  * The complete physical factory for one level: Matter engine, walls, machines,
  * spawners and objects. Advances in fixed ticks and is fully deterministic for
  * a given configuration, which is what makes puzzle levels fair and verifiable.
@@ -206,7 +213,9 @@ export class FactoryWorld {
         const k = MAX_OBJECT_SPEED / b.speed;
         M.Body.setVelocity(b, { x: b.velocity.x * k, y: b.velocity.y * k });
       }
-      if (o.y > this.height + 70 || o.x < -80 || o.x > this.width + 80 || o.y < -400) {
+      const missed = this.level.plan === true && o.y > this.height - MISS_ABOVE_FLOOR && !this.overBin(o.x);
+      if (missed || o.y > this.height + 70 || o.x < -80 || o.x > this.width + 80 || o.y < -400) {
+        o.missed = missed;
         o.state = 'lost';
         this.lostCount++;
         M.Composite.remove(this.engine.world, b);
@@ -277,6 +286,11 @@ export class FactoryWorld {
     for (const o of this.objects) if (o.state === 'active' && o.type === type) n++;
     for (const s of this.spawners) n += s.remainingOf(type);
     return n;
+  }
+
+  /** Is x above one of the bins (rim included)? */
+  overBin(x: number): boolean {
+    return this.bins.some((b) => Math.abs(x - b.x) <= b.width / 2 + 2);
   }
 
   get bins(): DeliveryBin[] {

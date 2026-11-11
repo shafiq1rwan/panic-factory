@@ -88,6 +88,19 @@ describe('basic physics', () => {
     expect(world.objects.length).toBe(0);
     world.destroy();
   });
+
+  it('in a set-up level, a toy that reaches the floor outside every bin has missed', () => {
+    const bin: MachineDef = { id: 'b', kind: 'bin', x: 200, y: 640, accepts: 'blue', width: 200 };
+    const world = new FactoryWorld({ ...level([bin]), plan: true });
+    world.start();
+    const missed: boolean[] = [];
+    world.events.on('lost', (o: { missed: boolean }) => missed.push(o.missed));
+    const out = world.spawnObject('blue', 'standard', 900, 300)!;
+    run(world, 300);
+    expect(out.state).toBe('lost');
+    expect(missed).toEqual([true]);
+    world.destroy();
+  });
 });
 
 describe('conveyor belt', () => {

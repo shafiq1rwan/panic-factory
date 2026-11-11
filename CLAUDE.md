@@ -26,7 +26,7 @@ After any change to physics, machines, levels or rules, run `npm run solve` and 
 - **Failing is cheap.** One wrong toy stops the run; the setup comes back exactly as the player left it. Stars count runs (first run 3, up to three runs 2, else 1). Keep runs short: every run, won or lost, ends within 13 s (tested).
 - **Safe area.** HUD elements pin to `safeTop()` / `safeBottom()`, never to the raw window edge.
 - **Portrait only on mobile.** Phones held sideways get a turn-upright prompt. Do not add a landscape layout.
-- **Toys must never be lost.** Bins span the whole floor in every level; the tests check it.
+- **Bins only for the colours that drop.** A set-up level has no empty bins; the floor between bins is bare. A toy that reaches the floor outside every bin has missed: it gets X eyes, pops, and the run fails ("A pink toy missed the bins"). `planLevel` drops bins for colours that never appear and keeps the rest at their size and place (the owner asked not to widen them). A winning solution never loses a toy (tested). Panic mode is unchanged: its bins still cover the floor.
 - **Every level must pass `npm run solve`**: RUN without changes fails, the `solution` wins and keeps winning with random spawn offsets, and in levels with four or more setups at most half of them win.
 - **Timers are precise.** A timer level only works if toys reach the pusher at the moment it fires. Tune the pipe's `delay` (in 50 ms steps) with `plan-trace` / `plan-watch` until the solution is robust; moving a pusher or pipe changes the timing.
 

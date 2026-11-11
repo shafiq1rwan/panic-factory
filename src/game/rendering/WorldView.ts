@@ -154,6 +154,16 @@ export class WorldView {
     ev.on('lost', (obj: FactoryObject) => {
       const v = this.objViews.get(obj);
       this.objViews.delete(obj);
+      if (obj.missed && v) {
+        const { x, y } = obj;
+        v.popMissed(this.scene, () => {
+          p.burst(x, y, TYPE_COLORS[obj.type].fill, 12);
+          p.puff(x, y + 20, 3);
+        });
+        if (this.sound) this.floatText(x, y - 46, 'miss!', '#FF4D5E', 20);
+        if (this.sound) audio.drop();
+        return;
+      }
       const x = Phaser.Math.Clamp(obj.x, 30, this.world.width - 30);
       v?.finish(this.scene, 'lost', x, this.world.height);
       p.puff(x, this.world.height - 8, 4);

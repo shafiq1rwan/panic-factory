@@ -2,6 +2,16 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## No empty bins; misses pop (v1.9.3)
+
+The owner asked to remove the bins no toy belongs to, without widening the others, and to make a toy that lands outside the bins pop or show an X.
+
+- Set-up levels have bins only for the colours that drop. The others keep their size and place; the floor between them is bare.
+- A toy that reaches the floor outside every bin gets X eyes, shows "miss!", shakes and pops into bits of its colour. The run fails with "A blue toy missed the bins" and the setup is handed back as before. Panic mode is unchanged.
+- Two levels had used an empty bin's wall as a bumper and were re-tuned: Crossroads (19) has its pink bin in the right-hand slot and its lower-right belt starts pointing right; Bouncy Pills (29) has its belt at x 330. All 30 levels pass the solver.
+- Tests: no level has an empty bin; a toy on bare floor counts as missed; a winning solution still never loses a toy.
+- Not zipped: the Poki player fit test runs on v1.9.2.
+
 ## Where players stop (v1.9.2)
 
 - New Poki analytics events: `level N open` when a level is opened, so a player who gives up during setup without pressing RUN still shows up, and `level N stop` when a run is ended early (STOP, restart, or leaving mid-run). With start / complete / fail, every run now ends in exactly one of complete, fail or stop.

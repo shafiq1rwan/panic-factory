@@ -217,7 +217,7 @@ try {
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${OUT}/smoke-level2-failed.png` });
   const reason = await ev(page, () => window.__TFP.game.scene.getScene('Game').rules.failReason);
-  check('a wrong setup fails with a clear reason', /went in the .* bin/.test(reason), reason);
+  check('a wrong setup fails with a clear reason', /went in the .* bin|missed the bins/.test(reason), reason);
   await gameState(page, 'prep');
   await page.waitForTimeout(150); // the HUD updates on the next frame
   const after = await ev(page, () => {

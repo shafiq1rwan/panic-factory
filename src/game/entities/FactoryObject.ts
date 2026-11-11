@@ -77,6 +77,8 @@ export class FactoryObject {
   restTicks = 0;
   anchorX = 0;
   anchorY = 0;
+  /** set-up levels: it reached the floor outside every bin (it pops) */
+  missed = false;
   /** ticks until a bumper may launch this object again */
   bumpCooldown = 0;
 

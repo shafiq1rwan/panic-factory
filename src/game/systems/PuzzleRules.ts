@@ -26,6 +26,8 @@ export class PuzzleRules {
   private lastSpawnTick = 0;
   /** how the most recent toy of each type was wasted, for a helpful failure message */
   private lastSlip: Partial<Record<ObjType, 'wrong' | 'lost'>> = {};
+  /** set-up levels: the toy that landed on the floor outside every bin */
+  private lastMissed: ObjType | null = null;
   /** the most recent wrong delivery: which toy, into which bin */
   private lastWrong: { type: ObjType; bin: ObjType } | null = null;
 
@@ -42,8 +44,9 @@ export class PuzzleRules {
         if (bin?.accepts) this.lastWrong = { type: obj.type, bin: bin.accepts };
       }
     });
-    world.events.on('lost', (obj: { type: ObjType }) => {
+    world.events.on('lost', (obj: { type: ObjType; missed?: boolean }) => {
       if (this.status !== 'running') return;
+      if (obj.missed) this.lastMissed = obj.type;
       this.lost++;
       this.lastSlip[obj.type] = 'lost';
     });
@@ -57,6 +60,7 @@ export class PuzzleRules {
     this.status = 'running';
     this.failReason = '';
     this.delivered = { blue: 0, pink: 0, yellow: 0, green: 0, purple: 0 };
+    this.lastMissed = null;
     this.mistakes = 0;
     this.lost = 0;
     this.endTick = 0;
@@ -109,6 +113,7 @@ export class PuzzleRules {
       if (this.mistakes + this.lost > this.level.mistakesAllowed) {
         const w = this.lastWrong;
         if (this.level.plan && w) this.fail(`A ${TYPE_COLORS[w.type].name.toLowerCase()} toy went in the ${TYPE_COLORS[w.bin].name.toLowerCase()} bin`);
+        else if (this.level.plan && this.lastMissed) this.fail(`A ${TYPE_COLORS[this.lastMissed].name.toLowerCase()} toy missed the bins`);
         else if (this.level.plan) this.fail('A toy fell out of the factory');
         else this.fail('Too many mix-ups!');
       } else if (world.allSpawned && world.objects.length === 0) {

@@ -100,6 +100,25 @@ export class ObjectView {
     }
   }
 
+  /** It hit the floor outside every bin: X eyes, a shake, then it pops. */
+  popMissed(scene: Phaser.Scene, onPop: () => void): void {
+    this.shadow.destroy();
+    this.face.setTexture(faceKey('ouch'));
+    const c = this.container;
+    const calm = save.settings.reducedMotion;
+    scene.tweens.add({
+      targets: c,
+      x: c.x + (calm ? 0 : 5),
+      duration: 50,
+      yoyo: true,
+      repeat: calm ? 0 : 3,
+      onComplete: () => {
+        onPop();
+        scene.tweens.add({ targets: c, scaleX: 1.4, scaleY: 1.4, alpha: 0, duration: 170, ease: 'Quad.easeOut', onComplete: () => c.destroy() });
+      },
+    });
+  }
+
   /** Detach from physics and play a short exit animation. */
   finish(scene: Phaser.Scene, kind: 'correct' | 'wrong' | 'lost', tx: number, ty: number): void {
     this.shadow.destroy();
