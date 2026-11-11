@@ -39,7 +39,7 @@ body {
   outline: none;
 }
 
-/* Friendly prompt for phones held upright: the factory needs landscape. */
+/* Friendly prompt for phones held sideways: the factory is portrait. Touch devices only, so a short desktop window (dev tools open, an embed) still plays. */
 #rotate {
   position: absolute;
   inset: 0;
@@ -82,7 +82,7 @@ body {
   }
 }
 
-@media (orientation: landscape) and (max-height: 520px) {
+@media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) and (hover: none) {
   #rotate {
     display: flex;
   }

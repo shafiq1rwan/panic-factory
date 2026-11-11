@@ -221,7 +221,7 @@ try {
   const t2 = await ev(page, () => window.__TFP.game.scene.getScene('Game').world.tick);
   await page.screenshot({ path: `${OUT}/smoke-pause.png` });
   check('pause freezes physics', t1 === t2 && t1 > 0, `${t1} -> ${t2}`);
-  await click(page, 360, 723); // Settings
+  await click(page, 484, 748); // Settings
   await active(page, 'Settings');
   await page.waitForTimeout(400);
   await drag(page, 490, 543, 384, 543); // music slider
@@ -232,7 +232,7 @@ try {
   await page.screenshot({ path: `${OUT}/smoke-settings.png` });
   await click(page, 360, 876); // Done
   await page.waitForTimeout(300);
-  await click(page, 360, 546); // Resume
+  await click(page, 360, 640); // Resume
   await page.waitForTimeout(400);
   const t3 = await ev(page, () => window.__TFP.game.scene.getScene('Game').world.tick);
   check('resume continues the run', t3 > t2 && !(await ev(page, () => window.__TFP.game.scene.isActive('Pause'))));

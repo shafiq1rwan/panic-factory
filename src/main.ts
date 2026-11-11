@@ -127,7 +127,7 @@ window.addEventListener('keydown', unlock);
 
 // Silence + freeze when the tab is hidden or a phone is held sideways.
 // The game is portrait: a phone held sideways gets a "turn upright" prompt instead of a tiny field.
-const portraitQuery = window.matchMedia('(orientation: landscape) and (max-height: 520px)');
+const portraitQuery = window.matchMedia('(orientation: landscape) and (max-height: 520px) and (pointer: coarse) and (hover: none)');
 let frozen = false;
 function refreshFreeze(): void {
   const shouldFreeze = document.hidden || portraitQuery.matches;

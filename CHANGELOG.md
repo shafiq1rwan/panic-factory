@@ -2,6 +2,13 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## Control console, pause screen and desktop fix (v1.6.1)
+
+- The bottom HUD is a dark control console: lives on the left, and each belt button labelled ("BELT 01", "Left"/"Right") with an arrow showing its direction. A jammed belt in Panic mode shows a lock.
+- The pause screen is redesigned and centred in the safe area.
+- The "turn your device upright" prompt now appears only on touch devices held sideways. A short desktop window, such as one with the browser's inspector docked at the bottom, plays normally.
+- Poki build zipped: `output/poki/tiny-factory-panic-poki-v1.6.1.zip`.
+
 ## Buttons, safe area and a gentler level set (v1.6.0)
 
 Changes after the owner play-tested v1.5.0 on a phone.
