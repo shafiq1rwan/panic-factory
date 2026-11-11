@@ -18,6 +18,7 @@ export const platform = {
     return inBreak;
   },
   init: (): Promise<void> => adapter.init(),
+  placeOverlayButton: (topPx: number): void => adapter.placeOverlayButton(topPx),
   loadingFinished: (): void => adapter.loadingFinished(),
   gameplayStart(): void {
     if (playing) return;

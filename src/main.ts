@@ -4,6 +4,7 @@ import { GAME_H, GAME_W, view, WORKSHOP } from './game/config';
 import { LEVELS } from './game/levels/levels';
 import { provideMatter } from './game/physics/MatterLib';
 import { platform } from './game/platform';
+import { placeOverlay } from './game/rendering/Background';
 import { BootScene } from './game/scenes/BootScene';
 import { GameScene } from './game/scenes/GameScene';
 import { LevelSelectScene } from './game/scenes/LevelSelectScene';
@@ -30,6 +31,9 @@ provideMatter((Phaser.Physics.Matter as any).Matter);
 // Safe area: phones can draw the page under a camera cut-out or the home indicator. The 720x1280
 // screen is fitted inside the safe rectangle, and the HUD is pinned to the safe edges, so nothing
 // important ever sits under the camera.
+/** Assumed camera cut-out height (CSS px) when the browser cannot tell us. */
+const FALLBACK_TOP = 44;
+
 function safeInsets(): { top: number; bottom: number } {
   // ?safe=top,bottom (CSS px) lets the layout be checked on a desktop
   const forced = new URLSearchParams(location.search).get('safe');
@@ -49,11 +53,20 @@ function safeInsets(): { top: number; bottom: number } {
   const cs = getComputedStyle(probe);
   let top = parseFloat(cs.paddingTop) || 0;
   const bottom = parseFloat(cs.paddingBottom) || 0;
-  // Some browsers report no inset even when the page covers the whole screen (fullscreen or
-  // installed app). Assume a typical cut-out height there rather than risk the camera overlap.
+  // Browsers report no inset when the page covers the whole screen without asking for it
+  // (fullscreen, installed app), and an iframe ALWAYS reads 0, even when the portal hosting it
+  // (Poki) runs fullscreen under the camera. On an upright touch screen in either case, assume
+  // a typical cut-out height rather than risk the top bar sitting under the camera.
   const touch = window.matchMedia('(pointer: coarse)').matches;
-  const coversScreen = touch && window.innerHeight > window.innerWidth && window.innerHeight >= window.screen.height - 2;
-  if (coversScreen && top < 1) top = 36;
+  const upright = window.innerHeight > window.innerWidth;
+  const coversScreen = window.innerHeight >= window.screen.height - 2;
+  let framed = false;
+  try {
+    framed = window.self !== window.top;
+  } catch {
+    framed = true; // cross-origin parent
+  }
+  if (touch && upright && (coversScreen || framed) && top < 1) top = FALLBACK_TOP;
   return { top, bottom };
 }
 
@@ -70,6 +83,8 @@ function computeView(): void {
   view.safeBottom = inset.bottom / fit;
   view.cy = GAME_H / 2 + (view.safeBottom - view.safeTop) / 2;
   view.res = Phaser.Math.Clamp(Math.round(fit * (window.devicePixelRatio || 1) * 4) / 4, 1, 2);
+  // the portal's own overlay button (Poki Pill) stays below the current screen's top controls
+  placeOverlay();
 }
 computeView();
 

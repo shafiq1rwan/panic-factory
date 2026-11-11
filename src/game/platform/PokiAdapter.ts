@@ -10,6 +10,7 @@ import type { PlatformAdapter } from './PlatformAdapter';
  *   PokiSDK.gameplayStart() / PokiSDK.gameplayStop()
  *   PokiSDK.commercialBreak(onStart?): Promise
  *   PokiSDK.rewardedBreak(onStart?): Promise<boolean>
+ *   PokiSDK.movePill(topPercent, topPx)   mobile only; default (0, 24); pill is 46 x 62 px
  *
  * This adapter has NOT been verified inside Poki's inspector / QA tooling.
  * Build with `VITE_PLATFORM=poki` to enable it, then test at
@@ -24,11 +25,13 @@ interface PokiSDKGlobal {
   gameplayStop(): void;
   commercialBreak(onStart?: () => void): Promise<void>;
   rewardedBreak(onStart?: () => void): Promise<boolean>;
+  movePill?(topPercent: number, topPx: number): void;
 }
 
 export class PokiAdapter implements PlatformAdapter {
   readonly name = 'poki';
   private sdk: PokiSDKGlobal | null = null;
+  private pillTop: number | null = null;
 
   private loadScript(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -47,9 +50,27 @@ export class PokiAdapter implements PlatformAdapter {
       if (!sdk) return;
       await sdk.init();
       this.sdk = sdk;
+      this.applyPill();
     } catch {
       // Ad blockers etc: per Poki's guide, load the game anyway.
       this.sdk = null;
+    }
+  }
+
+  /**
+   * On mobile Poki draws its "Poki Pill" over the top-left of the game, which would
+   * cover the pause button. Move it to just under the top bar instead.
+   */
+  placeOverlayButton(topPx: number): void {
+    this.pillTop = topPx;
+    this.applyPill();
+  }
+  private applyPill(): void {
+    if (this.pillTop === null || typeof this.sdk?.movePill !== 'function') return;
+    try {
+      this.sdk.movePill(0, this.pillTop);
+    } catch {
+      /* cosmetic only */
     }
   }
 

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { COLORS, FOOTER_H, GAME_H, GAME_W, HUD_H, OBJ_TYPES, PLAY_H, TEX_SCALE, TEXT, TYPE_COLORS, WORKSHOP, type ObjType } from '../config';
 import { BELT_A } from '../levels/levels';
 import type { ConveyorBelt } from '../machines/ConveyorBelt';
-import { safeBottom, safeTop, setupCamera } from '../rendering/Background';
+import { keepOverlayBelow, safeBottom, safeTop, setupCamera } from '../rendering/Background';
 import { drawIcon } from '../rendering/Icons';
 import { toyKey } from '../rendering/Textures';
 import { heart, roundRect } from '../rendering/VectorFactory';
@@ -119,6 +119,8 @@ export class UIScene extends Phaser.Scene {
 
   create(): void {
     setupCamera(this);
+    // the portal's overlay button goes just under the top bar, clear of pause and restart
+    keepOverlayBelow(() => safeTop() + HUD_H);
 
     // top bar: its background runs far above, so the area under a camera cut-out is simply more bar
     this.bar = this.add.container(0, safeTop());

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import { COLORS, GAME_H, GAME_W, STEP_MS, TEXT, WORKSHOP } from '../config';
+import { COLORS, GAME_H, GAME_W, HUD_H, STEP_MS, TEXT, WORKSHOP } from '../config';
 import type { LevelDef } from '../levels/LevelTypes';
-import { drawFactoryBackground, setupCamera } from '../rendering/Background';
+import { drawFactoryBackground, keepOverlayBelow, safeTop, setupCamera } from '../rendering/Background';
 import { WorldView } from '../rendering/WorldView';
 import { FactoryWorld } from '../sim/FactoryWorld';
 import { audio } from '../systems/AudioManager';
@@ -45,6 +45,7 @@ export class MenuScene extends Phaser.Scene {
 
   create(): void {
     setupCamera(this);
+    keepOverlayBelow(() => safeTop() + HUD_H);
     drawFactoryBackground(this, false);
 
     // toys bouncing around at the sides
@@ -91,7 +92,7 @@ export class MenuScene extends Phaser.Scene {
     // progress, top right
     const prog = this.add.container(cx, 1060).setDepth(91);
     prog.add([drawStar(this, -46, 0, 18, true), txt(this, 22, 1, `${save.totalStars}/${LevelManager.count * 3}`, 26, WORKSHOP.text)]);
-    txt(this, 40, GAME_H - 44, 'v1.6.2', 16, WORKSHOP.muted).setDepth(91);
+    txt(this, 40, GAME_H - 44, 'v1.6.3', 16, WORKSHOP.muted).setDepth(91);
 
     // keyboard: Space / Enter starts too
     this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_W, TEXT, WORKSHOP } from '../config';
 import { LEVELS } from '../levels/levels';
-import { drawFactoryBackground, setupCamera } from '../rendering/Background';
+import { drawFactoryBackground, setupCamera, keepOverlayBelow } from '../rendering/Background';
 import { drawIcon } from '../rendering/Icons';
 import { roundRect } from '../rendering/VectorFactory';
 import { LevelManager } from '../systems/LevelManager';
@@ -23,6 +23,8 @@ export class LevelSelectScene extends Phaser.Scene {
     drawFactoryBackground(this, false);
     fadeIn(this);
 
+    // the portal's overlay button goes under the header row, clear of this back button
+    keepOverlayBelow(() => 70 + 36 + 10);
     new Button(this, 66, 70, { w: 84, h: 72, icon: 'back', color: COLORS.lavender, radius: 18, onClick: () => gotoScene(this, 'Menu') });
     txt(this, GAME_W / 2, 70, 'Levels', 48, WORKSHOP.text);
 

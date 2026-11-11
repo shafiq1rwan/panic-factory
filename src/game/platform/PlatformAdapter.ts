@@ -19,4 +19,9 @@ export interface PlatformAdapter {
   commercialBreak(onStart?: () => void): Promise<void>;
   /** Opt-in rewarded ad. Resolves true if the reward should be granted. Not used by the MVP. */
   rewardedBreak(onStart?: () => void): Promise<boolean>;
+  /**
+   * Keep the platform's own overlay button clear of the game's top bar: place it
+   * `topPx` CSS px from the top of the game area. No-op where there is none.
+   */
+  placeOverlayButton(topPx: number): void;
 }

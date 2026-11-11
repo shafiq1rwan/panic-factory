@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_H, GAME_W, HUD_H, PLAY_H, view, WORKSHOP } from '../config';
+import { platform } from '../platform';
 import { DEPTH } from './MachineViews';
 import { mix } from './VectorFactory';
 
@@ -126,3 +127,18 @@ export const viewBottom = (): number => view.cy + view.h / 2;
 /** Logical y of the top / bottom edge of the safe area: pin HUD elements to these. */
 export const safeTop = (): number => viewTop() + view.safeTop;
 export const safeBottom = (): number => viewBottom() - view.safeBottom;
+
+/**
+ * Portals can draw their own button over the game (Poki's "Pill" sits at the top left on
+ * mobile). Each screen says which logical y it must stay below, e.g. the bottom of its top
+ * bar, and the button is moved there. Re-applied whenever the window is resized.
+ */
+let overlayLine: () => number = () => safeTop() + HUD_H;
+export function keepOverlayBelow(line: () => number): void {
+  overlayLine = line;
+  placeOverlay();
+}
+export function placeOverlay(): void {
+  const cssPerUnit = window.innerWidth / view.w;
+  platform.placeOverlayButton(Math.round((overlayLine() - viewTop()) * cssPerUnit + 10));
+}

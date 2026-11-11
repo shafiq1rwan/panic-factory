@@ -2,6 +2,13 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## Poki iframe fixes (v1.6.3)
+
+- Inside an iframe (as on Poki) the browser always reports a camera inset of 0. On an upright touch screen in an iframe the game now assumes a 44 px camera area at the top, so the top bar no longer sits under the camera.
+- Poki's mobile "Pill" button is moved with `PokiSDK.movePill` to just below each screen's top controls, so it no longer covers the pause button or the level-select back button.
+- New `scripts/iframe-check.mjs` loads the build in a cross-origin iframe on an emulated phone and reports the inset and the pill call.
+- Poki build zipped: `output/poki/tiny-factory-panic-poki-v1.6.3.zip`.
+
 ## Belt-style buttons (v1.6.2)
 
 - Each belt button is drawn as a small copy of its belt: navy frame, the belt's colour on the face, cyan top strip, white rollers at both ends and white chevrons, with a darker lip it presses into. The dark console from v1.6.1 is replaced by the light workshop strip.

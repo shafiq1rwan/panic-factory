@@ -10,6 +10,7 @@ npm test         # headless tests (Vitest, Node)
 npm run solve    # verify all levels with the route bot
 npm run build    # tsc --noEmit, then vite build into dist/
 npm run smoke    # browser test of the production build; run build first
+node scripts/iframe-check.mjs   # the build inside a cross-origin iframe on an emulated phone, as on Poki
 ```
 
 After any change to physics, machines, levels or rules, run `npm run solve` and `npm test`. After any change to scenes, HUD or input, also run `npm run build` and `npm run smoke`.
@@ -42,6 +43,7 @@ After any change to physics, machines, levels or rules, run `npm run solve` and 
 - **Line endings:** `.gitattributes` keeps LF. When patching files from a script, normalise `\r\n` first.
 - **Machine views:** subclass fields are not initialised when the base constructor runs, so views are created through `createMachineView`, which calls `sync()` afterwards.
 - **Other people edit this folder.** Check `git status` and re-read a file before rewriting it; do not assume it is as you left it.
+- **Inside an iframe the safe-area inset always reads 0.** Poki embeds the game in an iframe and runs it fullscreen, so `main.ts` assumes a 44 px camera inset on an upright touch screen when framed. Poki also draws its "Pill" button over the top left on mobile; each screen calls `keepOverlayBelow()` (Background.ts) so the pill is moved (`PokiSDK.movePill`) below that screen's top controls.
 - **Emulation is not a phone.** The smoke test and `scripts/phone.mjs` use Chromium's emulation. Say so when reporting, and do not describe something as tested on mobile on that basis.
 
 ## Working agreements with the owner
