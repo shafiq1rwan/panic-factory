@@ -41,7 +41,7 @@ The layout respects the device safe area: the top bar starts below a camera cut-
    - a **bouncer** turns to its next angle,
    - a **timer** moves its pusher's timing on one step (the clock on the pusher shows it),
    - a **fan** (world 4) switches between off and blowing, or off / right / left.
-3. **Press RUN.** The toys drop from the pipes. While they move nothing can be changed; STOP ends the run early.
+3. **Press RUN.** The toys drop from the pipes. While they move nothing can be changed. The big button turns into FAST (x3 speed, tap again for normal speed); the restart button in the top bar ends the run early.
 4. Every toy must land in the bin of its own colour. One wrong toy stops the run, says which toy went where, and hands your setup back exactly as you left it.
 5. When every toy is sorted the game moves on to the next level by itself.
 
@@ -50,7 +50,7 @@ Stars count runs: solved on the first run 3, within three runs 2, otherwise 1. T
 | Action | Mouse / touch | Keyboard |
 | --- | --- | --- |
 | Change a machine | Tap it | `1`–`9` tap the adjustable machines, left to right |
-| Run / stop | RUN / STOP button | `Space` or `Enter` |
+| Run / fast | RUN, then FAST during a run | `Space` or `Enter` |
 | Back to setup | Restart button | `R` |
 | Pause | Pause button | `Esc` or `P` |
 
@@ -142,7 +142,7 @@ Run on Windows 11 with Node 26 and headless Microsoft Edge:
 
 - `npm test`: 297 tests pass. They cover the physics and machines, win/lose rules, save/load including corrupted data, scoring, that new toys arrive one at a time after world 1 and always with a NEW TOY card, that floating bins never overlap or leave the floor, and for each of the 40 levels: that the next-toy previews of its pipes never overlap a pipe or each other, structure (including no empty bins), that RUN without changes fails, that the solution wins without losing a toy and survives random spawn offsets, that most setups lose, that every possible run ends within 13 s, and determinism. A toy that lands on bare floor counts as missed. Panic mode is checked with a bot over three simulated minutes.
 - `npm run solve`: tries all setups of every level (2 to 32 per level).
-- `npm run smoke`: 44 checks pass against the production build: PLAY into level 1 waiting in setup, a tap on empty space flashing the badges, tapping the belt, RUN, machines locked during a run, auto-advance after a win, a failed run handing the setup back with fewer stars on offer, pause and settings mid-run, level 3 set up and won with the keyboard, level 12 with the mouse, level 7 with touch taps at phone size, safe-area insets, save persistence, a corrupted save, Panic mode, six window shapes and the turn-upright prompt, with no console errors.
+- `npm run smoke`: 46 checks pass against the production build: PLAY into level 1 waiting in setup, a tap on empty space flashing the badges, tapping the belt, RUN, machines locked during a run, auto-advance after a win, a failed run handing the setup back with fewer stars on offer, pause and settings mid-run, level 3 set up and won with the keyboard, level 12 with the mouse, level 7 with touch taps at phone size, safe-area insets, save persistence, a corrupted save, Panic mode, six window shapes and the turn-upright prompt, with no console errors.
 
 Not tested, so treat as unverified:
 

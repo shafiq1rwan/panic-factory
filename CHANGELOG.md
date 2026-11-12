@@ -2,6 +2,17 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## Fit-test fixes (v1.12.0)
+
+The Poki player fit test of v1.9.2 failed: 500 players, 2 min 35 s average against a 3-minute bar. The event export (analysed in `docs/FIT_TEST.md`) showed players leaving inside levels 1-7, at difficulty spikes (levels 5 and 7) and in levels 2-3, with 30% of players stopping a run on level 1.
+
+- **FAST instead of STOP.** During a run the big button is FAST (x3 speed; tap again for normal speed) and never stops the run. The restart button in the top bar, or R, stops it and hands the setup back. A tap on a machine during a run points at the restart button.
+- **World 1 reordered and eased.** Order: First Flip, Two Belts, Flip Stack, Aim It, Belt Bounce, Bank Shot, Either Way, Meet in the Middle, Take Turns, Sort Line. The two hardest early levels (Bank Shot, Meet in the Middle) move later with an easy level between them. Two Belts and Aim It need one tap; Bank Shot has three angles instead of four.
+- **Quicker runs in world 1.** Belt and bouncer levels drop their first toy after 0.25 s instead of 0.5 s and toys 1.1 s apart instead of 1.5 s; each run is about a second shorter.
+- **First visit straight into level 1.** A player with no progress skips the title screen (10% of fit-test players never left it). Returning players get the title screen; `?menu` forces it for tests.
+- **Jelly toys.** Toys wobble like jelly: a landing squashes them and they wobble back three or four times; a fast fall stretches them a little; the squash stays upright while a toy spins. View only: the physics bodies stay rigid, so every level plays exactly as the solver checked it. Off with reduced motion.
+- Smoke test: 46 checks, including the first-visit start and the FAST button.
+
 ## Floating in place, cartoon water (v1.11.0)
 
 The owner found the drifting bins looked weird: the bins should only float, and a toy that misses should splash and sink, with water in a bold cartoon style.

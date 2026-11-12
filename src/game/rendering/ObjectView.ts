@@ -9,16 +9,30 @@ import type { Expression } from './VectorFactory';
 const S = 1 / TEX_SCALE;
 
 /**
+ * Jelly wobble (view only: the physics body stays rigid, so every level plays exactly as the
+ * solver checked it). A landing kicks an under-damped spring, so a toy squashes and wobbles
+ * back a few times; a fast fall stretches it a little.
+ */
+const JELLY_K = 0.0011; // stiffness: one wobble about every 0.19 s
+const JELLY_DAMP = 0.008; // low damping: three or four visible wobbles
+const JELLY_MAX = 0.3;
+const FALL_STRETCH_MAX = 0.12;
+
+/**
  * The cute visible half of a FactoryObject: body sprite, reactive face, soft
- * shadow, squash-and-stretch. It follows the physics body every frame.
+ * shadow, jelly squash-and-stretch. It follows the physics body every frame.
+ * The outer container holds position and squash and never rotates, so a toy always squashes
+ * upright like jelly; the inner one spins with the body.
  */
 export class ObjectView {
   readonly container: Phaser.GameObjects.Container;
+  private inner: Phaser.GameObjects.Container;
   private shadow: Phaser.GameObjects.Image;
   private face: Phaser.GameObjects.Image;
-  // squash spring
+  // jelly spring (positive = squashed: wider and shorter)
   private sq = 0;
   private sqVel = 0;
+  private stretch = 0;
   private pop = 0.35;
   private expr: Expression = 'happy';
   private exprUntil = 0;
@@ -38,7 +52,8 @@ export class ObjectView {
     this.faceY = obj.type === 'yellow' ? -2 : 0;
     const faceScale = obj.type === 'yellow' ? 1.4 : obj.type === 'purple' ? 1.45 : 1.75;
     this.face = scene.add.image(0, this.faceY, faceKey('surprised')).setScale(S * faceScale);
-    this.container = scene.add.container(obj.x, obj.y, [body, this.face]).setDepth(DEPTH.toys);
+    this.inner = scene.add.container(0, 0, [body, this.face]);
+    this.container = scene.add.container(obj.x, obj.y, [this.inner]).setDepth(DEPTH.toys);
     this.shadow = scene.add.image(obj.x + 4, obj.y + 6, toyShadowKey(obj.type, obj.material)).setScale(S).setAlpha(0.26).setDepth(DEPTH.toyShadow);
     this.nextBlink = 800 + Math.random() * 2500;
     this.expr = 'surprised';
@@ -56,10 +71,10 @@ export class ObjectView {
     this.face.setTexture(faceKey(expr));
   }
 
-  /** Kick the squash spring. `speed` is the impact speed in px / tick. */
+  /** Kick the jelly spring. `speed` is the impact speed in px / tick. */
   impact(speed: number): void {
     if (save.settings.reducedMotion) return;
-    this.sqVel += Math.min(0.9, speed * 0.075) * 0.006;
+    this.sqVel += Math.min(1, speed * 0.09) * 0.012;
     if (speed > 6) this.setExpression('surprised', 420);
   }
 
@@ -67,20 +82,26 @@ export class ObjectView {
     this.clock += dt;
     const b = this.obj.body;
     this.container.setPosition(b.position.x, b.position.y);
-    this.container.setRotation(b.angle);
+    this.inner.setRotation(b.angle);
     this.shadow.setPosition(b.position.x + 4, b.position.y + 6);
     this.shadow.setRotation(b.angle);
 
-    // spawn pop-in + damped squash spring
+    // spawn pop-in + jelly spring (stepped in small slices so a slow frame cannot blow it up)
     if (this.pop < 1) this.pop = Math.min(1, this.pop + dt / 160);
-    const k = 0.00042;
-    const c = 0.014;
-    this.sqVel += (-k * this.sq - c * this.sqVel) * dt;
-    this.sq += this.sqVel * dt;
-    if (this.sq > 0.35) this.sq = 0.35;
-    if (this.sq < -0.35) this.sq = -0.35;
+    for (let left = dt; left > 0; left -= 8) {
+      const h = Math.min(8, left);
+      this.sqVel += (-JELLY_K * this.sq - JELLY_DAMP * this.sqVel) * h;
+      this.sq += this.sqVel * h;
+    }
+    if (this.sq > JELLY_MAX) this.sq = JELLY_MAX;
+    if (this.sq < -JELLY_MAX) this.sq = -JELLY_MAX;
+    // a fast fall stretches the toy a little (eased, so it never snaps)
+    const want = save.settings.reducedMotion ? 0 : Math.min(FALL_STRETCH_MAX, Math.max(0, (b.velocity.y - 2) * 0.012));
+    this.stretch += (want - this.stretch) * Math.min(1, dt / 70);
     const pop = this.pop < 1 ? 1 + Math.sin(this.pop * Math.PI) * 0.18 - (1 - this.pop) * 0.4 : 1;
-    this.container.setScale(pop * (1 + this.sq), pop * (1 - this.sq));
+    const sx = (1 + this.sq) * (1 - this.stretch * 0.6);
+    const sy = (1 - this.sq) * (1 + this.stretch);
+    this.container.setScale(pop * sx, pop * sy);
 
     // expressions react to what the body is doing
     if (this.clock >= this.exprUntil) {

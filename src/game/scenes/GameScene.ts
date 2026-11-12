@@ -237,9 +237,14 @@ export class GameScene extends Phaser.Scene {
     platform.measure('level', String(this.levelIndex + 1), 'stop');
   }
 
+  /**
+   * The big button: RUN before a run, FAST (x3, tap again for normal speed) during one.
+   * It never stops a run: in the v1.9.2 fit test 30% of players stopped a level-1 run, most
+   * likely by tapping the button again. Stopping is the top bar's restart button (or R).
+   */
   toggleRun(): void {
     if (this.state === 'prep') this.run();
-    else this.retry();
+    else if (this.state === 'running') this.toggleSpeed();
   }
 
   toggleSpeed(): void {

@@ -55,7 +55,7 @@ const PLAN_TEXT = {
   first: 'TAP THE MACHINES, THEN RUN',
   again: 'CHANGE THE SETUP, THEN RUN',
   missPrep: 'TAP A MACHINE WITH A BADGE',
-  missRun: 'PRESS STOP TO CHANGE THE SETUP',
+  missRun: 'RESTART (TOP) TO CHANGE THE SETUP',
   won: 'ALL SORTED!',
   failed: 'NOT QUITE...',
 };
@@ -112,6 +112,8 @@ export class UIScene extends Phaser.Scene {
   private nudgeUntil = 0;
   // set-up levels
   private runBtn: Button | null = null;
+  /** top bar restart button: during a run it is the way to stop and change the setup */
+  private restartBtn: Button | null = null;
   private starsG: Phaser.GameObjects.Graphics | null = null;
   private starsShown = -1;
   private runShown = '';
@@ -136,6 +138,7 @@ export class UIScene extends Phaser.Scene {
     this.nudgeUntil = 0;
     this.resultCard = null;
     this.runBtn = null;
+    this.restartBtn = null;
     this.starsG = null;
     this.starsShown = -1;
     this.runShown = '';
@@ -309,9 +312,9 @@ export class UIScene extends Phaser.Scene {
     if (this.nudging) {
       const running = this.game_?.state === 'running';
       this.effectT.setText(this.plan ? (running ? PLAN_TEXT.missRun : PLAN_TEXT.missPrep) : NUDGE_TEXT).setColor('#39796B');
-      // set-up levels: the badges flash in the factory; while running, point at STOP
+      // set-up levels: the badges flash in the factory; while running, point at the restart button
       const target = this.plan
-        ? running && this.runBtn ? this.objectPos(this.runBtn) : null
+        ? running && this.restartBtn ? this.objectPos(this.restartBtn) : null
         : this.beltButtons[0] ? this.beltButtonPos(this.beltButtons[0].belt.id) : null;
       if (target && !this.hand.visible) {
         const bob = Math.abs(Math.sin(this.time.now / 230));
@@ -347,11 +350,12 @@ export class UIScene extends Phaser.Scene {
     const btn = this.runBtn;
     if (!btn) return;
     const st = g.state;
-    const key = `${st}|${g.runs}`;
+    const key = `${st}|${g.runs}|${g.speed}`;
     if (key !== this.runShown) {
       this.runShown = key;
       if (st === 'prep') btn.setContent('RUN', 'play').setColor(COLORS.yellow).setEnabled(true);
-      else if (st === 'running') btn.setContent('STOP', 'stop').setColor(0xffb3c9).setEnabled(true);
+      else if (st === 'running' && g.speed === 1) btn.setContent('FAST', 'ff').setColor(0xa9e2ff).setEnabled(true);
+      else if (st === 'running') btn.setContent('NORMAL SPEED', 'play').setColor(0xffe08a).setEnabled(true);
       else btn.setEnabled(false);
       if (!this.nudging) {
         const text = st === 'prep' ? (g.runs === 0 ? PLAN_TEXT.first : PLAN_TEXT.again) : st === 'running' ? `RUN ${g.runs}` : st === 'won' ? PLAN_TEXT.won : PLAN_TEXT.failed;
@@ -385,7 +389,8 @@ export class UIScene extends Phaser.Scene {
   private createPuzzleHud(): void {
     const g = this.game_;
     const bar = this.bar;
-    bar.add(new Button(this, 136, BAR_Y - 2, { w: 72, h: 64, icon: 'restart', color: WORKSHOP.inset, radius: 16, style: 'panel', textColor: WORKSHOP.text, onClick: () => g.retry() }));
+    this.restartBtn = new Button(this, 136, BAR_Y - 2, { w: 72, h: 64, icon: 'restart', color: WORKSHOP.inset, radius: 16, style: 'panel', textColor: WORKSHOP.text, onClick: () => g.retry() });
+    bar.add(this.restartBtn);
     bar.add(txt(this, 188, 30, `LEVEL ${g.levelIndex + 1}`, 15, WORKSHOP.muted).setOrigin(0, 0.5).setLetterSpacing(1.5));
     const title = txt(this, 188, 60, g.level.name, 28, WORKSHOP.text).setOrigin(0, 0.5);
     const types = OBJ_TYPES.filter((t) => (g.level.objective[t] ?? 0) > 0);

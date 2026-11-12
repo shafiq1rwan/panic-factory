@@ -18,7 +18,7 @@ Owner preferences that matter for the next steps (they were kept in a local assi
 
 ## Current state
 
-`main` is **v1.11.0**, pushed and on GitHub Pages. The Poki player fit test is running on **v1.9.2** (partial result: 208 players, 2 min 16 s average; see `docs/FIT_TEST.md`).
+`main` is **v1.12.0** (fit-test fixes; see `CHANGELOG.md`). The Poki player fit test of **v1.9.2 failed**: 500 players, 2 min 16 s at 208 players and **2 min 35 s** at the end, against a 3-minute bar. Most players leave in levels 1-7; the analysis and suggested changes are in `docs/FIT_TEST.md`.
 
 The game is a set-up-then-run puzzle in portrait: the player taps machines to set them up (a belt flips, a bouncer turns, a timer moves its pusher on a step, a fan switches on), presses RUN, and every toy has to land in the bin of its own colour. A wrong toy, or one that misses the bins, stops the run and hands the setup back. Panic mode keeps the earlier live play (two belts, two buttons).
 
@@ -37,7 +37,7 @@ What changed after the fit-test build (v1.9.2): previews no longer overlap and r
 | --- | --- |
 | Core engine (fixed-step Matter.js physics, belts, springs, bumpers, pushers, funnels, bins, chutes) | Done |
 | 40 set-up levels in 4 worlds of ten (Workshop, Toy Room, Night Shift, Harbour), each with its own wall, pipe colour and toys; world 4 is on water (floating bins, splashing misses) and adds the fan | Done, every setup of every level tried by the solver |
-| Tap-to-set machines, RUN / STOP, free retries that keep the setup, stars by runs | Done |
+| Tap-to-set machines, RUN / FAST (restart stops a run), free retries that keep the setup, stars by runs | Done |
 | Panic Factory (endless live mode with announced malfunctions) | Done |
 | Title screen, level select, pause, settings, Panic game-over screen | Done |
 | Auto-advance after a win, curtain wipe | Done |
@@ -53,7 +53,7 @@ What changed after the fit-test build (v1.9.2): previews no longer overlap and r
 
 - `npm test`: 297 tests pass.
 - `npm run solve`: all 40 levels pass. Pressing RUN without changes fails every level; each solution wins and survives random spawn offsets; in the harder levels only 1 of 8, 12 or 32 setups wins; every possible run ends within 11 s.
-- `npm run smoke`: 44 checks pass against the production build in headless Edge, including a level set up and won with the keyboard, one with the mouse, one with touch taps at phone size, and the safe-area insets.
+- `npm run smoke`: 46 checks pass against the production build in headless Edge, including a level set up and won with the keyboard, one with the mouse, one with touch taps at phone size, and the safe-area insets.
 - One winning run of every level adds up to 291 s of toys moving. Real play time depends on thinking and failed runs, which no one has measured.
 
 ## Not verified
@@ -69,7 +69,9 @@ What changed after the fit-test build (v1.9.2): previews no longer overlap and r
 - [x] Owner played v1.7.0 on a phone: "looks interesting", asked for new levels with a different background and shape (v1.8.0).
 - [x] Owner played v1.8.0: the new toys need introducing; asked for up to 30 levels with a new look every 10 (v1.9.0).
 - [x] Owner played v1.9.x: some levels feel repetitive; asked for a fourth world with bins floating on water and a new prop (v1.10.0), then for bins that only float (no drifting) and cartoon water (v1.11.0).
-- [ ] **Analyse the fit-test event CSV** when the owner provides it (`docs/FIT_TEST.md` says how). Decide from it whether to fix the first levels (players leave early) or add depth (players leave late or finish too easily).
+- [x] Analysed the v1.9.2 fit-test event CSV (`docs/FIT_TEST.md`): players leave early, inside levels 1-7, at difficulty spikes (5, 7) and in levels 2-3; 30% of players stop a run on level 1.
+- [x] Acted on the fit-test findings (v1.12.0): FAST instead of STOP, world 1 reordered and eased, quicker world-1 runs, first visit straight into level 1.
+- [ ] Owner to try v1.12.0 on a phone, then make a Poki zip of it and submit it for a new fit test.
 - [ ] Owner to try world 4 (v1.11.0) on a phone: the water, the splash, the fan's wind streaks.
 - [ ] Some world 2 and 3 levels share layouts with world 1 (the owner noticed repetition). Rework the ones the owner names.
 - [ ] Make a Poki zip of the newest `main` when the next submission is due (none exists for v1.9.3 to v1.11.0).

@@ -32,14 +32,9 @@ try {
   page.on('console', (m) => { if (m.type() === 'error') problems.push('console: ' + m.text()); });
   page.on('request', (r) => { if (!r.url().startsWith(`http://127.0.0.1:${port}`)) requests.push(r.url()); });
   await page.goto(url);
-  await page.waitForFunction(() => window.__TFP?.game.scene.isActive('Menu'), null, { timeout: 20000 });
-  console.log('title screen reached');
-  const box = await page.locator('#game canvas').boundingBox();
-  const v = await page.evaluate(() => ({ w: window.__TFP.view.w, h: window.__TFP.view.h }));
-  const s = box.width / v.w;
-  await page.touchscreen.tap(box.x + (360 - (360 - v.w / 2)) * s, box.y + (680 - (640 - v.h / 2)) * s);
-  await page.waitForFunction(() => window.__TFP.game.scene.isActive('Game') && !!window.__TFP.game.scene.getScene('Game').world && window.__TFP.game.scene.getScene('Game').state === 'prep', null, { timeout: 20000 });
-  console.log('level 1 open in setup after tapping PLAY');
+  // a first visit goes straight into level 1 (no title screen)
+  await page.waitForFunction(() => window.__TFP?.game.scene.isActive('Game') && !!window.__TFP.game.scene.getScene('Game').world && window.__TFP.game.scene.getScene('Game').state === 'prep', null, { timeout: 20000 });
+  console.log('level 1 open in setup straight after loading');
   await page.evaluate(() => window.__TFP.game.scene.getScene('Game').toggleRun());
   await page.waitForFunction(() => window.__TFP.game.scene.getScene('Game').state === 'running', null, { timeout: 5000 });
   console.log('level 1 running after RUN');

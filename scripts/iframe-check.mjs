@@ -41,7 +41,8 @@ try {
     if (!f) await page.waitForTimeout(250);
   }
   if (!f) throw new Error('game iframe never loaded');
-  await f.waitForFunction(() => window.__TFP?.game.scene.isActive('Menu'), null, { timeout: 30000 });
+  // a first visit opens level 1 straight away; returning players see the title screen
+  await f.waitForFunction(() => window.__TFP?.game.scene.isActive('Menu') || window.__TFP?.game.scene.isActive('Game'), null, { timeout: 30000 });
   const info = await f.evaluate(() => ({
     framed: window.self !== window.top,
     safeTopCss: Math.round(window.__TFP.view.safeTop * (innerWidth / window.__TFP.view.w)),
@@ -85,7 +86,7 @@ try {
   const game = (fn) => f.evaluate(fn);
   await game(() => window.__TFP.game.scene.getScene('Game').toggleRun());
   await page.waitForTimeout(400);
-  await game(() => window.__TFP.game.scene.getScene('Game').toggleRun());
+  await game(() => window.__TFP.game.scene.getScene('Game').retry()); // the restart button stops a run
   await page.waitForTimeout(400);
   await game(() => window.__TFP.game.scene.getScene('Game').toggleRun());
   await f.waitForFunction(() => ['won', 'failed'].includes(window.__TFP.game.scene.getScene('Game').state), null, { timeout: 30000 });

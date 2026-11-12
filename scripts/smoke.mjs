@@ -151,8 +151,13 @@ try {
   await page.goto(URL);
   await page.evaluate(() => localStorage.clear());
   await page.reload();
+  await active(page, 'Game');
+  await gameState(page, 'prep');
+  check('a first visit goes straight into level 1, waiting in setup', (await ev(page, () => window.__TFP.game.scene.getScene('Game').levelIndex)) === 0);
+  await page.waitForTimeout(800);
+  await startScene(page, 'Menu');
   await active(page, 'Menu');
-  check('game launches to the main menu', true);
+  check('the title screen still works', true);
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${OUT}/smoke-menu.png` });
   check('menu factory is alive (physics running)', (await ev(page, () => window.__TFP.game.scene.getScene('Menu').world.tick)) > 30);
@@ -191,6 +196,14 @@ try {
   let rb = await hudBtn(page, 'runBtn');
   await click(page, rb.x, rb.y);
   check('RUN starts the factory', (await ev(page, () => window.__TFP.game.scene.getScene('Game').state)) === 'running');
+  await page.waitForTimeout(150);
+  await click(page, rb.x, rb.y); // a second tap must not stop the run (fit test: 30% stopped level 1)
+  await page.waitForTimeout(150);
+  const fast = await ev(page, () => {
+    const g = window.__TFP.game.scene.getScene('Game');
+    return { state: g.state, speed: g.speed, label: window.__TFP.game.scene.getScene('UI').runBtn.labelT?.text };
+  });
+  check('tapping the big button during a run speeds it up instead of stopping it', fast.state === 'running' && fast.speed === 3, JSON.stringify(fast));
   await click(page, mp.x, mp.y); // machines are locked while the toys move
   check('machines cannot be changed during a run', (await ev(page, () => window.__TFP.game.scene.getScene('Game').world.machine('belt').dir)) === -1);
   await page.waitForTimeout(1200);
@@ -210,7 +223,7 @@ try {
 
   // a half-done setup fails, says why, and hands the setup back as it was
   await page.waitForTimeout(600);
-  mp = await machinePos(page, 'beltL');
+  mp = await machinePos(page, 'beltR'); // level 2: the right belt starts correct, so flipping it is a mistake
   await click(page, mp.x, mp.y);
   await page.keyboard.press('Space');
   await gameState(page, 'failed');
@@ -222,9 +235,9 @@ try {
   await page.waitForTimeout(150); // the HUD updates on the next frame
   const after = await ev(page, () => {
     const g = window.__TFP.game.scene.getScene('Game');
-    return { toys: g.world.objects.length, beltL: g.world.machine('beltL').dir, runs: g.runs, stars: window.__TFP.game.scene.getScene('UI').starsShown };
+    return { toys: g.world.objects.length, beltR: g.world.machine('beltR').dir, runs: g.runs, stars: window.__TFP.game.scene.getScene('UI').starsShown };
   });
-  check('after a failed run the setup comes back as the player left it, and fewer stars are on offer', after.toys === 0 && after.beltL === -1 && after.runs === 1 && after.stars === 2, JSON.stringify(after));
+  check('after a failed run the setup comes back as the player left it, and fewer stars are on offer', after.toys === 0 && after.beltR === -1 && after.runs === 1 && after.stars === 2, JSON.stringify(after));
 
   // pause / resume during a run
   await page.keyboard.press('Space');
@@ -279,10 +292,10 @@ try {
   const saved = await ev(page, () => window.__TFP.save.data);
   check('progress persists after reload', saved.stars['first-flip'] === 3 && saved.stars['flip-stack'] >= 1 && saved.unlocked >= 3 && saved.settings.reducedShake === true, JSON.stringify(saved.stars));
 
-  // corrupted save must not break boot
+  // corrupted save must not break boot (it counts as a first visit: straight into level 1)
   await page.evaluate(() => localStorage.setItem('tiny-factory-panic-save', '{{{ definitely not json'));
   await page.reload();
-  await active(page, 'Menu');
+  await active(page, 'Game');
   check('corrupted save data is handled safely', await ev(page, () => window.__TFP.save.data.unlocked === 1));
 
   // panic mode
@@ -324,7 +337,7 @@ try {
   const tctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 3 });
   const tp = await tctx.newPage();
   watch(tp, 'touch');
-  await tp.goto(URL);
+  await tp.goto(URL + '&menu');
   await active(tp, 'Menu');
   await tp.waitForTimeout(800);
   await tp.screenshot({ path: `${OUT}/smoke-mobile-menu.png` });
@@ -356,7 +369,7 @@ try {
     const vctx = await browser.newContext({ viewport: { width: w, height: h } });
     const vp = await vctx.newPage();
     watch(vp, `${w}x${h}`);
-    await vp.goto(URL);
+    await vp.goto(URL + '&menu');
     await active(vp, 'Menu');
     await vp.waitForTimeout(700);
     const box = await vp.locator('#game canvas').boundingBox();
@@ -375,7 +388,7 @@ try {
   const sctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const sp = await sctx.newPage();
   watch(sp, 'safe-area');
-  await sp.goto(URL + '&safe=47,34');
+  await sp.goto(URL + '&safe=47,34&menu');
   await active(sp, 'Menu');
   await startScene(sp, 'Game', { level: 5 });
   await gameState(sp, 'prep');

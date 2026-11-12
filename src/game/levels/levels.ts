@@ -69,6 +69,10 @@ const fan = (id: string, x: number, y: number, reach: number, powers: number[], 
   id, kind: 'fan', x, y, reach, powers, power: powers[0], ...o,
 });
 const wall = (x: number, y: number, w: number, h: number, angle = 0): WallDef => ({ x, y, w, h, angle });
+/** World 1 timing: toys 1.1 s apart, the first after 0.25 s, a second pipe from 0.8 s. */
+const QUICK = 1100;
+const QUICK_START = 250;
+const QUICK_SECOND = 800;
 const pipe = (id: string, x: number, sequence: SpawnSpec[], interval = 1500, delay = 500): SpawnerDef => ({ id, x, y: 210, sequence, interval, delay });
 
 /** Two bins covering the whole floor. */
@@ -126,27 +130,28 @@ export function planLevel(spec: PlanSpec): LevelDef {
 
 export const LEVELS: LevelDef[] = [
   // ---------------------------------------------------------------- World 1: Workshop (levels 1-10)
-  // Belts
+  // Belts. World 1 runs quicker than the rest (toys 1.1 s apart, the first one sooner): in the
+  // v1.9.2 fit test most players left during levels 1-7, and runs there were often stopped.
   planLevel({
     id: 'first-flip',
     name: 'First Flip',
     hint: 'Tap the belt, then press RUN',
     machines: [belt('belt', 360, 500, 300, 1), spring('springL', 100, 780, 20, 7), spring('springR', 620, 780, -20, 7), ...twoBins('blue', 'pink')],
-    spawners: [pipe('s1', 360, rep('blue', 3))],
+    spawners: [pipe('s1', 360, rep('blue', 3), QUICK, QUICK_START)],
     solution: { belt: { dir: -1 } },
     tutorial: [{ machine: 'belt', op: 'flip', text: 'Tap the belt to flip it' }],
   }),
   planLevel({
     id: 'two-belts',
     name: 'Two Belts',
-    hint: 'Every belt with a badge can be flipped',
+    hint: 'Only flip the belt that is wrong',
     machines: [
       belt('beltL', 190, 600, 180, 1),
-      belt('beltR', 530, 600, 180, -1, { accent: BELT_B }),
+      belt('beltR', 530, 600, 180, 1, { accent: BELT_B }),
       ...threeBins('blue', 'pink', 'yellow'),
     ],
     walls: [wall(240, BIN_Y - 200, 20, 260), wall(480, BIN_Y - 200, 20, 260)],
-    spawners: [pipe('sL', 190, rep('blue', 3)), pipe('sR', 530, rep('yellow', 3), 1500, 1250)],
+    spawners: [pipe('sL', 190, rep('blue', 3), QUICK, QUICK_START), pipe('sR', 530, rep('yellow', 3), QUICK, QUICK_SECOND)],
     solution: { beltL: { dir: -1 }, beltR: { dir: 1 } },
   }),
   planLevel({
@@ -154,7 +159,7 @@ export const LEVELS: LevelDef[] = [
     name: 'Flip Stack',
     hint: 'The top belt feeds the lower one',
     machines: [belt('lower', 190, 660, 200, 1), belt('top', 400, 450, 240, 1, { accent: BELT_B }), ...threeBins('blue', 'pink', 'yellow')],
-    spawners: [pipe('s1', 400, rep('blue', 3))],
+    spawners: [pipe('s1', 400, rep('blue', 3), QUICK, QUICK_START)],
     solution: { top: { dir: -1 }, lower: { dir: -1 } },
   }),
   // Bouncers
@@ -162,42 +167,42 @@ export const LEVELS: LevelDef[] = [
     id: 'aim-it',
     name: 'Aim It',
     hint: 'Tap the bouncer to turn it',
-    machines: [bouncer('pad', 360, 720, [0, -30, 30]), ...twoBins('blue', 'pink')],
-    spawners: [pipe('s1', 360, rep('pink', 3))],
+    machines: [bouncer('pad', 360, 720, [0, 30, -30]), ...twoBins('blue', 'pink')],
+    spawners: [pipe('s1', 360, rep('pink', 3), QUICK, QUICK_START)],
     solution: { pad: { angle: 30 } },
     tutorial: [{ machine: 'pad', op: 'rotate', text: 'Tap the bouncer to turn it' }],
-  }),
-  planLevel({
-    id: 'bank-shot',
-    name: 'Bank Shot',
-    hint: 'Pink goes in the middle',
-    machines: [bouncer('pad', 250, 720, [-30, -10, 10, 30]), ...threeBins('blue', 'pink', 'yellow')],
-    spawners: [pipe('s1', 250, rep('pink', 3))],
-    solution: { pad: { angle: 10 } },
   }),
   planLevel({
     id: 'belt-bounce',
     name: 'Belt Bounce',
     hint: 'Belt first, then the bouncer',
     machines: [belt('belt', 360, 450, 300, 1), bouncer('pad', 125, 740, [-20, 15, 30]), ...threeBins('blue', 'pink', 'yellow')],
-    spawners: [pipe('s1', 360, rep('pink', 3))],
+    spawners: [pipe('s1', 360, rep('pink', 3), QUICK, QUICK_START)],
     solution: { belt: { dir: -1 }, pad: { angle: 15 } },
   }),
   planLevel({
-    id: 'meet-in-the-middle',
-    name: 'Meet in the Middle',
-    hint: 'Two pipes, one bin',
-    machines: [bouncer('padL', 200, 700, [-30, 10, 30]), bouncer('padR', 520, 700, [30, -10, -30]), ...threeBins('blue', 'pink', 'yellow')],
-    spawners: [pipe('sL', 200, rep('pink', 3)), pipe('sR', 520, rep('pink', 3), 1500, 1250)],
-    solution: { padL: { angle: 10 }, padR: { angle: -10 } },
+    id: 'bank-shot',
+    name: 'Bank Shot',
+    hint: 'Pink goes in the middle',
+    machines: [bouncer('pad', 250, 720, [-30, 10, 30]), ...threeBins('blue', 'pink', 'yellow')],
+    spawners: [pipe('s1', 250, rep('pink', 3), QUICK, QUICK_START)],
+    solution: { pad: { angle: 10 } },
   }),
   planLevel({
     id: 'either-way',
     name: 'Either Way',
     hint: 'There is more than one way',
     machines: [belt('belt', 360, 450, 300, 1), bouncer('padL', 125, 740, [-20, 15, 30]), bouncer('padR', 595, 740, [20, -15, -30]), ...threeBins('blue', 'pink', 'yellow')],
-    spawners: [pipe('s1', 360, rep('pink', 4))],
+    spawners: [pipe('s1', 360, rep('pink', 4), QUICK, QUICK_START)],
     solution: { padR: { angle: -15 } },
+  }),
+  planLevel({
+    id: 'meet-in-the-middle',
+    name: 'Meet in the Middle',
+    hint: 'Two pipes, one bin',
+    machines: [bouncer('padL', 200, 700, [-30, 10, 30]), bouncer('padR', 520, 700, [30, -10, -30]), ...threeBins('blue', 'pink', 'yellow')],
+    spawners: [pipe('sL', 200, rep('pink', 3), QUICK, QUICK_START), pipe('sR', 520, rep('pink', 3), QUICK, QUICK_SECOND)],
+    solution: { padL: { angle: 10 }, padR: { angle: -10 } },
   }),
   // Timers
   planLevel({

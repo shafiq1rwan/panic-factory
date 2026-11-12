@@ -21,7 +21,11 @@ export class BootScene extends Phaser.Scene {
     void Promise.race([platform.init(), timeout]).then(() => {
       platform.loadingFinished();
       this.scene.launch('Transition'); // stays running on top for the whole session
-      this.scene.start('Menu');
+      // A first visit goes straight into level 1: in the v1.9.2 fit test 10% of players never
+      // left the title screen. Returning players (or ?menu, for tests) get the title screen.
+      const firstVisit = save.data.unlocked <= 1 && save.totalStars === 0 && !new URLSearchParams(location.search).has('menu');
+      if (firstVisit) this.scene.start('Game', { level: 0 });
+      else this.scene.start('Menu');
     });
   }
 }
