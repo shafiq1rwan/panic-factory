@@ -12,13 +12,13 @@ Where the project stands and what is still open. Update this when work is picked
 Owner preferences that matter for the next steps (they were kept in a local assistant memory on the first PC, so they are written here too):
 
 - The dev server runs on port **5273**; 5173 belongs to another project on the owner's machine.
-- **Once the Poki player fit test is passed, the version is reset to v1.0.0.** Not before. At that point: `version` in `package.json`, the `'vX.Y.Z'` label in `src/game/scenes/MenuScene.ts`, a CHANGELOG entry, and the next Poki zip named `tiny-factory-panic-poki-v1.0.0.zip`. The older zips in `output/poki/` carry higher numbers (v1.5.0 to v1.9.2), so say clearly which zip is the newest, or move the old ones to an archive folder.
+- **The version was reset to v1.0.0 after the player fit test passed** (v1.12.1 was the last 1.x build). Old zips (v1.5.0 to v1.12.1) are in `output/poki/archive/`; submit the newest zip at the top of `output/poki/`.
 - Poki zip names must contain the version, `v1.?.?`.
 - Commit on a new branch, fast-forward `main`; push only when asked. The owner tests on a real phone through the GitHub Pages link, so say plainly when something is committed but not pushed.
 
 ## Current state
 
-`main` is **v1.12.0** (fit-test fixes; see `CHANGELOG.md`). The Poki player fit test of **v1.9.2 failed**: 500 players, 2 min 16 s at 208 players and **2 min 35 s** at the end, against a 3-minute bar. Most players leave in levels 1-7; the analysis and suggested changes are in `docs/FIT_TEST.md`.
+`main` is **v1.0.0** (see `CHANGELOG.md`). The Poki player fit test of **v1.12.1 passed** (500 players, 3 min 6 s); v1.9.2 had failed (2 min 35 s). Next is the web fit test; see `docs/FIT_TEST.md`.
 
 The game is a set-up-then-run puzzle in portrait: the player taps machines to set them up (a belt flips, a bouncer turns, a timer moves its pusher on a step, a fan switches on), presses RUN, and every toy has to land in the bin of its own colour. A wrong toy, or one that misses the bins, stops the run and hands the setup back. Panic mode keeps the earlier live play (two belts, two buttons).
 
@@ -53,7 +53,7 @@ What changed after the fit-test build (v1.9.2): previews no longer overlap and r
 
 - `npm test`: 297 tests pass.
 - `npm run solve`: all 40 levels pass. Pressing RUN without changes fails every level; each solution wins and survives random spawn offsets; in the harder levels only 1 of 8, 12 or 32 setups wins; every possible run ends within 11 s.
-- `npm run smoke`: 46 checks pass against the production build in headless Edge, including a level set up and won with the keyboard, one with the mouse, one with touch taps at phone size, and the safe-area insets.
+- `npm run smoke`: 51 checks pass against the production build in headless Edge, including a level set up and won with the keyboard, one with the mouse, one with touch taps at phone size, and the safe-area insets.
 - One winning run of every level adds up to 291 s of toys moving. Real play time depends on thinking and failed runs, which no one has measured.
 
 ## Not verified
@@ -72,7 +72,10 @@ What changed after the fit-test build (v1.9.2): previews no longer overlap and r
 - [x] Analysed the v1.9.2 fit-test event CSV (`docs/FIT_TEST.md`): players leave early, inside levels 1-7, at difficulty spikes (5, 7) and in levels 2-3; 30% of players stop a run on level 1.
 - [x] Acted on the fit-test findings (v1.12.0): FAST instead of STOP, world 1 reordered and eased, quicker world-1 runs, first visit straight into level 1.
 - [x] Poki zip of v1.12.1: `output/poki/tiny-factory-panic-poki-v1.12.1.zip` (v1.12.0 reported gameplay start before any player input; fixed).
-- [ ] Submit v1.12.1 for a new player fit test; analyse its events with `docs/FIT_TEST.md` (levels 5-8 have new numbers).
+- [x] **v1.12.1 passed the Poki player fit test** (500 players, 3 min 6 s). Analysis in `docs/FIT_TEST.md`.
+- [x] Acted on the v1.12.1 findings and reset the version: **v1.0.0** (RUN waits for tutorial steps, level-2 hand, HINT button, no ads after levels 1-3, loading animation). Thumbnail kept: on review it still matches the game.
+- [ ] Submit `output/poki/tiny-factory-panic-poki-v1.0.0.zip` for the **web fit test** (click-through rate, conversion to play, time on page). Older zips are in `output/poki/archive/`.
+- [ ] Smaller bundle (custom Phaser build) if loading still loses players.
 - [ ] Owner to try world 4 (v1.11.0) on a phone: the water, the splash, the fan's wind streaks.
 - [ ] Some world 2 and 3 levels share layouts with world 1 (the owner noticed repetition). Rework the ones the owner names.
 - [ ] Make a Poki zip of the newest `main` when the next submission is due (none exists for v1.9.3 to v1.11.0).

@@ -60,6 +60,23 @@ export const platform = {
     adapter.gameplayStop();
   },
   /**
+   * Rewarded ad for an optional reward (a hint). Resolves true when the reward should be
+   * given. Outside Poki there is no ad to show, so the reward is simply given.
+   */
+  async rewardedBreak(): Promise<boolean> {
+    if (inBreak) return false;
+    if (adapter.name === 'standalone') return true;
+    this.gameplayStop();
+    inBreak = true;
+    audio.setAdMuted(true);
+    try {
+      return await adapter.rewardedBreak();
+    } finally {
+      inBreak = false;
+      audio.setAdMuted(false);
+    }
+  },
+  /**
    * Call at natural pauses only (between levels / before a retry after the
    * result screen), never while physics is running. Audio is muted for the
    * whole break and always restored afterwards, even if the SDK never calls back.

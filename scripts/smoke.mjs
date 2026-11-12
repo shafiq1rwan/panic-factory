@@ -188,12 +188,16 @@ try {
     return { on: ui.nudgeUntil > ui.time.now, flash: g.badgeFlashUntil > g.time.now, text: ui.effectT.text, belt: g.world.machine('belt').dir };
   });
   check('tapping empty space flashes the badges, explains, and changes nothing', nudge.on && nudge.flash && nudge.text.includes('BADGE') && nudge.belt === 1, JSON.stringify(nudge));
+  let rb = await hudBtn(page, 'runBtn');
+  await click(page, rb.x, rb.y); // RUN before tapping the belt: it waits (fit test: 35% failed level 1 this way)
+  await page.waitForTimeout(200);
+  check('RUN waits until the tutorial step is done', (await ev(page, () => window.__TFP.game.scene.getScene('Game').state)) === 'prep');
   let mp = await machinePos(page, 'belt');
   await click(page, mp.x, mp.y); // tap the belt: the first thing the player learns
   check('tapping the belt flips it', (await ev(page, () => window.__TFP.game.scene.getScene('Game').world.machine('belt').dir)) === -1);
   check('then the tutorial points at RUN', (await ev(page, () => window.__TFP.game.scene.getScene('Game').tutorialHint()?.kind)) === 'run');
   await page.screenshot({ path: `${OUT}/smoke-level1-setup.png` });
-  let rb = await hudBtn(page, 'runBtn');
+  rb = await hudBtn(page, 'runBtn');
   await click(page, rb.x, rb.y);
   check('RUN starts the factory', (await ev(page, () => window.__TFP.game.scene.getScene('Game').state)) === 'running');
   await page.waitForTimeout(150);
@@ -223,8 +227,13 @@ try {
 
   // a half-done setup fails, says why, and hands the setup back as it was
   await page.waitForTimeout(600);
-  mp = await machinePos(page, 'beltR'); // level 2: the right belt starts correct, so flipping it is a mistake
+  check('level 2: the hand points at the belt that is wrong', (await ev(page, () => window.__TFP.game.scene.getScene('Game').tutorialHint()?.machine)) === 'beltL');
+  mp = await machinePos(page, 'beltL');
+  await click(page, mp.x, mp.y); // the tutorial step
+  await page.waitForTimeout(150);
+  mp = await machinePos(page, 'beltR'); // the right belt starts correct, so flipping it is a mistake
   await click(page, mp.x, mp.y);
+  await page.waitForTimeout(150);
   await page.keyboard.press('Space');
   await gameState(page, 'failed');
   await page.waitForTimeout(500);
@@ -238,6 +247,21 @@ try {
     return { toys: g.world.objects.length, beltR: g.world.machine('beltR').dir, runs: g.runs, stars: window.__TFP.game.scene.getScene('UI').starsShown };
   });
   check('after a failed run the setup comes back as the player left it, and fewer stars are on offer', after.toys === 0 && after.beltR === -1 && after.runs === 1 && after.stars === 2, JSON.stringify(after));
+  check('no hint after one failed run', !(await ev(page, () => window.__TFP.game.scene.getScene('UI').hintBtn.visible)));
+  await page.keyboard.press('Space'); // fail a second time
+  await gameState(page, 'failed');
+  await gameState(page, 'prep');
+  await page.waitForTimeout(200);
+  check('after two failed runs a HINT button appears', await ev(page, () => window.__TFP.game.scene.getScene('UI').hintBtn.visible));
+  const hb = await hudBtn(page, 'hintBtn');
+  await click(page, hb.x, hb.y);
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${OUT}/smoke-hint.png` });
+  const hint = await ev(page, () => {
+    const g = window.__TFP.game.scene.getScene('Game');
+    return { active: g.hintActive, machine: g.tutorialHint()?.machine, text: g.tutorialHint()?.text };
+  });
+  check('the hint points at the machine that is set wrong', hint.active && hint.machine === 'beltR', JSON.stringify(hint));
 
   // pause / resume during a run
   await page.keyboard.press('Space');

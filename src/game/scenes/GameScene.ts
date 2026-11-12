@@ -21,6 +21,9 @@ import { computeStars, starsForRuns } from '../systems/ScoreManager';
 import { Button, fadeIn, gotoScene } from '../ui/UIComponents';
 import type { UIScene } from './UIScene';
 
+/** No ad break is requested after winning one of the first this-many levels. */
+const NO_ADS_BEFORE_LEVEL = 3;
+
 export type GameState = 'prep' | 'running' | 'won' | 'failed';
 type OpName = 'rotL' | 'rotR' | 'flip' | 'clock';
 
@@ -65,6 +68,10 @@ export class GameScene extends Phaser.Scene {
   lastNewBest = false;
   /** RUN presses on this level so far (set-up-then-run levels are rated on it) */
   runs = 0;
+  /** a hint was given on this level: the hand walks the player to the verified solution */
+  hintActive = false;
+  /** a hint is being fetched (rewarded ad on Poki) */
+  hintPending = false;
   /** water worlds: the wave strip in front of the bins */
   private waves: Phaser.GameObjects.Graphics | null = null;
   private backWaves: Phaser.GameObjects.Graphics | null = null;
@@ -99,6 +106,9 @@ export class GameScene extends Phaser.Scene {
     this.press = null;
     this.opPos = {};
     this.runs = 0;
+    this.hintActive = false;
+    this.hintPending = false;
+    this.hintTargets = null;
     this.badgeFlashUntil = 0;
   }
 
@@ -189,9 +199,22 @@ export class GameScene extends Phaser.Scene {
 
   // --- flow ---------------------------------------------------------------------
 
+  /**
+   * A tutorial step the player has not done yet. RUN waits for it: in the v1.12.1 fit test 35% of
+   * players failed level 1 at least once, mostly by pressing RUN before tapping the belt.
+   */
+  get runBlocked(): boolean {
+    return !!this.level.plan && this.state === 'prep' && this.tutorialStepPending() !== null;
+  }
+
   /** Press Run: lock the layout and switch the factory on. */
   run(): void {
     if (this.state !== 'prep') return;
+    if (this.runBlocked) {
+      this.badgeFlashUntil = this.time.now + 1300;
+      audio.buzz();
+      return;
+    }
     this.cancelPress();
     this.select(null);
     sessionConfigs.set(this.level.id, this.world.getConfig());
@@ -290,11 +313,14 @@ export class GameScene extends Phaser.Scene {
       // No result dialog: celebrate briefly, then move straight on to the next level.
       this.time.delayedCall(2300, () => {
         if (token !== this.runToken) return;
-        void platform.commercialBreak().then(() => {
+        const goOn = (): void => {
           if (token !== this.runToken) return;
           if (LevelManager.hasNext(this.levelIndex)) this.nextLevel();
           else gotoScene(this, 'Menu');
-        });
+        };
+        // no ad break after the first levels: 5-7% of players left at each early level change in the fit test
+        if (this.levelIndex < NO_ADS_BEFORE_LEVEL) goOn();
+        else void platform.commercialBreak().then(goOn);
       });
     } else {
       this.time.delayedCall(250, () => token === this.runToken && audio.fail());
@@ -758,8 +784,69 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** The first tutorial step not done yet (set-up levels, before the level is first won). */
+  private tutorialStepPending(): TutorialStep | null {
+    if (!this.level.tutorial || save.data.tutorialsDone[this.level.id]) return null;
+    for (const step of this.level.tutorial) {
+      const m = this.world.machine(step.machine);
+      if (m && !this.stepDone(step, m)) return step;
+    }
+    return null;
+  }
+
+  /** Hints are offered after this many failed runs on a level. */
+  static readonly HINT_AFTER_FAILS = 2;
+
+  /** Should the HINT button show? */
+  get hintAvailable(): boolean {
+    return !!this.level.plan && this.state === 'prep' && !this.hintActive && !this.hintPending && this.runs >= GameScene.HINT_AFTER_FAILS && !this.runBlocked;
+  }
+
+  /** The HINT button: on Poki a rewarded ad, then the hand walks the player to the verified solution. */
+  async requestHint(): Promise<void> {
+    if (!this.hintAvailable) return;
+    this.hintPending = true;
+    const ok = await platform.rewardedBreak();
+    this.hintPending = false;
+    if (!this.scene.isActive()) return;
+    platform.gameplayStart();
+    if (!ok) {
+      (this.scene.get('UI') as UIScene).flashStatus('NO HINT RIGHT NOW, TRY AGAIN LATER');
+      return;
+    }
+    this.hintActive = true;
+    platform.measure('hint', String(this.levelIndex + 1), 'used');
+  }
+
+  /** The machine the hint points at: the first one not yet set as in the verified solution. */
+  private hintTarget(): BaseMachine | null {
+    if (!this.hintTargets) {
+      // the level's own starting settings, overridden by the solution: the full winning setup
+      const fresh = new FactoryWorld(this.level);
+      this.hintTargets = {};
+      for (const m of fresh.machines) if (m.configurable) this.hintTargets[m.id] = { ...m.getConfig(), ...(this.level.solution[m.id] ?? {}) };
+      fresh.destroy();
+    }
+    for (const m of this.world.machines) {
+      const want = this.hintTargets[m.id];
+      if (!m.configurable || !want) continue;
+      const have = m.getConfig() as Record<string, number | undefined>;
+      for (const [k, v] of Object.entries(want)) {
+        if (typeof v === 'number' && Math.abs((have[k] ?? NaN) - v) > 0.5 && k !== 'x' && k !== 'y') return m;
+        if (k === 'phase' && typeof v === 'number' && Math.abs((have[k] ?? NaN) - v) > 1e-6) return m;
+      }
+    }
+    return null;
+  }
+  private hintTargets: Record<string, Record<string, unknown>> | null = null;
+
   /** What the tutorial hand should point at right now (null = no tutorial). */
   tutorialHint(): TutorialHint | null {
+    if (this.hintActive && this.state === 'prep') {
+      const m = this.hintTarget();
+      if (m) return { kind: 'tap', machine: m.id, x: m.x, y: m.y, text: 'HINT: tap this one until the hand moves on' };
+      return { kind: 'run', x: 0, y: 0, text: 'HINT: now press RUN!' };
+    }
     const live = !!this.level.sortAll && !this.level.plan && this.state === 'running';
     if ((this.state !== 'prep' && !live) || !this.level.tutorial || save.data.tutorialsDone[this.level.id]) return null;
     for (const step of this.level.tutorial) {

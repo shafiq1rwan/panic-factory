@@ -7,6 +7,7 @@ import { keepOverlayBelow, safeBottom, safeTop, setupCamera } from '../rendering
 import { drawIcon } from '../rendering/Icons';
 import { toyKey } from '../rendering/Textures';
 import { heart, roundRect, star } from '../rendering/VectorFactory';
+import { platform } from '../platform';
 import { audio } from '../systems/AudioManager';
 import { LevelManager } from '../systems/LevelManager';
 import { save } from '../systems/SaveManager';
@@ -110,6 +111,11 @@ export class UIScene extends Phaser.Scene {
   private effectT: Phaser.GameObjects.Text | null = null;
   /** time (scene clock) until which the "use the buttons" nudge is showing */
   private nudgeUntil = 0;
+  /** a one-off status message shown instead of the usual nudge text */
+  private nudgeText: string | null = null;
+  /** set-up levels: offered after two failed runs */
+  private hintBtn: Button | null = null;
+  private hintShownState = false;
   // set-up levels
   private runBtn: Button | null = null;
   /** top bar restart button: during a run it is the way to stop and change the setup */
@@ -136,6 +142,9 @@ export class UIScene extends Phaser.Scene {
     this.bannerShown = '';
     this.scoreT = this.multT = this.bannerT = this.effectT = this.tip = null;
     this.nudgeUntil = 0;
+    this.nudgeText = null;
+    this.hintBtn = null;
+    this.hintShownState = false;
     this.resultCard = null;
     this.runBtn = null;
     this.restartBtn = null;
@@ -286,7 +295,15 @@ export class UIScene extends Phaser.Scene {
    * The player tapped the play field instead of a button (people try to drag the springs, or
    * expect to touch the belts): bounce the buttons, point at them and say what they do.
    */
+  /** Show one short message in the status line for a moment (e.g. no hint available). */
+  flashStatus(text: string): void {
+    this.nudgeText = text;
+    this.nudgeUntil = this.time.now + NUDGE_MS;
+    audio.click();
+  }
+
   nudgeControls(): void {
+    this.nudgeText = null;
     const now = this.time.now;
     if (now < this.nudgeUntil - NUDGE_MS + 700) return; // not on every tap of a burst
     this.nudgeUntil = now + NUDGE_MS;
@@ -311,7 +328,8 @@ export class UIScene extends Phaser.Scene {
     if (!this.effectT) return;
     if (this.nudging) {
       const running = this.game_?.state === 'running';
-      this.effectT.setText(this.plan ? (running ? PLAN_TEXT.missRun : PLAN_TEXT.missPrep) : NUDGE_TEXT).setColor('#39796B');
+      this.effectT.setText(this.nudgeText ?? (this.plan ? (running ? PLAN_TEXT.missRun : PLAN_TEXT.missPrep) : NUDGE_TEXT)).setColor('#39796B');
+      if (this.nudgeText) return;
       // set-up levels: the badges flash in the factory; while running, point at the restart button
       const target = this.plan
         ? running && this.restartBtn ? this.objectPos(this.restartBtn) : null
@@ -343,6 +361,14 @@ export class UIScene extends Phaser.Scene {
       onClick: () => g.toggleRun(),
     });
     this.controls.add(this.runBtn);
+    // HINT, after two failed runs: on Poki a rewarded ad (play icon), elsewhere free
+    const poki = platform.name === 'poki';
+    this.hintBtn = new Button(this, GAME_W - SIDE - 78, LIVES_ROW, {
+      w: 156, h: 48, radius: 16, label: 'HINT', icon: poki ? 'play' : undefined, iconSize: 10, fontSize: 22, color: 0xffe08a,
+      onClick: () => void g.requestHint(),
+    });
+    this.hintBtn.setVisible(false);
+    this.controls.add(this.hintBtn);
   }
 
   private updateRunControls(): void {
@@ -350,10 +376,24 @@ export class UIScene extends Phaser.Scene {
     const btn = this.runBtn;
     if (!btn) return;
     const st = g.state;
-    const key = `${st}|${g.runs}|${g.speed}`;
+    const blocked = g.runBlocked;
+    const key = `${st}|${g.runs}|${g.speed}|${blocked}`;
+    // the HINT button takes the status line's place while it is offered
+    const hint = g.hintAvailable;
+    if (this.hintBtn && hint !== this.hintShownState) {
+      this.hintShownState = hint;
+      this.hintBtn.setVisible(hint);
+      this.effectT?.setVisible(!hint);
+      if (hint && !save.settings.reducedMotion) {
+        this.hintBtn.setScale(0.6);
+        this.tweens.add({ targets: this.hintBtn, scale: 1, duration: 320, ease: 'Back.easeOut' });
+      }
+    }
     if (key !== this.runShown) {
       this.runShown = key;
-      if (st === 'prep') btn.setContent('RUN', 'play').setColor(COLORS.yellow).setEnabled(true);
+      // RUN waits (greyed) until a tutorial step is done: the hand shows what to tap first
+      // (still tappable: a tap on a waiting RUN flashes the badges and buzzes)
+      if (st === 'prep') btn.setContent('RUN', 'play').setColor(blocked ? 0xd3dbd6 : COLORS.yellow).setEnabled(true);
       else if (st === 'running' && g.speed === 1) btn.setContent('FAST', 'ff').setColor(0xa9e2ff).setEnabled(true);
       else if (st === 'running') btn.setContent('NORMAL SPEED', 'play').setColor(0xffe08a).setEnabled(true);
       else btn.setEnabled(false);

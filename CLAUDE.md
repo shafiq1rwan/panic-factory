@@ -24,6 +24,7 @@ After any change to physics, machines, levels or rules, run `npm run solve` and 
 - **Teach one thing at a time.** A level that introduces a new kind of machine has nothing else to set; the tests enforce it. At most three adjustable machines per level. New toys appear only after world 1, one new kind per level, and that level sets `newToy` so a NEW TOY card explains it before the first run (tested).
 - **World 4 is on water.** Its bins float (they bob and rock in the view only; in the simulation they never move). A toy that misses them splashes and sinks. The fan is world 4's new machine; every world-4 level after the fan intro needs a fan switched on to win.
 - **A new look every ten levels.** Worlds are ten levels each (`WORLD_SIZE`); `THEMES` in `rendering/Background.ts` gives each its name, wall colours, pattern and pipe colour. Keep wall patterns faint and large so nothing looks like a toy or a machine.
+- **Help, not walls.** RUN waits while a tutorial step is unfinished (levels 1, 2, 4, 9 and the fan intro). After two failed runs a HINT button appears; the hint walks the player to the level's verified `solution` (on Poki through `rewardedBreak`). No ad break after levels 1-3.
 - **Failing is cheap.** One wrong toy stops the run; the setup comes back exactly as the player left it. Stars count runs (first run 3, up to three runs 2, else 1). Keep runs short: every run, won or lost, ends within 13 s (tested).
 - **Safe area.** HUD elements pin to `safeTop()` / `safeBottom()`, never to the raw window edge.
 - **Portrait only on mobile.** Phones held sideways get a turn-upright prompt. Do not add a landscape layout.
@@ -58,6 +59,6 @@ After any change to physics, machines, levels or rules, run `npm run solve` and 
 ## Working agreements with the owner
 
 - Commit only when asked. Commit on a new branch, then fast-forward `main`. Push only when asked.
-- Once the Poki player fit test is passed, the owner resets the version to v1.0.0 (details in `PROGRESS.md`). Do not reset it before.
+- The version was reset to v1.0.0 after the player fit test passed (v1.12.1 was the last 1.x build). Old Poki zips live in `output/poki/archive/`; keep only the newest zip at the top of `output/poki/`.
 - GitHub Pages deploys from `main` through `.github/workflows/deploy.yml`.
 - The owner tests on a real phone through the Pages link, so tell them plainly when something is committed but not yet pushed.

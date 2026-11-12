@@ -2,6 +2,56 @@
 
 What is being tested, the results so far, and how to read the event export when it arrives.
 
+## Result: v1.12.1 passed the player fit test
+
+- **Build tested:** `output/poki/tiny-factory-panic-poki-v1.12.1.zip` (40 levels in four worlds; the v1.12 fit-test fixes).
+- **Result:** 500 players, average play time **3 min 6 s**: passed. The next step is Poki's web fit test, which scores click-through rate (thumbnail), conversion to play and time on page.
+
+Compared with v1.9.2 (levels matched by position for reach, by name for the rest; levels 5-8 were reordered in v1.12):
+
+| | v1.9.2 | v1.12.1 |
+| --- | --- | --- |
+| Loaded but never opened level 1 | 10.5% | **2.6%** (first visit opens level 1) |
+| Loaded and won level 1 | 79% | 80% |
+| Level-1 runs stopped early / players who stopped one | 40% / 30% | **5% / 5%** (FAST instead of STOP) |
+| Reach level 6 / 10 / 13 (share of loaded) | 29% / 17% / 11% | **37% / 23% / 13%** |
+| Bank Shot: quit there, failed once, runs per win | 24%, 68%, 3.2 | 17%, 58%, 2.3 |
+| Meet in the Middle: quit there, failed once | 19%, 58% | 8%, 55% |
+
+What is still losing players (v1.12.1):
+
+| Level | Opened | Quit in level | Failed once | Runs per win |
+| --- | --- | --- | --- | --- |
+| 1 First Flip | 527 | **18%** | **35%** | 1.6 |
+| 2 Two Belts | 410 | **21%** | **43%** | 2.0 |
+| 6 Bank Shot | 199 | 17% | 58% | 2.3 |
+| 10 Sort Line | 123 | 14% | 52% | 2.9 |
+| 11 Kick and Bounce | 103 | 12% | 38% | 2.2 |
+| 12 Full Shift | 92 | **22%** | **65%** | **3.5** |
+| 18 Heavy Belt | 47 | 19% | 56% | 2.6 |
+| 21 Boing | 29 | 17% | 62% | 2.0 |
+| 28-30 Pill Pong, Bouncy Pills, Last Shift | 17 to 12 | 14-18% | 88-92% | 3.1-4.6 |
+
+- **Level 1 is now the biggest leak.** The players who used to leave at the title screen now leave inside level 1: 35% fail it at least once (mostly pressing RUN before tapping the belt), 18% never win it.
+- **Two Belts got worse at teaching.** With one belt already right (v1.12), 43% fail at least once (v1.9.2: 35%); players flip both belts.
+- **Players are lost inside levels far more than between them:** 356 vs 102 players over levels 1-12. Between-level loss is 5-7% at each of the first five transitions (where ad breaks are requested).
+- **The late game is not the problem:** 10 players (2%) reached world 4 and 9 finished all 40 levels.
+- **About 4% leave while the game loads** (566 loading, 541 loaded).
+- **Panic mode is unused** (3 plays).
+
+### Changes made in response (v1.0.0)
+
+Items 2-5 below and a loading animation were made in v1.0.0. Item 1: on review the thumbnail (a bouncing blue toy, a belt, a bin) still matches the game, so it was kept; the web fit test's click-through score will judge it. Item 6 (a smaller bundle) was not done.
+
+### Suggested next changes (before the web fit test)
+
+1. Update the thumbnail: it still shows the old one-button design, and click-through rate is a web fit test score.
+2. Level 1: RUN waits until the belt has been tapped (the hand points at the belt, then at RUN).
+3. Level 2: the tutorial hand points at the belt that is wrong.
+4. A HINT button after two failed runs on a level: the hand shows one machine to change (from the level's verified solution). It could be offered as a rewarded ad (`PokiSDK.rewardedBreak`, already in the adapter).
+5. Try fewer ad breaks in the first few levels (5-7% leave at each early transition; the data cannot tell whether ads cause it).
+6. Faster loading: the bundle is 1.3 MB, nearly all Phaser.
+
 ## Result: v1.9.2 failed (2026-11-12)
 
 - **Build tested:** `output/poki/tiny-factory-panic-poki-v1.9.2.zip` (30 levels in three worlds, analytics events added in v1.9.2).

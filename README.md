@@ -54,7 +54,7 @@ Stars count runs: solved on the first run 3, within three runs 2, otherwise 1. T
 | Back to setup | Restart button | `R` |
 | Pause | Pause button | `Esc` or `P` |
 
-A tap on empty space before RUN makes the badges flash, so it is clear what can be tapped.
+A tap on empty space before RUN makes the badges flash, so it is clear what can be tapped. On a level with a tutorial, RUN waits until the hand's step is done. After two failed runs a HINT button appears; the hand then shows which machine to change (on Poki the hint is a rewarded ad).
 
 **Panic Factory** (unlocked after 5 levels) is the live mode: toys never stop, two belts, two chutes and two buttons to flip them. Blue goes left, pink to the middle, yellow right. Three wrong deliveries end the run. Malfunctions (belt reverse, toy rush, turbo belts, low gravity, belt jam) are announced about two seconds before they start.
 
@@ -142,7 +142,7 @@ Run on Windows 11 with Node 26 and headless Microsoft Edge:
 
 - `npm test`: 297 tests pass. They cover the physics and machines, win/lose rules, save/load including corrupted data, scoring, that new toys arrive one at a time after world 1 and always with a NEW TOY card, that floating bins never overlap or leave the floor, and for each of the 40 levels: that the next-toy previews of its pipes never overlap a pipe or each other, structure (including no empty bins), that RUN without changes fails, that the solution wins without losing a toy and survives random spawn offsets, that most setups lose, that every possible run ends within 13 s, and determinism. A toy that lands on bare floor counts as missed. Panic mode is checked with a bot over three simulated minutes.
 - `npm run solve`: tries all setups of every level (2 to 32 per level).
-- `npm run smoke`: 46 checks pass against the production build: PLAY into level 1 waiting in setup, a tap on empty space flashing the badges, tapping the belt, RUN, machines locked during a run, auto-advance after a win, a failed run handing the setup back with fewer stars on offer, pause and settings mid-run, level 3 set up and won with the keyboard, level 12 with the mouse, level 7 with touch taps at phone size, safe-area insets, save persistence, a corrupted save, Panic mode, six window shapes and the turn-upright prompt, with no console errors.
+- `npm run smoke`: 51 checks pass against the production build: PLAY into level 1 waiting in setup, a tap on empty space flashing the badges, tapping the belt, RUN, machines locked during a run, auto-advance after a win, a failed run handing the setup back with fewer stars on offer, pause and settings mid-run, level 3 set up and won with the keyboard, level 12 with the mouse, level 7 with touch taps at phone size, safe-area insets, save persistence, a corrupted save, Panic mode, six window shapes and the turn-upright prompt, with no console errors.
 
 Not tested, so treat as unverified:
 

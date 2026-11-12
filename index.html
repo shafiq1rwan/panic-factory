@@ -7,8 +7,19 @@
     <meta name="description" content="Tiny Factory Panic: a cute physics puzzle about sorting toys with conveyors, springs and pistons." />
     <title>Tiny Factory Panic</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23FFF8ED'/%3E%3Ccircle cx='32' cy='34' r='20' fill='%2380D8F7' stroke='%2343536A' stroke-width='5'/%3E%3Ccircle cx='25' cy='31' r='3.5' fill='%2343536A'/%3E%3Ccircle cx='39' cy='31' r='3.5' fill='%2343536A'/%3E%3Cpath d='M26 40q6 5 12 0' fill='none' stroke='%2343536A' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E" />
+    <style>
+      /* Shown while the game script downloads (inline, so it appears before any script runs); removed by BootScene. */
+      html, body { margin: 0; height: 100%; background: #dce8e2; }
+      #loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; font: 700 18px 'Arial Rounded MT Bold', 'Trebuchet MS', system-ui, sans-serif; color: #5e7770; letter-spacing: 2px; z-index: 5; }
+      #loading .toys { display: flex; gap: 14px; }
+      #loading .toys i { width: 26px; height: 26px; border-radius: 50%; background: #2bb8ff; animation: tfp-hop 0.9s ease-in-out infinite; }
+      #loading .toys i:nth-child(2) { background: #ff4f9a; border-radius: 7px; animation-delay: 0.15s; }
+      #loading .toys i:nth-child(3) { background: #ffcf33; animation-delay: 0.3s; }
+      @keyframes tfp-hop { 0%, 100% { transform: translateY(0) scale(1.1, 0.9); } 45% { transform: translateY(-22px) scale(0.92, 1.08); } }
+    </style>
   </head>
   <body>
+    <div id="loading"><div class="toys"><i></i><i></i><i></i></div>LOADING</div>
     <div id="game"></div>
     <div id="rotate" aria-hidden="true">
       <div class="rotate-card">

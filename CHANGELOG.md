@@ -2,6 +2,20 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## Release 1.0.0
+
+v1.12.1 passed the Poki player fit test (500 players, 3 min 6 s), so the version starts again at 1.0.0, as planned. This release also acts on that test's event export (`docs/FIT_TEST.md`) before the web fit test.
+
+- **RUN waits for the tutorial step.** On a level with a tutorial (levels 1, 2, 4, 9 and the fan intro), RUN stays grey until the step is done; tapping it then flashes the badges while the hand points at the machine. In the fit test 35% of players failed level 1 at least once, mostly by pressing RUN first.
+- **Level 2 has a tutorial hand** pointing at the belt that is wrong ("This belt sends blue the wrong way: flip it"). 43% had failed it at least once, often by flipping both belts.
+- **HINT button after two failed runs on a level.** The hand then walks the player to the level's verified solution, one machine at a time, and finally to RUN. On Poki it is a rewarded ad (`PokiSDK.rewardedBreak`); if no ad can be shown the status line says so. Outside Poki it is free. A `hint` analytics event records its use.
+- **No ad break after levels 1-3.** 5-7% of players left at each of the first level changes.
+- **Loading animation.** Three hopping toys and LOADING appear as soon as the page opens, before the 1.3 MB game script arrives (about 4% of fit-test players left while loading).
+- The older Poki zips (v1.5.0 to v1.12.1) moved to `output/poki/archive/`; the zip to submit is `output/poki/tiny-factory-panic-poki-v1.0.0.zip`.
+- Smoke test: 51 checks, including RUN waiting on level 1, the level-2 hand and the hint.
+
+Not done: a smaller game bundle. Nearly all of it is Phaser, and a custom Phaser build is a large change with its own risks; the loading animation addresses the wait instead.
+
 ## Gameplay start waits for the player (v1.12.1)
 
 Poki reported "gameplay start was started without player interaction" for v1.12.0: a first visit opens level 1 straight away, so the level reported gameplay start before the player had touched anything.

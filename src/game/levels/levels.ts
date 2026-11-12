@@ -145,6 +145,7 @@ export const LEVELS: LevelDef[] = [
     id: 'two-belts',
     name: 'Two Belts',
     hint: 'Only flip the belt that is wrong',
+    tutorial: [{ machine: 'beltL', op: 'flip', text: 'This belt sends blue the wrong way: flip it' }],
     machines: [
       belt('beltL', 190, 600, 180, 1),
       belt('beltR', 530, 600, 180, 1, { accent: BELT_B }),
