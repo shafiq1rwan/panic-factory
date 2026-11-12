@@ -35,6 +35,21 @@ try {
   // a first visit goes straight into level 1 (no title screen)
   await page.waitForFunction(() => window.__TFP?.game.scene.isActive('Game') && !!window.__TFP.game.scene.getScene('Game').world && window.__TFP.game.scene.getScene('Game').state === 'prep', null, { timeout: 20000 });
   console.log('level 1 open in setup straight after loading');
+  // Poki: gameplayStart must wait for the player's first interaction (a first visit has no PLAY tap)
+  await page.waitForTimeout(2000);
+  const before = await page.evaluate(() => window.__TFP.platform.debugState);
+  // the player's first tap (on the belt, as level 1 asks)
+  const pos = await page.evaluate(() => {
+    const m = window.__TFP.game.scene.getScene('Game').world.machine('belt');
+    const v = window.__TFP.view;
+    return { x: m.x - (360 - v.w / 2), y: m.y - (v.cy - v.h / 2), w: v.w };
+  });
+  const box = await page.locator('#game canvas').boundingBox();
+  await page.touchscreen.tap(box.x + (pos.x * box.width) / pos.w, box.y + (pos.y * box.width) / pos.w);
+  await page.waitForTimeout(500);
+  const after = await page.evaluate(() => window.__TFP.platform.debugState);
+  console.log('gameplay reported to the portal before the first tap:', before.playing, '/ after it:', after.playing);
+  if (before.playing || !before.wanted || !after.playing) problems.push('gameplayStart: must be held until the first input, then sent');
   await page.evaluate(() => window.__TFP.game.scene.getScene('Game').toggleRun());
   await page.waitForFunction(() => window.__TFP.game.scene.getScene('Game').state === 'running', null, { timeout: 5000 });
   console.log('level 1 running after RUN');

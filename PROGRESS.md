@@ -71,7 +71,8 @@ What changed after the fit-test build (v1.9.2): previews no longer overlap and r
 - [x] Owner played v1.9.x: some levels feel repetitive; asked for a fourth world with bins floating on water and a new prop (v1.10.0), then for bins that only float (no drifting) and cartoon water (v1.11.0).
 - [x] Analysed the v1.9.2 fit-test event CSV (`docs/FIT_TEST.md`): players leave early, inside levels 1-7, at difficulty spikes (5, 7) and in levels 2-3; 30% of players stop a run on level 1.
 - [x] Acted on the fit-test findings (v1.12.0): FAST instead of STOP, world 1 reordered and eased, quicker world-1 runs, first visit straight into level 1.
-- [ ] Owner to try v1.12.0 on a phone, then make a Poki zip of it and submit it for a new fit test.
+- [x] Poki zip of v1.12.1: `output/poki/tiny-factory-panic-poki-v1.12.1.zip` (v1.12.0 reported gameplay start before any player input; fixed).
+- [ ] Submit v1.12.1 for a new player fit test; analyse its events with `docs/FIT_TEST.md` (levels 5-8 have new numbers).
 - [ ] Owner to try world 4 (v1.11.0) on a phone: the water, the splash, the fan's wind streaks.
 - [ ] Some world 2 and 3 levels share layouts with world 1 (the owner noticed repetition). Rework the ones the owner names.
 - [ ] Make a Poki zip of the newest `main` when the next submission is due (none exists for v1.9.3 to v1.11.0).

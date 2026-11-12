@@ -36,7 +36,7 @@ The calls below are the ones in Poki's HTML5 guide (https://developers.poki.com/
 | --- | --- |
 | `PokiSDK.init()` | At boot. If it fails or takes more than 2.5 s the game starts anyway. |
 | `PokiSDK.gameLoadingFinished()` | When the title screen is ready. |
-| `PokiSDK.gameplayStart()` | When a level or a Panic run becomes active, and on resume from pause. |
+| `PokiSDK.gameplayStart()` | When a level or a Panic run becomes active, and on resume from pause; never before the player's first tap, click or key press (a first visit opens level 1 without a PLAY tap, so the start waits for that first input). |
 | `PokiSDK.gameplayStop()` | On pause, on a win, on a failure, and when leaving a level. |
 | `PokiSDK.commercialBreak()` | After a level is won, just before the wipe to the next level, and from the Panic game-over screen when the player moves on. Never while toys are moving. |
 | `PokiSDK.rewardedBreak()` | Implemented in the adapter, not used by the game. |
@@ -52,7 +52,7 @@ Audio is muted and keyboard input is ignored for the length of a commercial brea
 
 ## Before submitting
 
-- [x] Build with the Poki adapter and zip it. Done for v1.9.2: `output/poki/tiny-factory-panic-poki-v1.9.2.zip` (`index.html` at the root of the zip, about 350 kB). It was checked to boot to the title screen and into level 1 on an emulated phone, with the Poki SDK loading.
+- [x] Build with the Poki adapter and zip it. Done for v1.12.1: `output/poki/tiny-factory-panic-poki-v1.12.1.zip` (`index.html` at the root of the zip, about 350 kB). It was checked to boot to the title screen and into level 1 on an emulated phone, with the Poki SDK loading.
 - [ ] To rebuild after a change: bump `version` in `package.json` and the label in `MenuScene.ts`, run `$env:VITE_PLATFORM = 'poki'; npm run build` (PowerShell) or `VITE_PLATFORM=poki npm run build` (bash), check it with `node scripts/boot-check.mjs`, then zip the contents of `dist/` (not the folder itself) under a new versioned name.
 - [ ] Load that build in Poki's inspector (https://inspector.poki.dev) and confirm the SDK events appear in the order in the table above.
 - [ ] Play the whole game on a real phone held upright. This has only been done in a desktop browser's phone emulation so far.

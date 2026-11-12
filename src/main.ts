@@ -173,5 +173,5 @@ refreshFreeze();
 
 // Hook for automated browser tests (dev builds, or any build opened with ?tfptest).
 if (import.meta.env.DEV || new URLSearchParams(location.search).has('tfptest')) {
-  (window as unknown as { __TFP: unknown }).__TFP = { game, save, audio, view, levelCount: LEVELS.length };
+  (window as unknown as { __TFP: unknown }).__TFP = { game, save, audio, view, platform, levelCount: LEVELS.length };
 }

@@ -2,6 +2,14 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## Gameplay start waits for the player (v1.12.1)
+
+Poki reported "gameplay start was started without player interaction" for v1.12.0: a first visit opens level 1 straight away, so the level reported gameplay start before the player had touched anything.
+
+- The platform layer holds a gameplay start back until the first tap, click or key press, then sends it. This covers every way into play, not just the first visit.
+- `scripts/boot-check.mjs` checks it: nothing reported before the first tap, gameplay reported straight after it.
+- Poki build zipped: `output/poki/tiny-factory-panic-poki-v1.12.1.zip` (replaces the v1.12.0 zip, which had the problem).
+
 ## Fit-test fixes (v1.12.0)
 
 The Poki player fit test of v1.9.2 failed: 500 players, 2 min 35 s average against a 3-minute bar. The event export (analysed in `docs/FIT_TEST.md`) showed players leaving inside levels 1-7, at difficulty spikes (levels 5 and 7) and in levels 2-3, with 30% of players stopping a run on level 1.
@@ -12,6 +20,7 @@ The Poki player fit test of v1.9.2 failed: 500 players, 2 min 35 s average again
 - **First visit straight into level 1.** A player with no progress skips the title screen (10% of fit-test players never left it). Returning players get the title screen; `?menu` forces it for tests.
 - **Jelly toys.** Toys wobble like jelly: a landing squashes them and they wobble back three or four times; a fast fall stretches them a little; the squash stays upright while a toy spins. View only: the physics bodies stay rigid, so every level plays exactly as the solver checked it. Off with reduced motion.
 - Smoke test: 46 checks, including the first-visit start and the FAST button.
+- Poki build zipped: `output/poki/tiny-factory-panic-poki-v1.12.0.zip`.
 
 ## Floating in place, cartoon water (v1.11.0)
 
