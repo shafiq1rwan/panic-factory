@@ -34,6 +34,15 @@ export class PokiAdapter implements PlatformAdapter {
   readonly name = 'poki';
   private sdk: PokiSDKGlobal | null = null;
   private pillTop: number | null = null;
+  /**
+   * The game starts at most 2.5 s after boot even if the SDK is not ready (it must never keep
+   * players out). Calls made before the SDK is ready are remembered here and sent once it is:
+   * otherwise a slow load lost gameLoadingFinished, gameplayStart and the first events.
+   */
+  private settled = false;
+  private loadingDone = false;
+  private playing = false;
+  private pending: [string, string, string][] = [];
 
   private loadScript(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -53,9 +62,16 @@ export class PokiAdapter implements PlatformAdapter {
       await sdk.init();
       this.sdk = sdk;
       this.applyPill();
+      // catch up on what happened while the SDK was still loading
+      if (this.loadingDone) sdk.gameLoadingFinished();
+      if (this.playing) sdk.gameplayStart();
+      for (const [c, w, a] of this.pending) this.measure(c, w, a);
     } catch {
       // Ad blockers etc: per Poki's guide, load the game anyway.
       this.sdk = null;
+    } finally {
+      this.settled = true;
+      this.pending = [];
     }
   }
 
@@ -77,7 +93,11 @@ export class PokiAdapter implements PlatformAdapter {
   }
 
   measure(category: string, what: string, action: string): void {
-    if (typeof this.sdk?.measure !== 'function') return;
+    if (!this.sdk) {
+      if (!this.settled && this.pending.length < 50) this.pending.push([category, what, action]);
+      return;
+    }
+    if (typeof this.sdk.measure !== 'function') return;
     try {
       this.sdk.measure(category, what, action);
     } catch {
@@ -86,12 +106,15 @@ export class PokiAdapter implements PlatformAdapter {
   }
 
   loadingFinished(): void {
+    this.loadingDone = true;
     this.sdk?.gameLoadingFinished();
   }
   gameplayStart(): void {
+    this.playing = true;
     this.sdk?.gameplayStart();
   }
   gameplayStop(): void {
+    this.playing = false;
     this.sdk?.gameplayStop();
   }
   async commercialBreak(onStart?: () => void): Promise<void> {

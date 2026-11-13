@@ -3,7 +3,11 @@ import { TEX_SCALE } from '../config';
 import type { FactoryObject } from '../entities/FactoryObject';
 import { save } from '../systems/SaveManager';
 import { DEPTH } from './MachineViews';
-import { faceKey, toyKey, toyShadowKey } from './Textures';
+import { faceKey, outfitKey, toyKey, toyShadowKey } from './Textures';
+import { FACE_EYES_Y, HEAD_ANCHOR, OUTFIT_TEX } from './OutfitArt';
+import { outfitById } from '../systems/Outfits';
+import { MATERIALS, type MaterialId } from '../physics/PhysicsMaterials';
+import type { ObjType } from '../config';
 import type { Expression } from './VectorFactory';
 
 const S = 1 / TEX_SCALE;
@@ -53,6 +57,8 @@ export class ObjectView {
     const faceScale = obj.type === 'yellow' ? 1.4 : obj.type === 'purple' ? 1.45 : 1.75;
     this.face = scene.add.image(0, this.faceY, faceKey('surprised')).setScale(S * faceScale);
     this.inner = scene.add.container(0, 0, [body, this.face]);
+    const wear = outfitImage(scene, obj.type, obj.material, save.data.outfit, this.faceY, faceScale);
+    if (wear) this.inner.add(wear);
     this.container = scene.add.container(obj.x, obj.y, [this.inner]).setDepth(DEPTH.toys);
     this.shadow = scene.add.image(obj.x + 4, obj.y + 6, toyShadowKey(obj.type, obj.material)).setScale(S).setAlpha(0.26).setDepth(DEPTH.toyShadow);
     this.nextBlink = 800 + Math.random() * 2500;
@@ -176,4 +182,34 @@ export class ObjectView {
     this.container.destroy();
     this.shadow.destroy();
   }
+}
+
+/** The outfit image for a toy (null for none), placed in the toy's own (rotating) space. */
+export function outfitImage(scene: Phaser.Scene, type: ObjType, material: MaterialId, id: string, faceY: number, faceScale: number): Phaser.GameObjects.Image | null {
+  const o = outfitById(id);
+  if (!o) return null;
+  const s = MATERIALS[material].scale;
+  const img = scene.add.image(0, 0, outfitKey(o.id));
+  if (o.slot === 'face') {
+    const k = faceScale / 1.75;
+    img.setScale(S * k).setPosition(0, faceY + FACE_EYES_Y * k);
+  } else {
+    const a = HEAD_ANCHOR[type];
+    const k = a.scale * s;
+    img.setScale(S * k).setPosition(0, a.y * s - OUTFIT_TEX.headBase * k);
+  }
+  return img;
+}
+
+/** A standalone toy wearing an outfit, for the wardrobe and the reward cards. */
+export function dressedToy(scene: Phaser.Scene, type: ObjType, outfitId: string, scale = 1): Phaser.GameObjects.Container {
+  const faceY = type === 'yellow' ? -2 : 0;
+  const faceScale = type === 'yellow' ? 1.4 : type === 'purple' ? 1.45 : 1.75;
+  const c = scene.add.container(0, 0, [
+    scene.add.image(0, 0, toyKey(type, 'standard')).setScale(S),
+    scene.add.image(0, faceY, faceKey('happy')).setScale(S * faceScale),
+  ]);
+  const wear = outfitImage(scene, type, 'standard', outfitId, faceY, faceScale);
+  if (wear) c.add(wear);
+  return c.setScale(scale);
 }

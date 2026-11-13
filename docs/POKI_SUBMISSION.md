@@ -41,6 +41,10 @@ The calls below are the ones in Poki's HTML5 guide (https://developers.poki.com/
 | `PokiSDK.commercialBreak()` | After a level is won (from level 4 on; none after levels 1-3), just before the wipe to the next level, and from the Panic game-over screen when the player moves on. Never while toys are moving. |
 | `PokiSDK.rewardedBreak()` | The optional HINT button, offered after two failed runs on a level. The hint is given only when the SDK reports the reward. |
 | `PokiSDK.measure('hint', N, 'used')` | A hint was given on level N. |
+| `PokiSDK.measure('outfit', id, 'unlocked' / 'worn')` | An outfit was unlocked (its card shown) / put on. |
+| `PokiSDK.measure('panic', 'offer', 'accepted')` | The player chose PLAY PANIC on the "Panic mode unlocked" card. |
+
+Calls made before the SDK is ready (the game starts at most 2.5 s after boot without it) are kept and sent once it is ready: `gameLoadingFinished`, `gameplayStart` and up to 50 events.
 | `PokiSDK.measure('level', N, 'open')` | When level N is opened (before any RUN). |
 | `PokiSDK.measure('level', N, 'start')` | Every press of RUN, so one level can send several. |
 | `PokiSDK.measure('level', N, 'complete' / 'fail')` | When a run is won / lost. One attempt never sends both. |

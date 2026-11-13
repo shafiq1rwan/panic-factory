@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { COLORS, OBJ_TYPES, TEX_SCALE, WORKSHOP, type ObjType } from '../config';
 import type { MaterialId } from '../physics/PhysicsMaterials';
+import { OUTFITS } from '../systems/Outfits';
+import { drawOutfit, OUTFIT_TEX } from './OutfitArt';
 import { capsule, drawFace, drawToy, drawToyShadow, EXPRESSIONS, roundRect, star, type Expression, type G } from './VectorFactory';
 
 const MATERIAL_IDS: MaterialId[] = ['standard', 'bouncy', 'heavy', 'slippery'];
@@ -9,6 +11,7 @@ export const TOY_TEX_SIZE = 112;
 export const toyKey = (type: ObjType, material: MaterialId): string => `toy_${type}_${material}`;
 export const toyShadowKey = (type: ObjType, material: MaterialId): string => `toyshadow_${type}_${material}`;
 export const faceKey = (expr: Expression): string => `face_${expr}`;
+export const outfitKey = (id: string): string => `outfit_${id}`;
 
 /**
  * Rasterise a vector drawing into a cached texture (centred on the texture).
@@ -32,6 +35,13 @@ export function generateTextures(scene: Phaser.Scene): void {
     }
   }
   for (const expr of EXPRESSIONS) bake(scene, faceKey(expr), 36, 34, (g) => drawFace(g, expr));
+  // outfits: head ones baked with their base below the texture centre, the face one centred
+  for (const o of OUTFITS) {
+    bake(scene, outfitKey(o.id), OUTFIT_TEX.w, OUTFIT_TEX.h, (g) => {
+      if (o.slot === 'head') g.translateCanvas(0, OUTFIT_TEX.headBase);
+      drawOutfit(g, o.id);
+    });
+  }
 
   // particles (white, tinted at runtime)
   bake(scene, 'p_dot', 16, 16, (g) => {

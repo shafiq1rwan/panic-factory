@@ -158,8 +158,8 @@ export const LEVELS: LevelDef[] = [
   planLevel({
     id: 'flip-stack',
     name: 'Flip Stack',
-    hint: 'The top belt feeds the lower one',
-    machines: [belt('lower', 190, 660, 200, 1), belt('top', 400, 450, 240, 1, { accent: BELT_B }), ...threeBins('blue', 'pink', 'yellow')],
+    hint: 'The top belt drops toys onto the lower one',
+    machines: [belt('lower', 190, 660, 200, -1), belt('top', 400, 450, 240, 1, { accent: BELT_B }), ...threeBins('blue', 'pink', 'yellow')],
     spawners: [pipe('s1', 400, rep('blue', 3), QUICK, QUICK_START)],
     solution: { top: { dir: -1 }, lower: { dir: -1 } },
   }),
@@ -236,9 +236,9 @@ export const LEVELS: LevelDef[] = [
     name: 'Full Shift',
     hint: 'Timer, belt and bouncer',
     machines: [
-      timer('ram', 128, 620, 0, 3000, { stroke: 180, extendTicks: 10 }),
+      timer('ram', 128, 620, 0, 3000, { stroke: 180, extendTicks: 10, phase: 0.5 }),
       belt('belt', 300, 840, 200, 1),
-      bouncer('pad', 640, 860, [0, 30, -12, -30]),
+      bouncer('pad', 640, 860, [0, -12, 30]),
       ...threeBins('blue', 'pink', 'yellow'),
     ],
     spawners: [pipe('s1', 300, alt('blue', 'pink', 4), 1500, 350)],
@@ -301,7 +301,8 @@ export const LEVELS: LevelDef[] = [
     id: 'heavy-belt',
     name: 'Heavy Belt',
     hint: 'Pick a side, then aim',
-    machines: [belt('belt', 360, 450, 300, 1), bouncer('padL', 125, 740, [-20, 15, 40]), bouncer('padR', 595, 740, [20, -15, -40]), ...threeBins('pink', 'blue', 'yellow')],
+    // (the left bouncer is fixed: it never mattered, and 18 setups to try lost 32% of players here)
+    machines: [belt('belt', 360, 450, 300, 1), spring('padL', 125, 740, -20, 9), bouncer('padR', 595, 740, [20, -15, -40]), ...threeBins('pink', 'blue', 'yellow')],
     spawners: [pipe('s1', 360, alt('pink', 'blue:heavy', 4))],
     solution: { padR: { angle: -40 } },
   }),

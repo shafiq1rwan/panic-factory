@@ -2,6 +2,24 @@
 
 How the game got to its current design, newest first. The version shown in the corner of the title screen is in brackets where one was set.
 
+## Toy outfits (v1.1.0)
+
+v1.0.0's web fit test build averaged 3 min 18 s (500 players); the owner's goal is 5 minutes. Most players still stop before level 13, so this release smooths the remaining rough spots and adds a reason to keep playing.
+
+- **Toy outfits.** Ten outfits (party hat, bow, cap, hard hat, sunglasses, flower, chef hat, top hat, crown, halo) unlock at star milestones (3, 9, 15, 24, 33, 45, 57, 72, 90, 108 stars). The first comes with level 1, so every player meets them. Every toy that drops wears the chosen outfit, in levels, Panic mode and on the title screen.
+  - After a win that unlocks one, a card shows it on a toy: WEAR IT / LATER (only the newest, if several unlock at once).
+  - The win card shows progress to the next outfit.
+  - A Wardrobe (title screen and pause menu) shows every outfit; locked ones show a faint preview and the stars they need.
+  - Events: `outfit <id> unlocked`, `outfit <id> worn`.
+- **Panic mode offered.** When it unlocks (after five levels) a card offers PLAY PANIC / NEXT LEVEL; only 4 of 500 players had found it on the title screen. Event: `panic offer accepted`.
+- **Flip Stack (level 3) needs one tap:** the lower belt starts right. It was the biggest single leak (21% of players stopped there).
+- **Full Shift (12)** needs 3 taps instead of 6 (timer starts nearer, three bouncer angles); **Heavy Belt (18)**'s left bouncer, which never mattered, is now fixed scenery (6 setups instead of 18). They lost 20% and 32% of the players who reached them.
+- **A waiting RUN says what to do** ("FLIP THE BELT FIRST", "TURN THE BOUNCER FIRST", ...): 26 and 27 players had opened levels 1 and 2 but never pressed RUN.
+- **HINT after the first failed run** instead of the second.
+- **Slow loads no longer lose Poki calls.** The game starts at most 2.5 s after boot even if the Poki SDK is not ready; calls made before then (gameLoadingFinished, gameplayStart, the first events) are now kept and sent once it is. The iframe check showed this happening.
+- Title screen: four small buttons (Levels, Panic, Outfits, Settings); pause menu: Levels and Outfits side by side.
+- Tests: 302 (outfit milestones and saving), smoke test 54 checks (outfit card, WEAR IT, wardrobe, hint after one fail).
+
 ## Release 1.0.0
 
 v1.12.1 passed the Poki player fit test (500 players, 3 min 6 s), so the version starts again at 1.0.0, as planned. This release also acts on that test's event export (`docs/FIT_TEST.md`) before the web fit test.

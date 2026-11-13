@@ -20,6 +20,10 @@ import { save } from '../systems/SaveManager';
 import { computeStars, starsForRuns } from '../systems/ScoreManager';
 import { Button, fadeIn, gotoScene } from '../ui/UIComponents';
 import type { UIScene } from './UIScene';
+import { unlockedOutfits } from '../systems/Outfits';
+
+/** A reward shown after a win. */
+export type RewardCard = { kind: 'outfit'; id: string } | { kind: 'panic' };
 
 /** No ad break is requested after winning one of the first this-many levels. */
 const NO_ADS_BEFORE_LEVEL = 3;
@@ -207,6 +211,12 @@ export class GameScene extends Phaser.Scene {
     return !!this.level.plan && this.state === 'prep' && this.tutorialStepPending() !== null;
   }
 
+  /** What the waiting RUN button says: the step to do first (a grey RUN looked broken). */
+  get runBlockedLabel(): string {
+    const op = this.tutorialStepPending()?.op;
+    return op === 'rotate' ? 'TURN THE BOUNCER FIRST' : op === 'timing' ? 'SET THE TIMER FIRST' : op === 'blow' ? 'TAP THE FAN FIRST' : 'FLIP THE BELT FIRST';
+  }
+
   /** Press Run: lock the layout and switch the factory on. */
   run(): void {
     if (this.state !== 'prep') return;
@@ -224,6 +234,35 @@ export class GameScene extends Phaser.Scene {
     this.world.start();
     platform.measure('level', String(this.levelIndex + 1), 'start');
     audio.whirr();
+  }
+
+  /** Show reward cards one after another, then carry on (or leave for Panic mode). */
+  private showRewards(cards: RewardCard[], token: number, done: () => void): void {
+    const card = cards.shift();
+    if (!card || token !== this.runToken) {
+      if (token === this.runToken) done();
+      return;
+    }
+    const ui = this.scene.get('UI') as UIScene;
+    if (card.kind === 'outfit') {
+      save.markOutfitsSeen(unlockedOutfits(save.totalStars).length);
+      platform.measure('outfit', card.id, 'unlocked');
+      ui.showRewardCard(card, (wear) => {
+        if (wear) {
+          save.wearOutfit(card.id);
+          platform.measure('outfit', card.id, 'worn');
+        }
+        this.showRewards(cards, token, done);
+      });
+    } else {
+      save.markPanicOffered();
+      ui.showRewardCard(card, (play) => {
+        if (play) {
+          platform.measure('panic', 'offer', 'accepted');
+          gotoScene(this, 'Panic');
+        } else this.showRewards(cards, token, done);
+      });
+    }
   }
 
   /** Instant retry: back to the preparation phase with the layout intact. */
@@ -310,9 +349,17 @@ export class GameScene extends Phaser.Scene {
       });
       this.lastStars = stars;
       this.lastNewBest = newBest;
-      // No result dialog: celebrate briefly, then move straight on to the next level.
+      // rewards earned by this win: a new outfit (only the newest if several), Panic mode unlocked
+      const cards: RewardCard[] = [];
+      const have = unlockedOutfits(save.totalStars);
+      if (have.length > save.data.outfitsSeen) cards.push({ kind: 'outfit', id: have[have.length - 1].id });
+      if (LevelManager.panicUnlocked && !save.data.panicOffered) cards.push({ kind: 'panic' });
+      // No result dialog: celebrate briefly, show any rewards, then move straight on to the next level.
       this.time.delayedCall(2300, () => {
         if (token !== this.runToken) return;
+        this.showRewards(cards, token, () => goOnAfterRewards());
+      });
+      const goOnAfterRewards = (): void => {
         const goOn = (): void => {
           if (token !== this.runToken) return;
           if (LevelManager.hasNext(this.levelIndex)) this.nextLevel();
@@ -321,7 +368,7 @@ export class GameScene extends Phaser.Scene {
         // no ad break after the first levels: 5-7% of players left at each early level change in the fit test
         if (this.levelIndex < NO_ADS_BEFORE_LEVEL) goOn();
         else void platform.commercialBreak().then(goOn);
-      });
+      };
     } else {
       this.time.delayedCall(250, () => token === this.runToken && audio.fail());
       // No dialog either: show why it failed for a moment, then hand the layout straight back.
@@ -795,7 +842,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Hints are offered after this many failed runs on a level. */
-  static readonly HINT_AFTER_FAILS = 2;
+  static readonly HINT_AFTER_FAILS = 1;
 
   /** Should the HINT button show? */
   get hintAvailable(): boolean {

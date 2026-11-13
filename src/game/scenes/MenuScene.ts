@@ -3,6 +3,7 @@ import { COLORS, GAME_H, GAME_W, HUD_H, STEP_MS, TEXT, WORKSHOP } from '../confi
 import type { LevelDef } from '../levels/LevelTypes';
 import { drawFactoryBackground, keepOverlayBelow, safeTop, setupCamera } from '../rendering/Background';
 import { WorldView } from '../rendering/WorldView';
+import { dressedToy } from '../rendering/ObjectView';
 import { FactoryWorld } from '../sim/FactoryWorld';
 import { audio } from '../systems/AudioManager';
 import { LevelManager, PANIC_UNLOCK_LEVELS } from '../systems/LevelManager';
@@ -76,27 +77,32 @@ export class MenuScene extends Phaser.Scene {
 
     // small round buttons
     const y = 900;
-    new Button(this, cx - 160, y, { w: 116, h: 104, icon: 'grid', color: COLORS.white, radius: 38, onClick: () => gotoScene(this, 'LevelSelect') }).setDepth(91);
+    const dx = 158;
+    new Button(this, cx - dx * 1.5, y, { w: 116, h: 104, icon: 'grid', color: COLORS.white, radius: 38, onClick: () => gotoScene(this, 'LevelSelect') }).setDepth(91);
     const panicOpen = LevelManager.panicUnlocked;
-    new Button(this, cx, y, {
+    new Button(this, cx - dx * 0.5, y, {
       w: 116, h: 104, icon: panicOpen ? 'bolt' : 'lock', color: COLORS.pink, radius: 38,
       onClick: () => gotoScene(this, 'Panic'),
     })
       .setDepth(91)
       .setEnabled(panicOpen);
-    new Button(this, cx + 160, y, { w: 116, h: 104, icon: 'gear', color: COLORS.white, radius: 38, onClick: () => this.scene.launch('Settings') }).setDepth(91);
-    txt(this, cx - 160, y + 82, 'Levels', 22, WORKSHOP.muted).setDepth(91);
-    txt(this, cx, y + 82, panicOpen ? `Panic  ·  best ${save.data.panicBest}` : `Panic  ·  ${Math.min(LevelManager.completedCount, PANIC_UNLOCK_LEVELS)}/${PANIC_UNLOCK_LEVELS}`, 22, WORKSHOP.muted).setDepth(91);
-    txt(this, cx + 160, y + 82, 'Settings', 22, WORKSHOP.muted).setDepth(91);
+    // outfits: a toy wearing the current outfit (or a party hat as a teaser)
+    const ob = new Button(this, cx + dx * 0.5, y, { w: 116, h: 104, color: COLORS.yellow, radius: 38, onClick: () => this.scene.launch('Wardrobe') }).setDepth(91);
+    ob.addToFace(dressedToy(this, 'blue', save.data.outfit || 'party', 0.95).setPosition(0, 8));
+    new Button(this, cx + dx * 1.5, y, { w: 116, h: 104, icon: 'gear', color: COLORS.white, radius: 38, onClick: () => this.scene.launch('Settings') }).setDepth(91);
+    txt(this, cx - dx * 1.5, y + 82, 'Levels', 22, WORKSHOP.muted).setDepth(91);
+    txt(this, cx - dx * 0.5, y + 82, panicOpen ? `Panic · ${save.data.panicBest}` : `Panic ${Math.min(LevelManager.completedCount, PANIC_UNLOCK_LEVELS)}/${PANIC_UNLOCK_LEVELS}`, 22, WORKSHOP.muted).setDepth(91);
+    txt(this, cx + dx * 0.5, y + 82, 'Outfits', 22, WORKSHOP.muted).setDepth(91);
+    txt(this, cx + dx * 1.5, y + 82, 'Settings', 22, WORKSHOP.muted).setDepth(91);
 
     // progress, top right
     const prog = this.add.container(cx, 1060).setDepth(91);
     prog.add([drawStar(this, -46, 0, 18, true), txt(this, 22, 1, `${save.totalStars}/${LevelManager.count * 3}`, 26, WORKSHOP.text)]);
-    txt(this, 40, GAME_H - 44, 'v1.0.0', 16, WORKSHOP.muted).setDepth(91);
+    txt(this, 40, GAME_H - 44, 'v1.1.0', 16, WORKSHOP.muted).setDepth(91);
 
     // keyboard: Space / Enter starts too
     this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {
-      if (this.scene.isActive('Settings')) return;
+      if (this.scene.isActive('Settings') || this.scene.isActive('Wardrobe')) return;
       if (ev.key === ' ' || ev.key === 'Enter') {
         audio.unlock();
         gotoScene(this, allDone ? 'LevelSelect' : 'Game', { level: next });

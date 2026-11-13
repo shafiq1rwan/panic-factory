@@ -15,6 +15,7 @@ import { ResultScene } from './game/scenes/ResultScene';
 import { SettingsScene } from './game/scenes/SettingsScene';
 import { TransitionScene } from './game/scenes/TransitionScene';
 import { UIScene } from './game/scenes/UIScene';
+import { WardrobeScene } from './game/scenes/WardrobeScene';
 import { audio } from './game/systems/AudioManager';
 import { save } from './game/systems/SaveManager';
 
@@ -123,7 +124,7 @@ const game = new Phaser.Game({
     height: Math.round(view.h * view.res),
   },
   // Order matters: later scenes render (and receive input) on top.
-  scene: [BootScene, MenuScene, LevelSelectScene, GameScene, PanicScene, UIScene, ResultScene, PauseScene, SettingsScene, TransitionScene],
+  scene: [BootScene, MenuScene, LevelSelectScene, GameScene, PanicScene, UIScene, ResultScene, PauseScene, SettingsScene, WardrobeScene, TransitionScene],
 });
 
 // Re-fit when the window changes shape. Scenes re-centre their cameras on the scale RESIZE event.

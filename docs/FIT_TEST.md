@@ -2,6 +2,33 @@
 
 What is being tested, the results so far, and how to read the event export when it arrives.
 
+## Result: v1.0.0 (web fit test build)
+
+- **Build tested:** `output/poki/tiny-factory-panic-poki-v1.0.0.zip`. 500 players, average play time **3 min 18 s** (v1.12.1: 3 min 6 s). The owner's goal is **5 minutes**.
+- **Every level is reached by more players:** level 3 72% of loaded (v1.12.1 57%), level 10 30% (23%), level 13 22% (13%), level 19 10% (7%).
+- **The v1.0.0 fixes worked:** level 1 failed at least once by 0% (35%), Two Belts 15% (43%). RUN waiting for the tutorial step removed the early failures.
+- **Hints are used:** 56 gameplays watched at least one rewarded ad for a hint; most hints on Flip Stack, Sort Line, Full Shift (8 each) and Heavy Belt (7).
+- **Between-level losses stayed at 3-7%** in levels 1-6, also after levels 1-3 where no ad is shown, so ads are not the cause.
+- **Panic mode is still unseen:** 4 plays. A first visit never shows the title screen, where Panic lives.
+
+Where players are lost now (opened level N, never opened N+1):
+
+| Level | Lost | Quit in level | Failed once | Runs per win | Opened, never pressed RUN |
+| --- | --- | --- | --- | --- | --- |
+| 1 First Flip | 50 (10%) | 8% | 0% | 1.1 | 26 |
+| 2 Two Belts | 74 (17%) | 11% | 15% | 1.3 | 27 |
+| **3 Flip Stack** | **77 (21%)** | 17% | 36% | 1.9 | 19 |
+| 5 Belt Bounce | 35 (14%) | 8% | 25% | 1.7 | 9 |
+| 6 Bank Shot | 34 (15%) | 11% | 65% | 2.2 | 6 |
+| **12 Full Shift** | 27 (20%) | **21%** | 69% | **3.5** | 1 |
+| **18 Heavy Belt** | 23 (32%) | **32%** | 65% | **3.5** | 7 |
+| 19 Crossroads | 9 (18%) | 18% | 39% | 1.8 | 4 |
+| 21 Boing | 8 (23%) | 23% | 67% | 2.4 | 2 |
+
+375 of the 483 players who opened level 1 had stopped before level 13.
+
+Changes in response (v1.1.0): Flip Stack one tap, Full Shift and Heavy Belt eased, a waiting RUN says what to do, hint after one failed run, Panic mode offered when it unlocks, and **toy outfits** unlocked by stars as a reason to keep playing. In a new test, look at reach past level 3 and level 12, and at the `outfit` and `panic offer` events.
+
 ## Result: v1.12.1 passed the player fit test
 
 - **Build tested:** `output/poki/tiny-factory-panic-poki-v1.12.1.zip` (40 levels in four worlds; the v1.12 fit-test fixes).

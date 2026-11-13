@@ -18,6 +18,12 @@ export interface SaveData {
   settings: Settings;
   panicBest: number;
   tutorialsDone: Record<string, boolean>;
+  /** the outfit every toy wears ('' = none) */
+  outfit: string;
+  /** how many outfit unlocks have been announced (cards shown) */
+  outfitsSeen: number;
+  /** the "Panic mode unlocked" card has been shown */
+  panicOffered: boolean;
 }
 
 function defaults(): SaveData {
@@ -28,6 +34,9 @@ function defaults(): SaveData {
     settings: { master: 0.8, music: 0.5, sfx: 0.9, reducedShake: false, reducedMotion: false },
     panicBest: 0,
     tutorialsDone: {},
+    outfit: '',
+    outfitsSeen: 0,
+    panicOffered: false,
   };
 }
 
@@ -59,6 +68,10 @@ export function sanitizeSave(raw: unknown): SaveData {
   if (r.tutorialsDone && typeof r.tutorialsDone === 'object') {
     for (const [k, v] of Object.entries(r.tutorialsDone as Record<string, unknown>)) if (v === true) d.tutorialsDone[k] = true;
   }
+  // (fields added in 1.1: absent in older saves, which keep their defaults)
+  if (typeof r.outfit === 'string' && /^[a-z]{0,16}$/.test(r.outfit)) d.outfit = r.outfit;
+  d.outfitsSeen = Math.round(num(r.outfitsSeen, 0, 0, 99));
+  d.panicOffered = r.panicOffered === true;
   return d;
 }
 
@@ -129,6 +142,22 @@ export class SaveManager {
     this.data.panicBest = score;
     this.save();
     return true;
+  }
+
+  /** Wear an outfit ('' for none). */
+  wearOutfit(id: string): void {
+    this.data.outfit = id;
+    this.save();
+  }
+
+  markOutfitsSeen(n: number): void {
+    this.data.outfitsSeen = Math.max(this.data.outfitsSeen, n);
+    this.save();
+  }
+
+  markPanicOffered(): void {
+    this.data.panicOffered = true;
+    this.save();
   }
 
   markTutorial(levelId: string): void {

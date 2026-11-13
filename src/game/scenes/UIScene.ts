@@ -13,7 +13,9 @@ import { LevelManager } from '../systems/LevelManager';
 import { save } from '../systems/SaveManager';
 import { starsForRuns } from '../systems/ScoreManager';
 import { Button, drawStar, txt } from '../ui/UIComponents';
-import type { GameScene, GameState } from './GameScene';
+import type { GameScene, GameState, RewardCard } from './GameScene';
+import { dressedToy } from '../rendering/ObjectView';
+import { nextOutfit, outfitById } from '../systems/Outfits';
 import type { PanicScene } from './PanicScene';
 
 interface Chip {
@@ -392,8 +394,9 @@ export class UIScene extends Phaser.Scene {
     if (key !== this.runShown) {
       this.runShown = key;
       // RUN waits (greyed) until a tutorial step is done: the hand shows what to tap first
-      // (still tappable: a tap on a waiting RUN flashes the badges and buzzes)
-      if (st === 'prep') btn.setContent('RUN', 'play').setColor(blocked ? 0xd3dbd6 : COLORS.yellow).setEnabled(true);
+      // (still tappable: a tap on a waiting RUN flashes the badges and buzzes; it says what to do first)
+      if (st === 'prep' && blocked) btn.setContent(g.runBlockedLabel).setColor(0xd3dbd6).setEnabled(true);
+      else if (st === 'prep') btn.setContent('RUN', 'play').setColor(COLORS.yellow).setEnabled(true);
       else if (st === 'running' && g.speed === 1) btn.setContent('FAST', 'ff').setColor(0xa9e2ff).setEnabled(true);
       else if (st === 'running') btn.setContent('NORMAL SPEED', 'play').setColor(0xffe08a).setEnabled(true);
       else btn.setEnabled(false);
@@ -669,13 +672,26 @@ export class UIScene extends Phaser.Scene {
     };
     if (state === 'won') {
       const last = g.levelIndex + 1 >= LevelManager.count;
-      plate(600, 250);
-      card.add(txt(this, 0, -66, last ? 'All levels complete!' : 'Level Complete!', 48, WORKSHOP.text));
+      plate(600, 300);
+      card.add(txt(this, 0, -86, last ? 'All levels complete!' : 'Level Complete!', 48, WORKSHOP.text));
+      // progress to the next outfit (the reason to chase stars)
+      const next = nextOutfit(save.totalStars);
+      const row = this.add.container(0, 112);
+      if (next) {
+        const w = 260;
+        const pg = this.add.graphics();
+        roundRect(pg, -w / 2, -9, w, 18, 9, 0xe6ece8, 0);
+        const f = Math.max(0.04, Math.min(1, next.have / next.need));
+        roundRect(pg, -w / 2, -9, w * f, 18, 9, COLORS.yellow, 0);
+        row.add([txt(this, -w / 2 - 14, 0, 'NEXT OUTFIT', 16, WORKSHOP.muted).setOrigin(1, 0.5).setLetterSpacing(1), pg, txt(this, w / 2 + 14, 0, `${next.have}/${next.need}`, 18, WORKSHOP.text).setOrigin(0, 0.5)]);
+        row.add(dressedToy(this, 'blue', next.outfit.id, 0.7).setPosition(w / 2 + 92, -4).setAlpha(0.55));
+      } else row.add(txt(this, 0, 0, 'Every outfit collected!', 20, WORKSHOP.muted));
+      card.add(row);
       for (let i = 0; i < 3; i++) {
         const sx = (i - 1) * 120;
-        card.add(drawStar(this, sx, 44, 48, false));
+        card.add(drawStar(this, sx, 24, 48, false));
         if (i >= g.lastStars) continue;
-        const s = drawStar(this, sx, 44, 48, true).setScale(0);
+        const s = drawStar(this, sx, 24, 48, true).setScale(0);
         card.add(s);
         this.tweens.add({ targets: s, scale: 1, duration: 320, delay: 420 + i * 260, ease: 'Back.easeOut', onStart: () => audio.starPop(i) });
       }
@@ -690,6 +706,66 @@ export class UIScene extends Phaser.Scene {
     card.setScale(0.6).setAlpha(0);
     this.tweens.add({ targets: card, scale: 1, alpha: 1, duration: 260, delay: state === 'won' ? 250 : 150, ease: 'Back.easeOut' });
   }
+
+  /**
+   * A reward after a win: a new outfit (WEAR IT / LATER) or Panic mode unlocked (PLAY PANIC /
+   * NEXT LEVEL). `choose(true)` is the first button.
+   */
+  showRewardCard(card: RewardCard, choose: (first: boolean) => void): void {
+    this.resultCard?.setVisible(false);
+    const layer = this.add.container(0, 0).setDepth(80);
+    const shade = this.add.rectangle(CX, 640, 6000, 6000, COLORS.outline, 0.35).setInteractive();
+    layer.add(shade);
+    const box = this.add.container(CX, 600);
+    layer.add(box);
+    const W = 600;
+    const H = 560;
+    const bg = this.add.graphics();
+    bg.fillStyle(COLORS.shadow, 0.18);
+    bg.fillRoundedRect(-W / 2 + 4, -H / 2 + 10, W, H, 44);
+    roundRect(bg, -W / 2, -H / 2, W, H, 44, WORKSHOP.panel, 0);
+    box.add(bg);
+    const tag = (label: string, color: number): void => {
+      const tg = this.add.graphics();
+      roundRect(tg, -100, -H / 2 + 34, 200, 40, 20, color, 0);
+      box.add([tg, txt(this, 0, -H / 2 + 54, label, 20, TEXT.white).setLetterSpacing(2)]);
+    };
+    const close = (first: boolean): void => {
+      this.tweens.add({ targets: layer, alpha: 0, duration: 160, onComplete: () => layer.destroy(true) });
+      choose(first);
+    };
+    let picture: Phaser.GameObjects.Container;
+    if (card.kind === 'outfit') {
+      const o = outfitById(card.id)!;
+      tag('NEW OUTFIT!', COLORS.pink);
+      const glow = this.add.graphics();
+      glow.fillStyle(COLORS.yellow, 0.25);
+      glow.fillCircle(0, -40, 110);
+      box.add(glow);
+      picture = dressedToy(this, 'blue', o.id, 2.4).setPosition(0, -30);
+      box.add([picture, txt(this, 0, 110, o.name, 40, WORKSHOP.text), txt(this, 0, 152, 'Every toy can wear it.', 20, WORKSHOP.muted)]);
+      box.add(new Button(this, -130, H / 2 - 70, { w: 240, h: 84, radius: 26, label: 'WEAR IT', fontSize: 30, color: COLORS.yellow, onClick: () => close(true) }));
+      box.add(new Button(this, 130, H / 2 - 70, { w: 240, h: 84, radius: 26, label: 'LATER', fontSize: 28, style: 'panel', color: WORKSHOP.inset, textColor: WORKSHOP.text, onClick: () => close(false) }));
+      audio.win();
+    } else {
+      tag('UNLOCKED!', COLORS.lavenderDark);
+      const icon = this.add.graphics().setPosition(0, -50);
+      icon.fillStyle(COLORS.pink, 1);
+      icon.fillCircle(0, 0, 76);
+      drawIcon(icon, 'bolt', 44, 0xffffff);
+      picture = this.add.container(0, 0, [icon]);
+      box.add([picture, txt(this, 0, 74, 'Panic mode', 44, WORKSHOP.text), txt(this, 0, 122, 'The toys never stop. How long can you last?', 21, WORKSHOP.muted)]);
+      box.add(new Button(this, -130, H / 2 - 70, { w: 240, h: 84, radius: 26, label: 'PLAY PANIC', fontSize: 26, color: COLORS.pink, textColor: TEXT.white, onClick: () => close(true) }));
+      box.add(new Button(this, 130, H / 2 - 70, { w: 240, h: 84, radius: 26, label: 'NEXT LEVEL', fontSize: 26, style: 'panel', color: WORKSHOP.inset, textColor: WORKSHOP.text, onClick: () => close(false) }));
+    }
+    this.rewardBox = box;
+    if (save.settings.reducedMotion) return;
+    box.setScale(0.6).setAlpha(0);
+    this.tweens.add({ targets: box, scale: 1, alpha: 1, duration: 300, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: picture, angle: { from: -6, to: 6 }, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  }
+  /** for tests: the reward card on screen */
+  rewardBox: Phaser.GameObjects.Container | null = null;
 
   /** Put the hint just above the control strip where it does not cover a machine, else under the top bar. */
   private placeHint(w: number): void {

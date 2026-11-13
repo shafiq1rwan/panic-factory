@@ -163,7 +163,16 @@ try {
   check('menu factory is alive (physics running)', (await ev(page, () => window.__TFP.game.scene.getScene('Menu').world.tick)) > 30);
   check('panic mode starts locked', await ev(page, () => window.__TFP.save.data.unlocked === 1));
 
-  await click(page, 200, 900); // small Levels button
+  await click(page, 281, 900); // Outfits button (third of four) ... is at 439; Panic (locked) at 281: nothing happens
+  await page.waitForTimeout(300);
+  await click(page, 439, 900); // Outfits
+  await active(page, 'Wardrobe');
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${OUT}/smoke-wardrobe.png` });
+  check('the title screen opens the outfits wardrobe', true);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  await click(page, 123, 900); // small Levels button
   await active(page, 'LevelSelect');
   await page.waitForTimeout(900);
   await page.screenshot({ path: `${OUT}/smoke-levels.png` });
@@ -221,9 +230,18 @@ try {
   });
   check('level 1 completes on the first run: 3 delivered, 3 stars, level 2 unlocked', r1.delivered === 3 && r1.mistakes === 0 && r1.stars === 3 && r1.unlocked === 2, JSON.stringify(r1));
 
-  // no button press: the game moves on by itself
+  // level 1's three stars unlock the first outfit: a card offers it
+  await page.waitForFunction(() => !!window.__TFP.game.scene.getScene('UI').rewardBox?.active, null, { timeout: 15000 });
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${OUT}/smoke-new-outfit.png` });
+  check('the first win unlocks an outfit and offers it on a card', true);
+  await click(page, 230, 810); // WEAR IT
+  await page.waitForTimeout(200);
+  check('WEAR IT puts the outfit on', (await ev(page, () => window.__TFP.save.data.outfit)) === 'party');
+  // then the game moves on by itself
   await page.waitForFunction(() => window.__TFP.game.scene.getScene('Game').levelIndex === 1 && window.__TFP.game.scene.getScene('Game').state === 'prep', null, { timeout: 20000 });
   check('the next level loads by itself after a win and waits in setup', true);
+  check('the new level\'s toys wear the outfit', (await ev(page, () => window.__TFP.save.data.outfit)) === 'party');
 
   // a half-done setup fails, says why, and hands the setup back as it was
   await page.waitForTimeout(600);
@@ -247,12 +265,7 @@ try {
     return { toys: g.world.objects.length, beltR: g.world.machine('beltR').dir, runs: g.runs, stars: window.__TFP.game.scene.getScene('UI').starsShown };
   });
   check('after a failed run the setup comes back as the player left it, and fewer stars are on offer', after.toys === 0 && after.beltR === -1 && after.runs === 1 && after.stars === 2, JSON.stringify(after));
-  check('no hint after one failed run', !(await ev(page, () => window.__TFP.game.scene.getScene('UI').hintBtn.visible)));
-  await page.keyboard.press('Space'); // fail a second time
-  await gameState(page, 'failed');
-  await gameState(page, 'prep');
-  await page.waitForTimeout(200);
-  check('after two failed runs a HINT button appears', await ev(page, () => window.__TFP.game.scene.getScene('UI').hintBtn.visible));
+  check('after a failed run a HINT button appears', await ev(page, () => window.__TFP.game.scene.getScene('UI').hintBtn.visible));
   const hb = await hudBtn(page, 'hintBtn');
   await click(page, hb.x, hb.y);
   await page.waitForTimeout(300);
@@ -289,13 +302,11 @@ try {
   const t3 = await ev(page, () => window.__TFP.game.scene.getScene('Game').world.tick);
   check('resume continues the run', t3 > t2 && !(await ev(page, () => window.__TFP.game.scene.isActive('Pause'))));
 
-  // keyboard only: number keys tap the machines left to right, Space runs (level 3: two stacked belts)
+  // keyboard only: number keys tap the machines left to right, Space runs (level 3: two stacked belts, one to flip)
   await startScene(page, 'Game', { level: 2 });
   await gameState(page, 'prep');
   await page.waitForTimeout(400);
-  await page.keyboard.press('1'); // a person never presses two keys within one frame
-  await page.waitForTimeout(150);
-  await page.keyboard.press('2');
+  await page.keyboard.press('2'); // the top belt (key 2, left to right); the lower one starts right
   await page.waitForTimeout(150);
   await page.keyboard.press('Space');
   check('level 3 can be set up and won with the keyboard', (await waitResult(page)) === 'won');

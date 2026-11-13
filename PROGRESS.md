@@ -18,7 +18,7 @@ Owner preferences that matter for the next steps (they were kept in a local assi
 
 ## Current state
 
-`main` is **v1.0.0** (see `CHANGELOG.md`). The Poki player fit test of **v1.12.1 passed** (500 players, 3 min 6 s); v1.9.2 had failed (2 min 35 s). Next is the web fit test; see `docs/FIT_TEST.md`.
+`main` is **v1.1.0** (toy outfits; see `CHANGELOG.md`). The Poki player fit test of **v1.12.1 passed** (500 players, 3 min 6 s); v1.9.2 had failed (2 min 35 s). Next is the web fit test; see `docs/FIT_TEST.md`.
 
 The game is a set-up-then-run puzzle in portrait: the player taps machines to set them up (a belt flips, a bouncer turns, a timer moves its pusher on a step, a fan switches on), presses RUN, and every toy has to land in the bin of its own colour. A wrong toy, or one that misses the bins, stops the run and hands the setup back. Panic mode keeps the earlier live play (two belts, two buttons).
 
@@ -51,9 +51,9 @@ What changed after the fit-test build (v1.9.2): previews no longer overlap and r
 
 ## Verified
 
-- `npm test`: 297 tests pass.
+- `npm test`: 302 tests pass.
 - `npm run solve`: all 40 levels pass. Pressing RUN without changes fails every level; each solution wins and survives random spawn offsets; in the harder levels only 1 of 8, 12 or 32 setups wins; every possible run ends within 11 s.
-- `npm run smoke`: 51 checks pass against the production build in headless Edge, including a level set up and won with the keyboard, one with the mouse, one with touch taps at phone size, and the safe-area insets.
+- `npm run smoke`: 54 checks pass against the production build in headless Edge, including a level set up and won with the keyboard, one with the mouse, one with touch taps at phone size, and the safe-area insets.
 - One winning run of every level adds up to 291 s of toys moving. Real play time depends on thinking and failed runs, which no one has measured.
 
 ## Not verified
@@ -76,6 +76,9 @@ What changed after the fit-test build (v1.9.2): previews no longer overlap and r
 - [x] Acted on the v1.12.1 findings and reset the version: **v1.0.0** (RUN waits for tutorial steps, level-2 hand, HINT button, no ads after levels 1-3, loading animation). Thumbnail kept: on review it still matches the game.
 - [ ] Submit `output/poki/tiny-factory-panic-poki-v1.0.0.zip` for the **web fit test** (click-through rate, conversion to play, time on page). Older zips are in `output/poki/archive/`.
 - [ ] Smaller bundle (custom Phaser build) if loading still loses players.
+- [x] v1.0.0 web fit test build: 500 players, 3 min 18 s (`docs/FIT_TEST.md`). Goal set by the owner: 5 minutes.
+- [x] v1.1.0: toy outfits (the owner chose star milestones, every toy wears the chosen one), Panic offered on unlock, Flip Stack / Full Shift / Heavy Belt eased, RUN says what to do, hint after one fail, slow-SDK fix.
+- [ ] Owner to try v1.1.0 on a phone, then zip and submit it.
 - [ ] Owner to try world 4 (v1.11.0) on a phone: the water, the splash, the fan's wind streaks.
 - [ ] Some world 2 and 3 levels share layouts with world 1 (the owner noticed repetition). Rework the ones the owner names.
 - [ ] Make a Poki zip of the newest `main` when the next submission is due (none exists for v1.9.3 to v1.11.0).

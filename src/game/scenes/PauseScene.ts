@@ -69,10 +69,14 @@ export class PauseScene extends Phaser.Scene {
         w: 232, h: 80, radius: 20, style: 'panel', label: 'Settings', icon: 'gear', iconSize: 18,
         color: WORKSHOP.inset, textColor: WORKSHOP.text, fontSize: 24, onClick: () => this.scene.launch('Settings'),
       }),
-      new Button(this, 0, 210, {
-        w: 480, h: 68, radius: 20, style: 'panel', label: puzzle ? 'Level select' : 'Main menu',
+      new Button(this, -124, 210, {
+        w: 232, h: 68, radius: 20, style: 'panel', label: puzzle ? 'Levels' : 'Main menu',
         icon: puzzle ? 'grid' : 'home', iconSize: 18, color: WORKSHOP.panel, textColor: WORKSHOP.muted, fontSize: 24,
         onClick: () => gotoScene(this, puzzle ? 'LevelSelect' : 'Menu'),
+      }),
+      new Button(this, 124, 210, {
+        w: 232, h: 68, radius: 20, style: 'panel', label: 'Outfits', icon: 'star', iconSize: 18,
+        color: WORKSHOP.panel, textColor: WORKSHOP.muted, fontSize: 24, onClick: () => this.scene.launch('Wardrobe'),
       }),
       txt(this, 0, 276, 'Your toys can wait.', 18, WORKSHOP.muted),
     ]);
@@ -82,7 +86,7 @@ export class PauseScene extends Phaser.Scene {
     }
 
     this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {
-      if (platform.inBreak || this.scene.isActive('Settings')) return;
+      if (platform.inBreak || this.scene.isActive('Settings') || this.scene.isActive('Wardrobe')) return;
       if (ev.key === 'Escape' || ev.key.toLowerCase() === 'p') this.resume();
     });
   }
